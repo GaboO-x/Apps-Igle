@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campeonato 8 Equipos – Simple (Cuadrangulares + Final)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #0b1220;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent-2: #60a5fa;
+      --ok: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --border: #1f2937;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica Neue,Arial;background:linear-gradient(180deg,var(--bg),#0b1020 35%,#0a0f1a 100%);color:var(--text);min-height:100vh;}
+    header{padding:20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,15,26,.7);backdrop-filter:blur(8px);z-index:10}
+    .container{max-width:1000px;margin:0 auto;padding:24px}
+    h1{margin:0 0 6px;font-size:24px}
+    .sub{color:var(--muted);margin:0;font-size:14px}
+    .grid{display:grid;gap:16px}
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media (max-width: 900px){.grid-2{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .row-right{margin-left:auto;display:flex;gap:8px}
+    .btn{background:#0b1220;border:1px solid #1f2a44;color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+    .btn:hover{border-color:#30416b}
+    .btn.warn{background:var(--warn);border-color:var(--warn);color:#1a1203}
+    .btn.danger{background:var(--danger);border-color:var(--danger);color:#220606}
+    .btn.success{background:var(--ok);border-color:var(--ok);color:#032116}
+    input{background:#0c1529;color:var(--text);border:1px solid #1f2a44;padding:8px 10px;border-radius:10px;width:100%}
+    .pill{padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--border)}
+    .table{width:100%;border-collapse:collapse;font-size:14px}
+    .table th,.table td{border-bottom:1px solid var(--border);padding:8px;text-align:center}
+    .table th{color:var(--muted)}
+    .divider{height:1px;background:var(--border);margin:10px 0 16px}
+    .tag{font-size:12px;color:#b6f;border:1px solid #423a63;padding:2px 8px;border-radius:999px}
+    .kpi{font-weight:800;font-size:18px}
+    /* Layout partido simple */
+    .match{display:grid;grid-template-columns:1fr 80px auto 80px 1fr;align-items:center;gap:10px}
+    .match .home{text-align:right;font-weight:700;min-width:140px}
+    .match .away{text-align:left;font-weight:700;min-width:140px}
+    .match .score{width:70px;text-align:center}
+    .match .sep{text-align:center;min-width:48px}
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{width:95%;max-width:720px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .modal h2{margin-top:0}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container row">
+      <div>
+        <h1>Campeonato – Simple</h1>
+        <p class="sub">2 grupos de 4 (round-robin) → Final entre ganadores. Solo marcadores y tabla de puntos.</p>
+      </div>
+      <div class="row-right">
+        <button class="btn" id="btnSetup">Editar equipos</button>
+        <button class="btn warn" id="btnExport">Exportar JSON</button>
+        <button class="btn danger" id="btnReset">Reiniciar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container grid">
+    <section class="card">
+      <div class="row" style="justify-content: space-between; align-items: baseline;">
+        <h2 style="margin:0">Estado</h2>
+        <span class="tag" id="statusTag">Configuración inicial</span>
+      </div>
+      <div class="row" style="gap:16px; align-items: baseline;">
+        <div><div class="sub">Equipos</div><div class="kpi" id="kpiEquipos">0</div></div>
+        <div><div class="sub">Partidos jugados</div><div class="kpi" id="kpiJugados">0</div></div>
+        <div><div class="sub">Goles totales</div><div class="kpi" id="kpiGoles">0</div></div>
+      </div>
+    </section>
+
+    <section class="grid grid-2">
+      <div class="card">
+        <h2 style="margin-top:0">Grupo A</h2>
+        <div id="groupAStandings"></div>
+        <div class="divider"></div>
+        <div id="groupAFixtures"></div>
+      </div>
+      <div class="card">
+        <h2 style="margin-top:0">Grupo B</h2>
+        <div id="groupBStandings"></div>
+        <div class="divider"></div>
+        <div id="groupBFixtures"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content: space-between; align-items: baseline;">
+        <h2 style="margin:0">Final</h2>
+        <span class="pill" id="finalBadge">Esperando ganadores de grupo</span>
+      </div>
+      <div id="finalMatch"></div>
+      <div id="champions"></div>
+    </section>
+
+    <p class="sub">Los datos se guardan en tu navegador (localStorage).</p>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="setupModal">
+    <div class="modal">
+      <h2>Configurar equipos (8)</h2>
+      <div class="grid grid-2">
+        <div>
+          <label>Grupo A</label>
+          <div class="grid" style="gap:8px">
+            <input id="A0" placeholder="Equipo A1" />
+            <input id="A1" placeholder="Equipo A2" />
+            <input id="A2" placeholder="Equipo A3" />
+            <input id="A3" placeholder="Equipo A4" />
+          </div>
+        </div>
+        <div>
+          <label>Grupo B</label>
+          <div class="grid" style="gap:8px">
+            <input id="B0" placeholder="Equipo B1" />
+            <input id="B1" placeholder="Equipo B2" />
+            <input id="B2" placeholder="Equipo B3" />
+            <input id="B3" placeholder="Equipo B4" />
+          </div>
+        </div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:12px;">
+        <button class="btn" id="cancelSetup">Cancelar</button>
+        <button class="btn success" id="saveSetup">Guardar y Generar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const el = (sel)=>document.querySelector(sel);
+  const make = (tag, props={}, children=[]) => {
+    const n = document.createElement(tag);
+    Object.assign(n, props);
+    children.forEach(c=>n.appendChild(typeof c==='string'?document.createTextNode(c):c));
+    return n;
+  };
+
+  const STORAGE_KEY = 'torneo8_simple_v1';
+  let state = {
+    groups: { A: [], B: [] },
+    fixtures: { A: [], B: [] },
+    scores: {}, // matchId -> {home, away}
+    final: { home:null, away:null, score:{home:null, away:null} }
+  };
+
+  function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); updateKPIs(); }
+  function load(){ const raw = localStorage.getItem(STORAGE_KEY); if(raw){ try{ state = JSON.parse(raw);}catch(e){} } }
+
+  function generateFixturesForGroup(groupName, teams){
+    if(teams.length!==4) return [];
+    const [t1,t2,t3,t4] = teams;
+    const base = [
+      [[t1,t4],[t2,t3]],
+      [[t1,t3],[t4,t2]],
+      [[t1,t2],[t3,t4]],
+    ];
+    const fixtures=[];
+    base.forEach((pairs,j)=>pairs.forEach((p,i)=>{
+      fixtures.push({ id:`${groupName}_J${j+1}_P${i+1}`, group:groupName, home:p[0], away:p[1] });
+    }));
+    return fixtures;
+  }
+
+  function blankTeamStats(name){ return { team:name, PJ:0, G:0, E:0, P:0, GF:0, GC:0, DG:0, PTS:0 }; }
+
+  function computeStandings(groupName){
+    const teams = state.groups[groupName];
+    const table = Object.fromEntries(teams.map(t=>[t, blankTeamStats(t)]));
+    (state.fixtures[groupName]||[]).forEach(m=>{
+      const sc = state.scores[m.id];
+      if(!sc || sc.home==null || sc.away==null) return;
+      const A = table[m.home], B = table[m.away];
+      A.PJ++; B.PJ++;
+      A.GF += sc.home; A.GC += sc.away;
+      B.GF += sc.away; B.GC += sc.home;
+      A.DG = A.GF - A.GC; B.DG = B.GF - B.GC;
+      if(sc.home>sc.away){ A.G++; B.P++; A.PTS+=3; }
+      else if(sc.home<sc.away){ B.G++; A.P++; B.PTS+=3; }
+      else { A.E++; B.E++; A.PTS++; B.PTS++; }
+    });
+    return Object.values(table).sort((a,b)=>{
+      if(b.PTS!==a.PTS) return b.PTS-a.PTS;
+      if(b.DG!==a.DG) return b.DG-a.DG;
+      if(b.GF!==a.GF) return b.GF-a.GF;
+      return a.team.localeCompare(b.team);
+    });
+  }
+
+  function getGroupWinner(groupName){
+    const st = computeStandings(groupName);
+    return st[0] ? st[0].team : null;
+  }
+
+  function renderStandings(group){
+    const mount = el(group==='A'?'#groupAStandings':'#groupBStandings');
+    const st = computeStandings(group);
+    if(!st.length){ mount.innerHTML = '<p class="sub">Aún sin datos.</p>'; return; }
+    const table = make('table',{className:'table'});
+    table.appendChild(make('thead',{},[make('tr',{},[
+      make('th',{textContent:'#'}),
+      make('th',{textContent:'Equipo',style:'text-align:left'}),
+      make('th',{textContent:'PJ'}),
+      make('th',{textContent:'G'}),
+      make('th',{textContent:'E'}),
+      make('th',{textContent:'P'}),
+      make('th',{textContent:'GF'}),
+      make('th',{textContent:'GC'}),
+      make('th',{textContent:'DG'}),
+      make('th',{textContent:'PTS'})
+    ])]));
+    const tbody = make('tbody');
+    st.forEach((r,i)=>{
+      const tr = make('tr');
+      [i+1,r.team,r.PJ,r.G,r.E,r.P,r.GF,r.GC,r.DG,r.PTS].forEach((v,idx)=>{
+        const td = make('td',{textContent:v});
+        if(idx===1) td.style.textAlign='left';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    mount.innerHTML='';
+    mount.appendChild(table);
+  }
+
+  function renderFixtures(group){
+    const mount = el(group==='A'?'#groupAFixtures':'#groupBFixtures');
+    const fixtures = state.fixtures[group]||[];
+    if(!fixtures.length){ mount.innerHTML = '<p class="sub">Calendario vacío.</p>'; return; }
+
+    // Agrupar por jornada
+    const rounds = {};
+    fixtures.forEach(m=>{
+      const r = m.id.split('_J')[1]?.split('_')[0] || '1';
+      (rounds[r] = rounds[r] || []).push(m);
+    });
+
+    mount.innerHTML='';
+    Object.keys(rounds).sort((a,b)=>a-b).forEach(r=>{
+      const box = make('div',{className:'card',style:'padding:12px;background:#0b1220;border-color:#1f2a44'});
+      box.appendChild(make('div',{className:'row',style:'justify-content:space-between;align-items:baseline'},[
+        make('div',{innerHTML:`<strong>Jornada ${r}</strong>`}),
+        make('span',{className:'pill',textContent:`${rounds[r].length} partidos`})
+      ]));
+      rounds[r].forEach(match=> box.appendChild(renderMatchRow(match)) );
+      mount.appendChild(box);
+    });
+  }
+
+  function renderMatchRow(match){
+    const sc = state.scores[match.id] || {home:null, away:null};
+    const row = make('div', { style:'padding:8px 0; border-bottom:1px dashed #1e2a45;' });
+    const line = make('div', { className:'match' });
+
+    const homeName = make('div', { className:'home', innerHTML: `${match.home}` });
+    const awayName = make('div', { className:'away', innerHTML: `${match.away}` });
+
+    const homeIn = make('input', { className:'score', type:'number', min:'0', step:'1', value: sc.home ?? '' });
+    const awayIn = make('input', { className:'score', type:'number', min:'0', step:'1', value: sc.away ?? '' });
+    const sep = make('div', { className:'sep', textContent:'— vs —' });
+
+    const saveBtn = make('button', { className:'btn success', textContent:'Guardar' });
+    saveBtn.onclick = () => {
+      const h = homeIn.value === '' ? null : Number(homeIn.value);
+      const a = awayIn.value === '' ? null : Number(awayIn.value);
+      state.scores[match.id] = { home:h, away:a };
+      save();
+      refresh();
+    };
+
+    line.appendChild(homeName);
+    line.appendChild(homeIn);
+    line.appendChild(sep);
+    line.appendChild(awayIn);
+    line.appendChild(awayName);
+
+    row.appendChild(line);
+    row.appendChild(make('div',{className:'row',style:'margin-top:8px'},[saveBtn]));
+    return row;
+  }
+
+  function renderFinal(){
+    const mount = el('#finalMatch');
+    const badge = el('#finalBadge');
+    const champBox = el('#champions');
+
+    const wA = getGroupWinner('A');
+    const wB = getGroupWinner('B');
+
+    if(!wA || !wB){
+      mount.innerHTML = '<p class="sub">Se habilitará cuando haya ganadores de ambos grupos.</p>';
+      champBox.innerHTML='';
+      badge.textContent = 'Esperando ganadores de grupo';
+      return;
+    }
+
+    state.final.home = wA; state.final.away = wB;
+    badge.textContent = `${wA} vs ${wB}`;
+
+    const sc = state.final.score || { home:null, away:null };
+    const row = make('div', { style:'padding:8px 0;' });
+    const line = make('div', { className:'match' });
+
+    const home = make('div', { className:'home', innerHTML:`${wA}` });
+    const away = make('div', { className:'away', innerHTML:`${wB}` });
+    const homeIn = make('input', { className:'score', type:'number', min:'0', step:'1', value: sc.home ?? '' });
+    const awayIn = make('input', { className:'score', type:'number', min:'0', step:'1', value: sc.away ?? '' });
+    const sep = make('div', { className:'sep', textContent:'— vs —' });
+
+    const saveBtn = make('button', { className:'btn success', textContent:'Guardar' });
+    saveBtn.onclick = () => {
+      const h = homeIn.value === '' ? null : Number(homeIn.value);
+      const a = awayIn.value === '' ? null : Number(awayIn.value);
+      state.final.score = { home:h, away:a };
+      save();
+      renderFinal();
+    };
+
+    line.appendChild(home);
+    line.appendChild(homeIn);
+    line.appendChild(sep);
+    line.appendChild(awayIn);
+    line.appendChild(away);
+
+    row.appendChild(line);
+    row.appendChild(make('div',{className:'row',style:'margin-top:8px'},[saveBtn]));
+
+    mount.innerHTML='';
+    mount.appendChild(row);
+
+    // Campeón / Subcampeón
+    const s = state.final.score;
+    if(s && s.home!=null && s.away!=null){
+      let champion = null, runner = null;
+      if(s.home > s.away){ champion = wA; runner = wB; }
+      else if(s.away > s.home){ champion = wB; runner = wA; }
+      else { champion = 'Empate'; runner = 'Empate'; }
+      champBox.innerHTML = `<div class="divider"></div>
+        <p><strong>Campeón:</strong> ${champion}</p>
+        <p><strong>Subcampeón:</strong> ${runner}</p>`;
+    } else {
+      champBox.innerHTML='';
+    }
+  }
+
+  function updateKPIs(){
+    el('#kpiEquipos').textContent = (state.groups.A.length + state.groups.B.length);
+    const all = [...(state.fixtures.A||[]), ...(state.fixtures.B||[])];
+    let jugados=0,goles=0;
+    all.forEach(m=>{ const sc = state.scores[m.id]; if(sc && sc.home!=null && sc.away!=null){ jugados++; goles+=sc.home+sc.away; } });
+    if(state.final?.score && state.final.score.home!=null && state.final.score.away!=null){
+      jugados++; goles+=state.final.score.home+state.final.score.away;
+    }
+    el('#kpiJugados').textContent = jugados;
+    el('#kpiGoles').textContent = goles;
+    el('#statusTag').textContent = (state.groups.A.length===4 && state.groups.B.length===4) ? 'En juego' : 'Configuración inicial';
+  }
+
+  function refresh(){
+    renderStandings('A'); renderStandings('B');
+    renderFixtures('A'); renderFixtures('B');
+    renderFinal(); updateKPIs();
+  }
+
+  // Modal
+  function openSetup(){
+    el('#setupModal').style.display='flex';
+    ['A0','A1','A2','A3','B0','B1','B2','B3'].forEach(id=>{
+      const g = id[0]; const idx = Number(id.slice(1));
+      el('#'+id).value = state.groups[g]?.[idx] || '';
+    });
+  }
+  function closeSetup(){ el('#setupModal').style.display='none'; }
+  function saveSetup(){
+    const A = [el('#A0').value,el('#A1').value,el('#A2').value,el('#A3').value].map(s=>s.trim()).filter(Boolean);
+    const B = [el('#B0').value,el('#B1').value,el('#B2').value,el('#B3').value].map(s=>s.trim()).filter(Boolean);
+    if(A.length!==4 || B.length!==4){ alert('Debes ingresar 4 equipos por grupo.'); return; }
+    state.groups.A = A; state.groups.B = B;
+    state.fixtures.A = generateFixturesForGroup('A', A);
+    state.fixtures.B = generateFixturesForGroup('B', B);
+    // limpiar marcadores de partidos que ya no existan
+    const validIds = new Set([...state.fixtures.A, ...state.fixtures.B].map(m=>m.id));
+    Object.keys(state.scores).forEach(id=>{ if(!validIds.has(id)) delete state.scores[id]; });
+    save(); closeSetup(); refresh();
+  }
+
+  // Export / Reset
+  function exportJSON(){
+    const data = JSON.stringify(state,null,2);
+    const blob = new Blob([data],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='torneo-8-equipos-simple.json';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  function resetAll(){
+    if(!confirm('¿Seguro que deseas reiniciar todo?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = { groups:{A:[],B:[]}, fixtures:{A:[],B:[]}, scores:{}, final:{home:null,away:null,score:{home:null,away:null}} };
+    refresh(); openSetup();
+  }
+
+  // Eventos
+  el('#btnSetup').onclick=openSetup;
+  el('#cancelSetup').onclick=closeSetup;
+  el('#saveSetup').onclick=saveSetup;
+  el('#btnExport').onclick=exportJSON;
+  el('#btnReset').onclick=resetAll;
+
+  // Init
+  load(); refresh();
+  if(!state.groups.A.length || !state.groups.B.length){ openSetup(); }
+  </script>
+</body>
+</html>
