@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Acceso - Configurar contraseña</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;max-width:720px;margin:32px auto;padding:0 16px;}
+    .card{border:1px solid #ddd;border-radius:14px;padding:18px;margin:14px 0;}
+    label{display:block;margin:10px 0 6px;font-weight:600}
+    input,button{width:100%;padding:12px;border-radius:10px;border:1px solid #ccc;font-size:16px}
+    button{cursor:pointer;border:none;background:#111;color:#fff;font-weight:700;margin-top:12px}
+    button.secondary{background:#f3f3f3;color:#111;border:1px solid #ddd}
+    .muted{color:#555}
+    .ok{color:#0a7a2f;font-weight:700}
+    .err{color:#b00020;font-weight:700}
+    code{background:#f6f6f6;padding:2px 6px;border-radius:8px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1 1 220px}
+    .small{font-size:13px}
+  </style>
+</head>
+<body>
+  <h1>Configurar contraseña</h1>
+  <p class="muted">Esta página sirve para completar invitaciones y recuperación de contraseña de Supabase, sin necesitar un servidor propio.</p>
+
+  <div id="configCard" class="card" style="display:none">
+    <h2>1) Configuración (solo una vez en este dispositivo)</h2>
+    <div class="row">
+      <div>
+        <label for="cfgUrl">Project URL</label>
+        <input id="cfgUrl" placeholder="https://TU-PROYECTO.supabase.co" />
+        <div class="small muted">Se encuentra en <code>Settings → API → Project URL</code></div>
+      </div>
+      <div>
+        <label for="cfgAnon">Publishable / Anon Key</label>
+        <input id="cfgAnon" placeholder="sb_publishable_..." />
+        <div class="small muted">Se encuentra en <code>Settings → API Keys</code></div>
+      </div>
+    </div>
+    <button id="saveCfg">Guardar configuración</button>
+    <button id="clearCfg" class="secondary">Borrar configuración</button>
+    <p id="cfgMsg" class="small"></p>
+  </div>
+
+  <div id="statusCard" class="card" style="display:none">
+    <h2>2) Estado</h2>
+    <p id="statusMsg" class="muted">Inicializando…</p>
+    <div id="rawInfo" class="small muted" style="display:none"></div>
+  </div>
+
+  <div id="pwCard" class="card" style="display:none">
+    <h2>3) Definir nueva contraseña</h2>
+    <label for="pw1">Nueva contraseña</label>
+    <input id="pw1" type="password" placeholder="Nueva contraseña" />
+    <label for="pw2">Confirmar contraseña</label>
+    <input id="pw2" type="password" placeholder="Confirmar contraseña" />
+    <button id="setPw">Guardar contraseña</button>
+    <p id="pwMsg" class="small"></p>
+  </div>
+
+  <div class="card">
+    <h2>Ayuda rápida</h2>
+    <ul class="small muted">
+      <li>Si llegas aquí desde un correo de Supabase, esta página leerá automáticamente el token de la URL.</li>
+      <li>Si algo falla, revisa que en Supabase tengas configurado <code>Authentication → URL Configuration</code> con esta misma URL.</li>
+    </ul>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const els = {
+      configCard: document.getElementById("configCard"),
+      statusCard: document.getElementById("statusCard"),
+      pwCard: document.getElementById("pwCard"),
+      cfgUrl: document.getElementById("cfgUrl"),
+      cfgAnon: document.getElementById("cfgAnon"),
+      saveCfg: document.getElementById("saveCfg"),
+      clearCfg: document.getElementById("clearCfg"),
+      cfgMsg: document.getElementById("cfgMsg"),
+      statusMsg: document.getElementById("statusMsg"),
+      rawInfo: document.getElementById("rawInfo"),
+      pw1: document.getElementById("pw1"),
+      pw2: document.getElementById("pw2"),
+      setPw: document.getElementById("setPw"),
+      pwMsg: document.getElementById("pwMsg"),
+    };
+
+    function show(el, yes=true){ el.style.display = yes ? "" : "none"; }
+    function setMsg(el, msg, kind="muted"){
+      el.className = kind === "ok" ? "ok" : kind === "err" ? "err" : "muted";
+      el.textContent = msg;
+    }
+
+    const STORAGE_KEY = "sb_auth_min_cfg_v1";
+    function loadCfg(){
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { return null; }
+    }
+    function saveCfg(cfg){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    }
+    function clearCfg(){
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    function getUrlParams(){
+      const url = new URL(window.location.href);
+      const params = Object.fromEntries(url.searchParams.entries());
+      const hash = url.hash.startsWith("#") ? url.hash.slice(1) : "";
+      const hashParams = Object.fromEntries(new URLSearchParams(hash).entries());
+      return { params, hashParams };
+    }
+
+    async function main(){
+      show(els.statusCard, true);
+      const cfg = loadCfg();
+
+      if (!cfg?.url || !cfg?.anon){
+        show(els.configCard, true);
+        setMsg(els.statusMsg, "Falta configuración. Ingresa Project URL y Publishable/Anon key.", "err");
+        return;
+      }
+
+      const supabase = createClient(cfg.url, cfg.anon);
+
+      const { params, hashParams } = getUrlParams();
+      els.rawInfo.style.display = "none";
+
+      try {
+        if (params.code) {
+          setMsg(els.statusMsg, "Procesando link de Supabase…", "muted");
+          const { error } = await supabase.auth.exchangeCodeForSession(params.code);
+          if (error) throw error;
+          setMsg(els.statusMsg, "Sesión creada. Ahora puedes definir la nueva contraseña.", "ok");
+          show(els.pwCard, true);
+          return;
+        }
+
+        if (hashParams.access_token && hashParams.refresh_token) {
+          setMsg(els.statusMsg, "Procesando sesión…", "muted");
+          const { error } = await supabase.auth.setSession({
+            access_token: hashParams.access_token,
+            refresh_token: hashParams.refresh_token,
+          });
+          if (error) throw error;
+          setMsg(els.statusMsg, "Sesión creada. Ahora puedes definir la nueva contraseña.", "ok");
+          show(els.pwCard, true);
+          return;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setMsg(els.statusMsg, "Sesión detectada. Puedes definir la nueva contraseña.", "ok");
+          show(els.pwCard, true);
+          return;
+        }
+
+        setMsg(els.statusMsg, "No se detectó token en la URL. Abre esta página desde el correo de invitación o recuperación de contraseña.", "err");
+      } catch (e) {
+        els.rawInfo.style.display = "";
+        els.rawInfo.textContent = "Detalle: " + (e?.message || String(e));
+        setMsg(els.statusMsg, "No se pudo procesar el link. Revisa la configuración y vuelve a intentar desde el correo.", "err");
+      }
+
+      els.setPw.onclick = async () => {
+        const p1 = els.pw1.value || "";
+        const p2 = els.pw2.value || "";
+        if (!p1 || p1.length < 8) { setMsg(els.pwMsg, "La contraseña debe tener al menos 8 caracteres.", "err"); return; }
+        if (p1 !== p2) { setMsg(els.pwMsg, "Las contraseñas no coinciden.", "err"); return; }
+        setMsg(els.pwMsg, "Guardando contraseña…", "muted");
+        const { error } = await supabase.auth.updateUser({ password: p1 });
+        if (error) { setMsg(els.pwMsg, "Error: " + error.message, "err"); return; }
+        setMsg(els.pwMsg, "Contraseña actualizada. Ya puedes cerrar esta página e iniciar sesión en tu app.", "ok");
+      };
+    }
+
+    els.saveCfg.onclick = async () => {
+      const url = (els.cfgUrl.value || "").trim();
+      const anon = (els.cfgAnon.value || "").trim();
+      if (!url.startsWith("https://") || !url.includes(".supabase.co")) {
+        setMsg(els.cfgMsg, "Project URL inválida. Debe verse como https://xxxxx.supabase.co", "err");
+        return;
+      }
+      if (!anon) { setMsg(els.cfgMsg, "Falta la Publishable/Anon key.", "err"); return; }
+      saveCfg({ url, anon });
+      setMsg(els.cfgMsg, "Guardado. Recarga la página o vuelve a abrir el link del correo.", "ok");
+      location.reload();
+    };
+
+    els.clearCfg.onclick = () => {
+      clearCfg();
+      setMsg(els.cfgMsg, "Configuración borrada.", "ok");
+    };
+
+    const existing = loadCfg();
+    if (existing?.url) els.cfgUrl.value = existing.url;
+    if (existing?.anon) els.cfgAnon.value = existing.anon;
+
+    show(els.statusCard, true);
+    const cfg2 = loadCfg();
+    if (!cfg2?.url || !cfg2?.anon) show(els.configCard, true);
+    main();
+  </script>
+</body>
+</html>
