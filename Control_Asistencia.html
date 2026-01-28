@@ -48,7 +48,7 @@
     <div class="header-inputs">
         <select id="week-selector" onchange="updateWeekDates()"></select>
         <div id="week-dates-display" class="date-display"></div>
-        <input type="text" class="leader-name" id="leader-name" placeholder="Nombre de Líder" value="Nombre de Líder">
+        <input type="text" class="leader-name" id="leader-name" placeholder="Nombre de Líder" oninput="saveDisciples()">
     </div>
 
     <div class="offering-section">
@@ -136,12 +136,12 @@
         document.getElementById('total-offering-val').innerText = (sinpe + efectivo).toLocaleString('es-CR');
     }
 
-    function addRow(targetBodyId, isNewCol = false) {
+    function addRow(targetBodyId, isNewCol = false, nameValue = "") {
         const body = document.getElementById(targetBodyId);
         const tr = document.createElement('tr');
         let html = `
-            <td><button class="btn-del" onclick="this.closest('tr').remove(); updateCounts();">✕</button></td>
-            <td><input type="text" class="in-n" placeholder="Nombre"></td>
+            <td><button class="btn-del" onclick="this.closest('tr').remove(); updateCounts(); saveDisciples();">✕</button></td>
+            <td><input type="text" class="in-n" placeholder="Nombre" value="${nameValue}" oninput="saveDisciples()"></td>
             <td class="check-col"><input type="checkbox" class="chk-cel" onchange="updateCounts()"></td>
             <td class="check-col"><input type="checkbox" class="chk-red" onchange="updateCounts()"></td>
         `;
@@ -150,6 +150,52 @@
         body.appendChild(tr);
         updateCounts();
     }
+
+    // --- NUEVAS FUNCIONES DE PERSISTENCIA ---
+    function saveDisciples() {
+        const data = {
+            leader: document.getElementById('leader-name').value,
+            rj: getNames('rj-body'),
+            visrj: getNames('visrj-body'),
+            takers: getNames('takers-body'),
+            vistakers: getNames('vistakers-body')
+        };
+        localStorage.setItem('asistenciaData_2026', JSON.stringify(data));
+    }
+
+    function getNames(id) {
+        return Array.from(document.querySelectorAll(`#${id} .in-n`)).map(input => input.value);
+    }
+
+    function loadDisciples() {
+        const saved = localStorage.getItem('asistenciaData_2026');
+        if (saved) {
+            const data = JSON.parse(saved);
+            document.getElementById('leader-name').value = data.leader || "";
+            
+            fillSection('rj-body', data.rj, false);
+            fillSection('visrj-body', data.visrj, true);
+            fillSection('takers-body', data.takers, false);
+            fillSection('vistakers-body', data.vistakers, true);
+        } else {
+            // Carga inicial por defecto si no hay nada guardado
+            ['rj-body', 'visrj-body', 'takers-body', 'vistakers-body'].forEach(id => {
+                const isNewCol = (id === 'visrj-body' || id === 'vistakers-body');
+                for(let i=0; i<3; i++) addRow(id, isNewCol);
+            });
+        }
+    }
+
+    function fillSection(id, names, isNew) {
+        const body = document.getElementById(id);
+        body.innerHTML = ""; // Limpiar
+        if (names && names.length > 0) {
+            names.forEach(name => addRow(id, isNew, name));
+        } else {
+            for(let i=0; i<3; i++) addRow(id, isNew);
+        }
+    }
+    // ---------------------------------------
 
     function updateCounts() {
         const count = (id, cls) => document.querySelectorAll(`#${id} .${cls}:checked`).length;
@@ -219,10 +265,7 @@
 
     window.onload = () => {
         setupWeekSelector();
-        ['rj-body', 'visrj-body', 'takers-body', 'vistakers-body'].forEach(id => {
-            const isNewCol = (id === 'visrj-body' || id === 'vistakers-body');
-            for(let i=0; i<3; i++) addRow(id, isNewCol);
-        });
+        loadDisciples(); // Cargar datos guardados en lugar de crear filas vacías
     };
 </script>
 </body>
