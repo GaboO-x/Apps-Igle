@@ -131,9 +131,9 @@
         const leader = document.getElementById('main-leader').value || "ENCARGADO";
         const blocks = document.querySelectorAll('.report-block');
         
-        let fullReport = `*REPORTE CONSOLIDADO GENERAL*\n`;
+        let fullReport = `*❣️UNIDAD ROJA❣️*\n`;
         fullReport += `*SUPERVISOR:* ${leader.toUpperCase()}\n`;
-        fullReport += `==============================\n`;
+        fullReport += `\n`;
         fullReport += `==============================\n\n`;
 
         blocks.forEach((block) => {
@@ -162,6 +162,8 @@
         });
 
         const totalOff = ((window.currentS || 0) + (window.currentE || 0)).toLocaleString('es-CR');
+        fullReport += `\n`;
+        fullReport += `==============================\n\n`;
         fullReport += `\n*📊 RESUMEN OFRENDAS ACUMULADO*\n`;
         fullReport += `Sinpes: ₡${(window.currentS || 0).toLocaleString('es-CR')}\n`;
         fullReport += `Efectivo: ₡${(window.currentE || 0).toLocaleString('es-CR')}\n`;
