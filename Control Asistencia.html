@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistencia y Ofrendas 2026</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        .header-inputs { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; }
+        select, .date-display { padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; }
+        .date-display { border: none; color: #666; font-style: italic; font-weight: normal; margin-top: -5px; }
+        .leader-name { border: none; border-bottom: 2px solid #dc3545; font-size: 1.3em; font-weight: bold; text-align: center; width: 80%; outline: none; padding: 5px; color: #333; }
+
+        .offering-section { background: #fff5f5; border: 1px solid #feb2b2; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .offering-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .offering-item { display: flex; flex-direction: column; font-size: 0.9em; font-weight: bold; color: #c53030; }
+        .offering-item input { padding: 8px; border: 1px solid #feb2b2; border-radius: 5px; margin-top: 5px; font-size: 1em; }
+        .total-offering { text-align: center; font-weight: bold; border-top: 1px dashed #feb2b2; padding-top: 10px; color: #dc3545; }
+
+        .section-title { background: #dc3545; color: white; padding: 12px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #dee2e6; border-top: none; background: white; }
+        th { font-size: 0.75em; color: #666; text-transform: uppercase; padding: 8px; background: #f8f9fa; }
+        td { padding: 8px 5px; border-bottom: 1px solid #eee; }
+        .in-n { border: 1px solid transparent; width: 90%; padding: 5px; font-size: 14px; background: transparent; }
+        .in-n:focus { border-bottom: 1px solid #dc3545; outline: none; }
+        .check-col { text-align: center; width: 60px; }
+        input[type="checkbox"] { transform: scale(1.3); cursor: pointer; }
+        .btn-add { background: rgba(255,255,255,0.3); border: 1px solid white; color: white; padding: 4px 12px; border-radius: 5px; cursor: pointer; font-size: 1.1em; }
+        .btn-del { color: #dc3545; border: none; background: none; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+
+        .summary { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid #ddd; font-size: 0.95em; }
+        .summary-title { text-align: center; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .summary-group { border-right: 1px solid #eee; padding-right: 5px; }
+        .summary-group:last-child { border-right: none; }
+        
+        .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+        .btn-main { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; }
+        .btn-whatsapp { background: #25d366; }
+        .btn-reset { background: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-inputs">
+        <select id="week-selector" onchange="updateWeekDates()"></select>
+        <div id="week-dates-display" class="date-display"></div>
+        <input type="text" class="leader-name" id="leader-name" placeholder="Nombre de Líder" value="Nombre de Líder">
+    </div>
+
+    <div class="offering-section">
+        <div class="offering-grid">
+            <div class="offering-item"><label>Sinpe ₡</label><input type="number" id="off-sinpe" placeholder="0" oninput="calculateOffering()"></div>
+            <div class="offering-item"><label>Efectivo ₡</label><input type="number" id="off-efectivo" placeholder="0" oninput="calculateOffering()"></div>
+        </div>
+        <div class="total-offering">Total Ofrenda: ₡ <span id="total-offering-val">0</span></div>
+    </div>
+
+    <div class="section-title"><span>RJ</span><button class="btn-add" onclick="addRow('rj-body')">+</button></div>
+    <table>
+        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th></tr></thead>
+        <tbody id="rj-body"></tbody>
+    </table>
+
+    <div class="section-title"><span>VISITAS RJ</span><button class="btn-add" onclick="addRow('visrj-body')">+</button></div>
+    <table>
+        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th></tr></thead>
+        <tbody id="visrj-body"></tbody>
+    </table>
+
+    <div class="section-title"><span>TAKERS</span><button class="btn-add" onclick="addRow('takers-body')">+</button></div>
+    <table>
+        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th></tr></thead>
+        <tbody id="takers-body"></tbody>
+    </table>
+
+    <div class="section-title"><span>VISITAS TAKERS</span><button class="btn-add" onclick="addRow('vistakers-body')">+</button></div>
+    <table>
+        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th></tr></thead>
+        <tbody id="vistakers-body"></tbody>
+    </table>
+
+    <div class="summary">
+        <div class="summary-title">*RESUMEN TOTAL*</div>
+        <div class="summary-grid">
+            <div class="summary-group">
+                <div>Total RJ Cel: <span id="trj-c">0</span></div>
+                <div>Total RJ Red: <span id="trj-r">0</span></div>
+            </div>
+            <div class="summary-group">
+                <div>Total Takers Cel: <span id="ttk-c">0</span></div>
+                <div>Total Takers Red: <span id="ttk-r">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <button class="btn-main btn-whatsapp" onclick="copyToClipboard()">📋 Copiar WhatsApp</button>
+        <button class="btn-main btn-reset" onclick="resetApp()">🔄 Resetear</button>
+    </div>
+</div>
+
+<script>
+    function setupWeekSelector() {
+        const selector = document.getElementById('week-selector');
+        for (let i = 1; i <= 52; i++) {
+            let opt = document.createElement('option');
+            opt.value = i; opt.text = `Semana ${i.toString().padStart(2, '0')}`;
+            selector.add(opt);
+        }
+        const now = new Date(); const start = new Date(2026, 0, 1);
+        const currentWeek = Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24 * 7)));
+        selector.value = currentWeek > 52 ? 52 : currentWeek;
+        updateWeekDates();
+    }
+
+    function updateWeekDates() {
+        const week = document.getElementById('week-selector').value;
+        const firstMonday = new Date(2025, 11, 29); 
+        const monday = new Date(firstMonday);
+        monday.setDate(firstMonday.getDate() + (week - 1) * 7);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        document.getElementById('week-dates-display').innerText = 
+            `del ${monday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} al ${sunday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} 2026`;
+    }
+
+    function calculateOffering() {
+        const sinpe = parseFloat(document.getElementById('off-sinpe').value) || 0;
+        const efectivo = parseFloat(document.getElementById('off-efectivo').value) || 0;
+        document.getElementById('total-offering-val').innerText = (sinpe + efectivo).toLocaleString('es-CR');
+    }
+
+    function addRow(targetBodyId) {
+        const body = document.getElementById(targetBodyId);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><button class="btn-del" onclick="this.closest('tr').remove(); updateCounts();">✕</button></td>
+            <td><input type="text" class="in-n" placeholder="Nombre"></td>
+            <td class="check-col"><input type="checkbox" class="chk-cel" onchange="updateCounts()"></td>
+            <td class="check-col"><input type="checkbox" class="chk-red" onchange="updateCounts()"></td>
+        `;
+        body.appendChild(tr);
+        updateCounts();
+    }
+
+    function updateCounts() {
+        const count = (id, cls) => document.querySelectorAll(`#${id} .${cls}:checked`).length;
+        
+        const rjC = count('rj-body', 'chk-cel') + count('visrj-body', 'chk-cel');
+        const rjR = count('rj-body', 'chk-red') + count('visrj-body', 'chk-red');
+        const tkC = count('takers-body', 'chk-cel') + count('vistakers-body', 'chk-cel');
+        const tkR = count('takers-body', 'chk-red') + count('vistakers-body', 'chk-red');
+
+        document.getElementById('trj-c').innerText = rjC;
+        document.getElementById('trj-r').innerText = rjR;
+        document.getElementById('ttk-c').innerText = tkC;
+        document.getElementById('ttk-r').innerText = tkR;
+    }
+
+    function resetApp() {
+        if(confirm("¿Deseas limpiar asistencia y ofrendas? (Nombres se mantienen)")) {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('off-sinpe').value = "";
+            document.getElementById('off-efectivo').value = "";
+            calculateOffering();
+            updateCounts();
+        }
+    }
+
+    function copyToClipboard() {
+        const leader = document.getElementById('leader-name').value;
+        const weekStr = document.getElementById('week-selector').options[document.getElementById('week-selector').selectedIndex].text;
+        const dateStr = document.getElementById('week-dates-display').innerText;
+        
+        let text = `*${weekStr}* (${dateStr})\n*LÍDER:* ${leader.toUpperCase()}\n\n`;
+
+        // Ofrendas
+        const sinpe = document.getElementById('off-sinpe').value;
+        const efectivo = document.getElementById('off-efectivo').value;
+        if(sinpe || efectivo) {
+            const total = (parseFloat(sinpe)||0) + (parseFloat(efectivo)||0);
+            text += `*--- OFRENDAS ---*\n${sinpe?`Sinpe: ₡${sinpe}\n`:''}${efectivo?`Efectivo: ₡${efectivo}\n`:''}*Total: ₡${total}*\n\n`;
+        }
+
+        // Secciones
+        const rj = formatSection('rj-body'); if(rj) text += `*--- RJ ---*\n${rj}\n`;
+        const vrj = formatSection('visrj-body'); if(vrj) text += `*--- VISITAS RJ ---*\n${vrj}\n`;
+        const tk = formatSection('takers-body'); if(tk) text += `*--- TAKERS ---*\n${tk}\n`;
+        const vtk = formatSection('vistakers-body'); if(vtk) text += `*--- VISITAS TAKERS ---*\n${vtk}\n`;
+
+        // Resumen
+        text += `*RESUMEN TOTAL*\n`;
+        text += `Total RJ Célula: ${document.getElementById('trj-c').innerText}\n`;
+        text += `Total RJ Red: ${document.getElementById('trj-r').innerText}\n---\n`;
+        text += `Total Takers Célula: ${document.getElementById('ttk-c').innerText}\n`;
+        text += `Total Takers Red: ${document.getElementById('ttk-r').innerText}`;
+
+        const textArea = document.createElement("textarea");
+        textArea.value = text; document.body.appendChild(textArea);
+        textArea.select(); document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('¡Copiado para WhatsApp!');
+    }
+
+    function formatSection(id) {
+        let content = "";
+        document.querySelectorAll(`#${id} tr`).forEach(tr => {
+            const name = tr.querySelector('.in-n').value.trim();
+            if (name !== "") {
+                const cel = tr.querySelector('.chk-cel').checked ? "✅" : "❌";
+                const red = tr.querySelector('.chk-red').checked ? "✅" : "❌";
+                content += `• ${name} | Célula: ${cel} | Red: ${red}\n`;
+            }
+        });
+        return content;
+    }
+
+    window.onload = () => {
+        setupWeekSelector();
+        ['rj-body', 'visrj-body', 'takers-body', 'vistakers-body'].forEach(id => {
+            for(let i=0; i<3; i++) addRow(id);
+        });
+    };
+</script>
+</body>
+</html>
