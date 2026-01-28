@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consolidador Completo 2026</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
+        .container { max-width: 650px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #dc3545; padding-bottom: 10px; }
+        .main-leader { width: 100%; padding: 12px; border: 2px solid #dc3545; border-radius: 8px; font-size: 1.2em; font-weight: bold; text-align: center; margin-bottom: 20px; box-sizing: border-box; outline: none; }
+        .report-block { background: #fff; border: 1px solid #ddd; border-left: 5px solid #dc3545; border-radius: 8px; padding: 15px; margin-bottom: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .leader-title { width: calc(100% - 30px); margin-bottom: 10px; border: none; border-bottom: 1px solid #ccc; font-weight: bold; color: #dc3545; outline: none; padding: 5px 0; font-size: 0.9em; text-transform: uppercase; }
+        .report-block textarea { width: 100%; height: 120px; border-radius: 5px; border: 1px solid #eee; padding: 10px; font-family: 'Courier New', monospace; font-size: 0.85em; box-sizing: border-box; resize: vertical; background: #fafafa; }
+        .btn-remove { position: absolute; top: 5px; right: 5px; background: #eee; color: #999; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 12px; }
+        .btn-remove:hover { background: #dc3545; color: white; }
+        .btn-add { background: #6c757d; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 20px; width: 100%; transition: 0.3s; }
+        .result-panel { background: #2d3436; color: white; padding: 20px; border-radius: 10px; margin-top: 20px; border-bottom: 5px solid #dc3545; }
+        .result-panel h3 { margin-top: 0; color: #fab1a0; text-align: center; font-size: 1.1em; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .res-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; border: 1px solid #444; }
+        .res-box small { font-size: 0.7em; color: #aaa; text-transform: uppercase; }
+        .res-box div { font-size: 1.1em; font-weight: bold; color: #fff; }
+        .btn-copy { width: 100%; background: #25d366; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2 style="margin:0; color:#dc3545;">Consolidador de Reportes</h2>
+        <p style="font-size: 0.9em; color: #666;">Orden de pegado conservado automáticamente</p>
+    </div>
+
+    <input type="text" id="main-leader" class="main-leader" placeholder="NOMBRE DEL SUPERVISOR" oninput="saveData()">
+
+    <div id="reports-container"></div>
+
+    <button class="btn-add" onclick="addReportBlock(); saveData();">+ AGREGAR LÍDER/REPORTE</button>
+
+    <div class="result-panel">
+        <h3>VISTA PREVIA ACUMULADA</h3>
+        <div class="res-grid">
+            <div class="res-box"><small>RJ Célula</small><div id="tot-rj-c">0</div></div>
+            <div class="res-box"><small>RJ Red</small><div id="tot-rj-r">0</div></div>
+            <div class="res-box"><small>Takers Célula</small><div id="tot-tk-c">0</div></div>
+            <div class="res-box"><small>Takers Red</small><div id="tot-tk-r">0</div></div>
+            <div class="res-box"><small>Total Sinpes</small><div id="tot-sinpe">₡0</div></div>
+            <div class="res-box"><small>Total Efectivo</small><div id="tot-efectivo">₡0</div></div>
+        </div>
+    </div>
+
+    <button class="btn-copy" onclick="copyConsolidated()">
+        COPIAR REPORTE CONSOLIDADO
+    </button>
+</div>
+
+<script>
+    window.onload = () => {
+        const savedLeader = localStorage.getItem('mainLeader');
+        if(savedLeader) document.getElementById('main-leader').value = savedLeader;
+
+        const savedBlocks = JSON.parse(localStorage.getItem('reportBlocks'));
+        if (savedBlocks && savedBlocks.length > 0) {
+            savedBlocks.forEach(title => addReportBlock(title));
+        } else {
+            for(let i=0; i<3; i++) addReportBlock();
+        }
+    };
+
+    function addReportBlock(title = '') {
+        const container = document.getElementById('reports-container');
+        const div = document.createElement('div');
+        div.className = 'report-block';
+        div.innerHTML = `
+            <button class="btn-remove" onclick="this.parentElement.remove(); processAll(); saveData();">✕</button>
+            <input type="text" class="leader-title" placeholder="NOMBRE DEL LÍDER / RED" value="${title}" oninput="saveData()">
+            <textarea placeholder="Pegue el reporte aquí..." oninput="processAll()"></textarea>
+        `;
+        container.appendChild(div);
+    }
+
+    function saveData() {
+        const titles = [];
+        document.querySelectorAll('.leader-title').forEach(input => {
+            titles.push(input.value);
+        });
+        localStorage.setItem('reportBlocks', JSON.stringify(titles));
+        localStorage.setItem('mainLeader', document.getElementById('main-leader').value);
+    }
+
+    function extractMoney(text, label) {
+        const regex = new RegExp(label + ": ₡([\\d\\s.,]+)", "i");
+        const match = text.match(regex);
+        if (match) {
+            let cleanNumber = match[1].replace(/\s/g, '').replace(/[.,](?=\d{3})/g, '');
+            cleanNumber = cleanNumber.replace(',', '.');
+            return parseFloat(cleanNumber) || 0;
+        }
+        return 0;
+    }
+
+    function processAll() {
+        let sSum = 0, eSum = 0, rjC = 0, rjR = 0, tkC = 0, tkR = 0, rjN = 0, tkN = 0;
+        
+        document.querySelectorAll('.report-block').forEach(block => {
+            const val = block.querySelector('textarea').value;
+            if(!val) return;
+            sSum += extractMoney(val, "Sinpe");
+            eSum += extractMoney(val, "Efectivo");
+            const getInt = (regex) => { const m = val.match(regex); return m ? parseInt(m[1]) : 0; };
+            rjC += getInt(/Total RJ Célula: (\d+)/);
+            rjR += getInt(/Total RJ Red: (\d+)/);
+            rjN += getInt(/RJ Nuevos: (\d+)/);
+            tkC += getInt(/Total Takers Célula: (\d+)/);
+            tkR += getInt(/Total Takers Red: (\d+)/);
+            tkN += getInt(/Takers Nuevos: (\d+)/);
+        });
+
+        document.getElementById('tot-sinpe').innerText = "₡" + sSum.toLocaleString('es-CR');
+        document.getElementById('tot-efectivo').innerText = "₡" + eSum.toLocaleString('es-CR');
+        document.getElementById('tot-rj-c').innerText = rjC;
+        document.getElementById('tot-rj-r').innerText = rjR;
+        document.getElementById('tot-tk-c').innerText = tkC;
+        document.getElementById('tot-tk-r').innerText = tkR;
+        window.currentRJN = rjN; window.currentTKN = tkN;
+        window.currentS = sSum; window.currentE = eSum;
+    }
+
+    function copyConsolidated() {
+        const leader = document.getElementById('main-leader').value || "ENCARGADO";
+        const blocks = document.querySelectorAll('.report-block');
+        
+        let fullReport = `*REPORTE CONSOLIDADO GENERAL*\n`;
+        fullReport += `*SUPERVISOR:* ${leader.toUpperCase()}\n`;
+        fullReport += `==============================\n`;
+        fullReport += `==============================\n\n`;
+
+        blocks.forEach((block) => {
+            const leaderTitle = block.querySelector('.leader-title').value || "LÍDER";
+            let rawText = block.querySelector('textarea').value.trim();
+            
+            if(rawText !== "") {
+                // FILTRO DE LIMPIEZA PASO A PASO:
+                let lines = rawText.split('\n');
+                let cleanLines = lines.filter(line => {
+                    const l = line.toUpperCase();
+                    // Elimina si contiene Semana, Líder o el separador de Ofrendas antiguo
+                    return !l.includes("SEMANA") && 
+                           !l.includes("LÍDER") && 
+                           !l.includes("LIDER") &&
+                           !l.includes("--- OFRENDAS ---");
+                });
+                
+                let finalBlockText = cleanLines.join('\n').trim();
+
+                fullReport += `🔥🚨🔥🚨🔥🚨🔥\n\n`;
+                fullReport += `🔥 *LÍDER: ${leaderTitle.toUpperCase()}* 🔥\n\n`;
+                fullReport += `--- OFRENDAS ---\n`;
+                fullReport += `${finalBlockText}\n\n`;
+            }
+        });
+
+        const totalOff = ((window.currentS || 0) + (window.currentE || 0)).toLocaleString('es-CR');
+        fullReport += `\n*📊 RESUMEN OFRENDAS ACUMULADO*\n`;
+        fullReport += `Sinpes: ₡${(window.currentS || 0).toLocaleString('es-CR')}\n`;
+        fullReport += `Efectivo: ₡${(window.currentE || 0).toLocaleString('es-CR')}\n`;
+        fullReport += `*Total: ₡${totalOff}*\n\n`;
+
+        fullReport += `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n`;
+        fullReport += `*-> RJ*\n`;
+        fullReport += `RJ Célula: ${document.getElementById('tot-rj-c').innerText}\n`;
+        fullReport += `RJ Red: ${document.getElementById('tot-rj-r').innerText}\n`;
+        fullReport += `RJ Nuevos: ${window.currentRJN || 0}\n\n`;
+        fullReport += `*-> Takers*\n`;
+        fullReport += `Takers Célula: ${document.getElementById('tot-tk-c').innerText}\n`;
+        fullReport += `Takers Red: ${document.getElementById('tot-tk-r').innerText}\n`;
+        fullReport += `Takers Nuevos: ${window.currentTKN || 0}\n`;
+
+        const el = document.createElement('textarea');
+        el.value = fullReport;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        alert("¡Reporte consolidado copiado!");
+    }
+</script>
+</body>
+</html>
