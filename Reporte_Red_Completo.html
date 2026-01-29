@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consolidador General de Red</title>
+    <style>
+        :root {
+            --roja: #ff4d4d; --azul: #4d94ff; --amarilla: #ffd633; 
+            --naranja: #ff944d; --verde: #5cd65c;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; padding: 15px; padding-bottom: 100px; }
+        .container { max-width: 600px; margin: auto; }
+        .unit-block { 
+            border-radius: 10px; padding: 15px; margin-bottom: 15px; 
+            background: #2d2d2d; border-left: 10px solid var(--color);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .u-roja { --color: var(--roja); }
+        .u-azul { --color: var(--azul); }
+        .u-amarilla { --color: var(--amarilla); }
+        .u-naranja { --color: var(--naranja); }
+        .u-verde { --color: var(--verde); }
+        h2 { color: var(--color); margin: 0 0 10px 0; font-size: 1.1em; letter-spacing: 1px; }
+        textarea { 
+            width: 100%; height: 100px; background: #111; color: #0f0; 
+            border: 1px solid #444; border-radius: 5px; padding: 10px;
+            font-family: monospace; font-size: 0.85em; box-sizing: border-box; resize: none;
+            outline: none;
+        }
+        textarea:focus { border-color: var(--color); }
+        
+        /* Botón Flotante Estilizado */
+        .footer-actions {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 500px; z-index: 1000;
+        }
+        .btn-copy {
+            width: 100%; padding: 18px; background: #25d366; color: white;
+            border: none; border-radius: 50px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-size: 1em;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .btn-copy:active { transform: scale(0.95); background: #1ebe57; }
+        
+        #status-msg {
+            text-align: center; font-size: 0.8em; color: #888; margin-top: 5px; height: 1em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="text-align: center; color: #fff; margin-bottom: 30px;">📊 CONSOLIDADO</h1>
+    
+    <div id="units-container"></div>
+    <div id="status-msg"></div>
+
+    <div class="footer-actions">
+        <button class="btn-copy" onclick="copyFinalReport()">📋 COPIAR REPORTE COMPLETO</button>
+    </div>
+</div>
+
+<script>
+    const units = [
+        { id: 'ROJA', color: 'u-roja' },
+        { id: 'AZUL', color: 'u-azul' },
+        { id: 'AMARILLA', color: 'u-amarilla' },
+        { id: 'NARANJA', color: 'u-naranja' },
+        { id: 'VERDE', color: 'u-verde' }
+    ];
+
+    const container = document.getElementById('units-container');
+    units.forEach(u => {
+        container.innerHTML += `
+            <div class="unit-block ${u.color}">
+                <h2>UNIDAD ${u.id}</h2>
+                <textarea id="txt-${u.id}" placeholder="Pegar reporte aquí..." oninput="calculateAll()"></textarea>
+            </div>
+        `;
+    });
+
+    function extractValue(text, regex) {
+        const parts = text.split(/RESUMEN OFRENDAS ACUMULADO/i);
+        if (parts.length < 2) return 0;
+        const summaryText = parts[1];
+        const match = summaryText.match(regex);
+        if (!match) return 0;
+        let val = match[1].replace(/[₡\s.]/g, '').replace(',', '.');
+        return parseFloat(val) || 0;
+    }
+
+    function calculateAll() {
+        let grandTotals = { s: 0, e: 0, rjC: 0, tkC: 0, rjR: 0, tkR: 0, rjN: 0, tkN: 0 };
+        let fullDetailBody = "";
+        let unitsActive = 0;
+
+        units.forEach(u => {
+            const val = document.getElementById(`txt-${u.id}`).value;
+            if(!val || val.trim() === "") return;
+            unitsActive++;
+
+            const s = extractValue(val, /Sinpes?:\s*₡?([\d\s.,]+)/i);
+            const e = extractValue(val, /Efectivo:\s*₡?([\d\s.,]+)/i);
+            const rc = extractValue(val, /RJ Célula:\s*(\d+)/i);
+            const tc = extractValue(val, /Takers Célula:\s*(\d+)/i);
+            const rr = extractValue(val, /RJ Red:\s*(\d+)/i);
+            const tr = extractValue(val, /Takers Red:\s*(\d+)/i);
+            const rn = extractValue(val, /RJ Nuevos:\s*(\d+)/i);
+            const tn = extractValue(val, /Takers Nuevos:\s*(\d+)/i);
+
+            grandTotals.s += s; grandTotals.e += e;
+            grandTotals.rjC += rc; grandTotals.tkC += tc;
+            grandTotals.rjR += rr; grandTotals.tkR += tr;
+            grandTotals.rjN += rn; grandTotals.tkN += tn;
+
+            fullDetailBody += `*❣️UNIDAD ${u.id}❣️*\n` +
+                `📊 RESUMEN OFRENDAS ACUMULADO\n` +
+                `Sinpes: ₡${s.toLocaleString('es-CR')}\n` +
+                `Efectivo: ₡${e.toLocaleString('es-CR')}\n` +
+                `Total: ₡${(s + e).toLocaleString('es-CR')}\n\n` +
+                `---👥 RESUMEN ASISTENCIA ACUMULADO---\n` +
+                `-> Célula\n` +
+                `RJ Célula: ${rc}\n` +
+                `Takers Célula: ${tc}\n` +
+                `Total Célula: ${rc + tc}\n\n` +
+                `-> Red\n` +
+                `RJ Red: ${rr}\n` +
+                `Takers Red: ${tr}\n` +
+                `Total Red: ${rr + tr}\n\n` +
+                `-> Nuevos\n` +
+                `RJ Nuevos: ${rn}\n` +
+                `Takers Nuevos: ${tn}\n` +
+                `Total Nuevos: ${rn + tn}\n` +
+                `==============================\n\n`;
+        });
+
+        if (unitsActive > 0) {
+            const finalSumatory = `*🚀 SUMATORIA GENERAL DE RED*\n\n` +
+                `💰 *OFRENDAS TOTALES*\n` +
+                `Sinpes: ₡${grandTotals.s.toLocaleString('es-CR')}\n` +
+                `Efectivo: ₡${grandTotals.e.toLocaleString('es-CR')}\n` +
+                `Total: ₡${(grandTotals.s + grandTotals.e).toLocaleString('es-CR')}\n\n` +
+                `👥 *ASISTENCIA TOTAL*\n` +
+                `-> Célula\n` +
+                `RJ Célula: ${grandTotals.rjC}\n` +
+                `Takers Célula: ${grandTotals.tkC}\n` +
+                `Total Célula: ${grandTotals.rjC + grandTotals.tkC}\n\n` +
+                `-> Red\n` +
+                `RJ Red: ${grandTotals.rjR}\n` +
+                `Takers Red: ${grandTotals.tkR}\n` +
+                `Total Red: ${grandTotals.rjR + grandTotals.tkR}\n\n` +
+                `-> Nuevos\n` +
+                `RJ Nuevos: ${grandTotals.rjN}\n` +
+                `Takers Nuevos: ${grandTotals.tkN}\n` +
+                `Total Nuevos: ${grandTotals.rjN + grandTotals.tkN}`;
+
+            window.finalReportStr = fullDetailBody + finalSumatory;
+            document.getElementById('status-msg').innerText = "✅ Reporte actualizado y listo";
+        } else {
+            window.finalReportStr = "";
+            document.getElementById('status-msg').innerText = "";
+        }
+    }
+
+    function copyFinalReport() {
+        if(!window.finalReportStr) {
+            alert("Por favor, ingresa datos en al menos una unidad.");
+            return;
+        }
+        navigator.clipboard.writeText(window.finalReportStr);
+        const btn = document.querySelector('.btn-copy');
+        btn.innerText = "¡COPIADO! ✅";
+        btn.style.background = "#075e54";
+        setTimeout(() => {
+            btn.innerText = "📋 COPIAR REPORTE COMPLETO";
+            btn.style.background = "#25d366";
+        }, 2000);
+    }
+</script>
+</body>
+</html>
