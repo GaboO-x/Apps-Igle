@@ -44,6 +44,7 @@
             <div class="res-box"><small>RJ Red</small><div id="tot-rj-r">0</div></div>
             <div class="res-box"><small>Takers Célula</small><div id="tot-tk-c">0</div></div>
             <div class="res-box"><small>Takers Red</small><div id="tot-tk-r">0</div></div>
+            <div class="res-box"><small>Nuevos RJ</small><div id="tot-rj-n">0</div></div>
             <div class="res-box"><small>Total Sinpes</small><div id="tot-sinpe">₡0</div></div>
             <div class="res-box"><small>Total Efectivo</small><div id="tot-efectivo">₡0</div></div>
         </div>
@@ -119,12 +120,12 @@
             rjR += getInt(/Total RJ Red:\s*(\d+)/i);
             tkR += getInt(/Total Takers Red:\s*(\d+)/i);
 
-            const regexNuevos = /NUEVOS:?.*?RJ:?\s*(\d+).*?Takers:?\s*(\d+)/i;
-            const matchNuevos = val.match(regexNuevos);
-            if (matchNuevos) {
-                rjN += parseInt(matchNuevos[1]);
-                tkN += parseInt(matchNuevos[2]);
-            }
+            // CORRECCIÓN: Regex separadas para capturar RJ y Takers individualmente en la sección de NUEVOS
+            const rjMatch = val.match(/NUEVOS:.*?RJ:\s*(\d+)/i);
+            if (rjMatch) rjN += parseInt(rjMatch[1]);
+
+            const tkMatch = val.match(/NUEVOS:.*?Takers:\s*(\d+)/i);
+            if (tkMatch) tkN += parseInt(tkMatch[1]);
         });
 
         document.getElementById('tot-sinpe').innerText = "₡" + sSum.toLocaleString('es-CR');
@@ -133,6 +134,7 @@
         document.getElementById('tot-rj-r').innerText = rjR;
         document.getElementById('tot-tk-c').innerText = tkC;
         document.getElementById('tot-tk-r').innerText = tkR;
+        document.getElementById('tot-rj-n').innerText = rjN;
         
         window.currentRJN = rjN; 
         window.currentTKN = tkN;
@@ -145,8 +147,7 @@
         const blocks = document.querySelectorAll('.report-block');
         
         let fullReport = `*❣️UNIDAD ROJA❣️*\n`;
-        fullReport += `*SUPERVISOR:* ${leader.toUpperCase()}\n`;
-        fullReport += `\n`;
+        fullReport += `*SUPERVISOR:* ${leader.toUpperCase()}\n\n`;
         fullReport += `==============================\n\n`;
 
         blocks.forEach((block) => {
@@ -157,8 +158,6 @@
                 let lines = rawText.split('\n');
                 let cleanLines = lines.filter(line => {
                     const l = line.toUpperCase();
-                    // SE CORRIGE AQUÍ: Eliminamos cualquier línea que contenga "LÍDER" o "LIDER" 
-                    // para evitar el "LÍDER: " vacío o repetido en la salida.
                     return !l.includes("SEMANA") && 
                            !l.includes("LÍDER") && 
                            !l.includes("LIDER") &&
@@ -175,9 +174,8 @@
         });
 
         const totalOff = ((window.currentS || 0) + (window.currentE || 0)).toLocaleString('es-CR');
-        fullReport += `\n`;
         fullReport += `==============================\n\n`;
-        fullReport += `\n*📊 RESUMEN OFRENDAS ACUMULADO*\n`;
+        fullReport += `*📊 RESUMEN OFRENDAS ACUMULADO*\n`;
         fullReport += `Sinpes: ₡${(window.currentS || 0).toLocaleString('es-CR')}\n`;
         fullReport += `Efectivo: ₡${(window.currentE || 0).toLocaleString('es-CR')}\n`;
         fullReport += `*Total: ₡${totalOff}*\n\n`;
