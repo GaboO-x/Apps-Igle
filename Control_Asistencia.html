@@ -279,15 +279,17 @@
         alert('¡Copiado para WhatsApp!');
     }
 
-    function formatSection(id, hasNew = false) {
+function formatSection(id, hasNew = false) {
         let content = "";
-        document.querySelectorAll(`#${id} tr`).forEach(tr => {
+        // Seleccionamos todas las filas y usamos el segundo parámetro 'i' como contador
+        document.querySelectorAll(`#${id} tr`).forEach((tr, i) => {
             const name = tr.querySelector('.in-n').value.trim();
             if (name !== "") {
                 const cel = tr.querySelector('.chk-cel').checked ? "✅" : "❌";
                 const red = tr.querySelector('.chk-red').checked ? "✅" : "❌";
                 const nFlag = (hasNew && tr.querySelector('.chk-new').checked) ? " | 🌟 Nuevo" : "";
-                content += `• ${name} | Célula: ${cel} | Red: ${red}${nFlag}\n`;
+                // Cambiamos el '•' por '(i + 1).' para que empiece desde 1
+                content += `${i + 1}. ${name} | Célula: ${cel} | Red: ${red}${nFlag}\n`;
             }
         });
         return content;
