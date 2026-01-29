@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consolidador Completo 2026</title>
+    <title>Consolidador Unidad Roja 2026</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
         .container { max-width: 650px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
@@ -63,7 +63,7 @@
         if (savedBlocks && savedBlocks.length > 0) {
             savedBlocks.forEach(title => addReportBlock(title));
         } else {
-            for(let i=0; i<3; i++) addReportBlock();
+            for(let i=0; i<4; i++) addReportBlock();
         }
     };
 
@@ -73,7 +73,7 @@
         div.className = 'report-block';
         div.innerHTML = `
             <button class="btn-remove" onclick="this.parentElement.remove(); processAll(); saveData();">✕</button>
-            <input type="text" class="leader-title" placeholder="NOMBRE DEL LÍDER / RED" value="${title}" oninput="saveData()">
+            <input type="text" class="leader-title" placeholder="LÍDER" value="${title}" oninput="saveData()">
             <textarea placeholder="Pegue el reporte aquí..." oninput="processAll()"></textarea>
         `;
         container.appendChild(div);
@@ -92,7 +92,7 @@
         const regex = new RegExp(label + ": ₡([\\d\\s.,]+)", "i");
         const match = text.match(regex);
         if (match) {
-            let cleanNumber = match[1].replace(/\s/g, '').replace(/[.,](?=\d{3})/g, '');
+            let cleanNumber = match[1].replace(/\s/g, '').replace(/[.](?=\d{3})/g, '');
             cleanNumber = cleanNumber.replace(',', '.');
             return parseFloat(cleanNumber) || 0;
         }
@@ -105,15 +105,26 @@
         document.querySelectorAll('.report-block').forEach(block => {
             const val = block.querySelector('textarea').value;
             if(!val) return;
+
             sSum += extractMoney(val, "Sinpe");
             eSum += extractMoney(val, "Efectivo");
-            const getInt = (regex) => { const m = val.match(regex); return m ? parseInt(m[1]) : 0; };
-            rjC += getInt(/Total RJ Célula: (\d+)/);
-            rjR += getInt(/Total RJ Red: (\d+)/);
-            rjN += getInt(/RJ Nuevos: (\d+)/);
-            tkC += getInt(/Total Takers Célula: (\d+)/);
-            tkR += getInt(/Total Takers Red: (\d+)/);
-            tkN += getInt(/Takers Nuevos: (\d+)/);
+
+            const getInt = (regex) => { 
+                const m = val.match(regex); 
+                return m ? parseInt(m[1]) : 0; 
+            };
+            
+            rjC += getInt(/Total RJ Célula:\s*(\d+)/i);
+            tkC += getInt(/Total Takers Célula:\s*(\d+)/i);
+            rjR += getInt(/Total RJ Red:\s*(\d+)/i);
+            tkR += getInt(/Total Takers Red:\s*(\d+)/i);
+
+            const regexNuevos = /NUEVOS:?.*?RJ:?\s*(\d+).*?Takers:?\s*(\d+)/i;
+            const matchNuevos = val.match(regexNuevos);
+            if (matchNuevos) {
+                rjN += parseInt(matchNuevos[1]);
+                tkN += parseInt(matchNuevos[2]);
+            }
         });
 
         document.getElementById('tot-sinpe').innerText = "₡" + sSum.toLocaleString('es-CR');
@@ -122,8 +133,11 @@
         document.getElementById('tot-rj-r').innerText = rjR;
         document.getElementById('tot-tk-c').innerText = tkC;
         document.getElementById('tot-tk-r').innerText = tkR;
-        window.currentRJN = rjN; window.currentTKN = tkN;
-        window.currentS = sSum; window.currentE = eSum;
+        
+        window.currentRJN = rjN; 
+        window.currentTKN = tkN;
+        window.currentS = sSum; 
+        window.currentE = eSum;
     }
 
     function copyConsolidated() {
@@ -140,11 +154,11 @@
             let rawText = block.querySelector('textarea').value.trim();
             
             if(rawText !== "") {
-                // FILTRO DE LIMPIEZA PASO A PASO:
                 let lines = rawText.split('\n');
                 let cleanLines = lines.filter(line => {
                     const l = line.toUpperCase();
-                    // Elimina si contiene Semana, Líder o el separador de Ofrendas antiguo
+                    // SE CORRIGE AQUÍ: Eliminamos cualquier línea que contenga "LÍDER" o "LIDER" 
+                    // para evitar el "LÍDER: " vacío o repetido en la salida.
                     return !l.includes("SEMANA") && 
                            !l.includes("LÍDER") && 
                            !l.includes("LIDER") &&
@@ -168,15 +182,24 @@
         fullReport += `Efectivo: ₡${(window.currentE || 0).toLocaleString('es-CR')}\n`;
         fullReport += `*Total: ₡${totalOff}*\n\n`;
 
+        const rjC = parseInt(document.getElementById('tot-rj-c').innerText) || 0;
+        const rjR = parseInt(document.getElementById('tot-rj-r').innerText) || 0;
+        const tkC = parseInt(document.getElementById('tot-tk-c').innerText) || 0;
+        const tkR = parseInt(document.getElementById('tot-tk-r').innerText) || 0;
+
         fullReport += `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n`;
-        fullReport += `*-> RJ*\n`;
-        fullReport += `RJ Célula: ${document.getElementById('tot-rj-c').innerText}\n`;
-        fullReport += `RJ Red: ${document.getElementById('tot-rj-r').innerText}\n`;
-        fullReport += `RJ Nuevos: ${window.currentRJN || 0}\n\n`;
-        fullReport += `*-> Takers*\n`;
-        fullReport += `Takers Célula: ${document.getElementById('tot-tk-c').innerText}\n`;
-        fullReport += `Takers Red: ${document.getElementById('tot-tk-r').innerText}\n`;
+        fullReport += `*-> Célula*\n`;
+        fullReport += `RJ Célula: ${rjC}\n`;
+        fullReport += `Takers Célula: ${tkC}\n`;
+        fullReport += `Total Célula: ${rjC + tkC}\n\n`;
+        fullReport += `*-> Red*\n`;
+        fullReport += `RJ Red: ${rjR}\n`;
+        fullReport += `Takers Red: ${tkR}\n`;
+        fullReport += `Total Red: ${rjR + tkR}\n\n`;
+        fullReport += `*-> Nuevos (Ya contados en los datos previos)*\n`;
+        fullReport += `RJ Nuevos: ${window.currentRJN || 0}\n`;
         fullReport += `Takers Nuevos: ${window.currentTKN || 0}\n`;
+        fullReport += `Total Nuevos: ${(window.currentRJN || 0) + (window.currentTKN || 0)}\n`;
 
         const el = document.createElement('textarea');
         el.value = fullReport;
