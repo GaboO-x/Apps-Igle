@@ -87,15 +87,20 @@
         <div class="summary-title">*RESUMEN TOTAL*</div>
         <div class="summary-grid">
             <div class="summary-group">
+                <div style="font-weight: bold; border-bottom: 1px solid #ddd; margin-bottom: 5px; color: #dc3545;">CÉLULA</div>
                 <div>Total RJ Cel: <span id="trj-c">0</span></div>
-                <div>Total RJ Red: <span id="trj-r">0</span></div>
-                <div style="color: #d69e2e; font-weight: bold;">RJ Nuevos: <span id="trj-n">0</span></div>
+                <div>Total Takers Cel: <span id="ttk-c">0</span></div>
+                <div style="font-weight: bold; margin-top: 5px;">Total Célula: <span id="total-cel-sum">0</span></div>
             </div>
             <div class="summary-group">
-                <div>Total Takers Cel: <span id="ttk-c">0</span></div>
+                <div style="font-weight: bold; border-bottom: 1px solid #ddd; margin-bottom: 5px; color: #dc3545;">RED</div>
+                <div>Total RJ Red: <span id="trj-r">0</span></div>
                 <div>Total Takers Red: <span id="ttk-r">0</span></div>
-                <div style="color: #d69e2e; font-weight: bold;">Takers Nuevos: <span id="ttk-n">0</span></div>
+                <div style="font-weight: bold; margin-top: 5px;">Total Red: <span id="total-red-sum">0</span></div>
             </div>
+        </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 0.85em; color: #d69e2e; font-weight: bold;">
+            Nuevos: RJ (<span id="trj-n">0</span>) | Takers (<span id="ttk-n">0</span>)
         </div>
     </div>
 
@@ -151,7 +156,6 @@
         updateCounts();
     }
 
-    // --- NUEVAS FUNCIONES DE PERSISTENCIA ---
     function saveDisciples() {
         const data = {
             leader: document.getElementById('leader-name').value,
@@ -172,13 +176,11 @@
         if (saved) {
             const data = JSON.parse(saved);
             document.getElementById('leader-name').value = data.leader || "";
-            
             fillSection('rj-body', data.rj, false);
             fillSection('visrj-body', data.visrj, true);
             fillSection('takers-body', data.takers, false);
             fillSection('vistakers-body', data.vistakers, true);
         } else {
-            // Carga inicial por defecto si no hay nada guardado
             ['rj-body', 'visrj-body', 'takers-body', 'vistakers-body'].forEach(id => {
                 const isNewCol = (id === 'visrj-body' || id === 'vistakers-body');
                 for(let i=0; i<3; i++) addRow(id, isNewCol);
@@ -188,23 +190,36 @@
 
     function fillSection(id, names, isNew) {
         const body = document.getElementById(id);
-        body.innerHTML = ""; // Limpiar
+        body.innerHTML = "";
         if (names && names.length > 0) {
             names.forEach(name => addRow(id, isNew, name));
         } else {
             for(let i=0; i<3; i++) addRow(id, isNew);
         }
     }
-    // ---------------------------------------
 
+    // FUNCIÓN DE CONTEO Y SUMATORIA ACTUALIZADA
     function updateCounts() {
         const count = (id, cls) => document.querySelectorAll(`#${id} .${cls}:checked`).length;
-        document.getElementById('trj-c').innerText = count('rj-body', 'chk-cel') + count('visrj-body', 'chk-cel');
-        document.getElementById('trj-r').innerText = count('rj-body', 'chk-red') + count('visrj-body', 'chk-red');
-        document.getElementById('trj-n').innerText = count('visrj-body', 'chk-new');
-        document.getElementById('ttk-c').innerText = count('takers-body', 'chk-cel') + count('vistakers-body', 'chk-cel');
-        document.getElementById('ttk-r').innerText = count('takers-body', 'chk-red') + count('vistakers-body', 'chk-red');
-        document.getElementById('ttk-n').innerText = count('vistakers-body', 'chk-new');
+        
+        const rjC = count('rj-body', 'chk-cel') + count('visrj-body', 'chk-cel');
+        const rjR = count('rj-body', 'chk-red') + count('visrj-body', 'chk-red');
+        const rjN = count('visrj-body', 'chk-new');
+        
+        const tkC = count('takers-body', 'chk-cel') + count('vistakers-body', 'chk-cel');
+        const tkR = count('takers-body', 'chk-red') + count('vistakers-body', 'chk-red');
+        const tkN = count('vistakers-body', 'chk-new');
+
+        document.getElementById('trj-c').innerText = rjC;
+        document.getElementById('trj-r').innerText = rjR;
+        document.getElementById('trj-n').innerText = rjN;
+        document.getElementById('ttk-c').innerText = tkC;
+        document.getElementById('ttk-r').innerText = tkR;
+        document.getElementById('ttk-n').innerText = tkN;
+
+        // Nuevos campos de sumatoria total
+        document.getElementById('total-cel-sum').innerText = rjC + tkC;
+        document.getElementById('total-red-sum').innerText = rjR + tkR;
     }
 
     function resetApp() {
@@ -217,6 +232,7 @@
         }
     }
 
+    // FUNCIÓN DE COPIADO ACTUALIZADA CON EL NUEVO FORMATO
     function copyToClipboard() {
         const leader = document.getElementById('leader-name').value;
         const weekStr = document.getElementById('week-selector').options[document.getElementById('week-selector').selectedIndex].text;
@@ -236,11 +252,25 @@
         const tk = formatSection('takers-body'); if(tk) text += `*--- TAKERS ---*\n${tk}\n`;
         const vtk = formatSection('vistakers-body', true); if(vtk) text += `*--- VISITAS TAKERS ---*\n${vtk}\n`;
 
+        // Datos del resumen
+        const rjC = parseInt(document.getElementById('trj-c').innerText);
+        const tkC = parseInt(document.getElementById('ttk-c').innerText);
+        const rjR = parseInt(document.getElementById('trj-r').innerText);
+        const tkR = parseInt(document.getElementById('ttk-r').innerText);
+        const rjN = parseInt(document.getElementById('trj-n').innerText);
+        const tkN = parseInt(document.getElementById('ttk-n').innerText);
+
         text += `*RESUMEN TOTAL*\n`;
-        text += `Total RJ Célula: ${document.getElementById('trj-c').innerText}\nTotal RJ Red: ${document.getElementById('trj-r').innerText}\n`;
-        if(document.getElementById('trj-n').innerText > 0) text += `RJ Nuevos: ${document.getElementById('trj-n').innerText}\n`;
-        text += `---\nTotal Takers Célula: ${document.getElementById('ttk-c').innerText}\nTotal Takers Red: ${document.getElementById('ttk-r').innerText}\n`;
-        if(document.getElementById('ttk-n').innerText > 0) text += `Takers Nuevos: ${document.getElementById('ttk-n').innerText}\n`;
+        text += `Total RJ Célula: ${rjC}\n`;
+        text += `Total Takers Célula: ${tkC}\n`;
+        text += `*Total Célula: ${rjC + tkC}*\n\n---\n`;
+        text += `Total RJ Red: ${rjR}\n`;
+        text += `Total Takers Red: ${tkR}\n`;
+        text += `*Total Red: ${rjR + tkR}*`;
+
+        if(rjN > 0 || tkN > 0) {
+            text += `\n\n*NUEVOS:* ${rjN > 0 ? `RJ: ${rjN} ` : ''}${tkN > 0 ? `Takers: ${tkN}` : ''}`;
+        }
 
         const textArea = document.createElement("textarea");
         textArea.value = text; document.body.appendChild(textArea);
@@ -265,7 +295,7 @@
 
     window.onload = () => {
         setupWeekSelector();
-        loadDisciples(); // Cargar datos guardados en lugar de crear filas vacías
+        loadDisciples();
     };
 </script>
 </body>
