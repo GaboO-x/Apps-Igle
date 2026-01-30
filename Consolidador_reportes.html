@@ -8,12 +8,10 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
         .container { max-width: 650px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* Encabezado */
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #dc3545; padding-bottom: 10px; }
         
         .config-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         
-        /* Celda nueva para el nombre de la Unidad */
         .unit-name { 
             width: 100%; padding: 12px; border: 2px solid #dc3545; border-radius: 8px; 
             font-size: 1.3em; font-weight: bold; text-align: center; box-sizing: border-box; 
@@ -25,7 +23,6 @@
             font-size: 1em; text-align: center; box-sizing: border-box; outline: none; 
         }
 
-        /* Bloques de reporte */
         .report-block { 
             background: #fff; border: 1px solid #ddd; border-left: 5px solid #dc3545; 
             border-radius: 8px; padding: 15px; margin-bottom: 15px; position: relative; 
@@ -57,7 +54,6 @@
         }
         .btn-add:hover { background: #5a6268; }
 
-        /* Panel de resultados (Vista previa) */
         .result-panel { background: #2d3436; color: white; padding: 20px; border-radius: 10px; margin-top: 20px; border-bottom: 5px solid #dc3545; }
         .result-panel h3 { margin-top: 0; color: #fab1a0; text-align: center; font-size: 1.1em; border-bottom: 1px solid #444; padding-bottom: 10px; }
         
@@ -66,13 +62,15 @@
         .res-box small { font-size: 0.7em; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 3px; }
         .res-box div { font-size: 1.1em; font-weight: bold; color: #fff; }
         
-        /* Botón Copiar */
         .btn-copy { 
-            width: 100%; background: #25d366; color: white; border: none; padding: 15px; 
+            width: 100%; border: none; padding: 15px; 
             border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; 
-            margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; 
+            margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; 
         }
-        .btn-copy:hover { background: #1ebe57; }
+        .copy-full { background: #25d366; color: white; }
+        .copy-full:hover { background: #1ebe57; }
+        .copy-money { background: #00a8ff; color: white; }
+        .copy-money:hover { background: #0097e6; }
     </style>
 </head>
 <body>
@@ -104,23 +102,22 @@
         </div>
     </div>
 
-    <button class="btn-copy" onclick="copyConsolidated()">
+    <button class="btn-copy copy-full" onclick="copyConsolidated()">
         COPIAR REPORTE CONSOLIDADO
+    </button>
+    <button class="btn-copy copy-money" onclick="copyOnlyMoney()">
+        COPIAR REPORTE DE OFRENDAS
     </button>
 </div>
 
 <script>
-    // Al cargar la página
     window.onload = () => {
-        // Cargar Nombre de Unidad
         const savedUnit = localStorage.getItem('unitName');
         document.getElementById('unit-name').value = savedUnit || "❤️🧡💛💚💙 UNIDAD : *EDITAR* 💙💚💛🧡❤️";
 
-        // Cargar Supervisor
         const savedLeader = localStorage.getItem('mainLeader');
         if(savedLeader) document.getElementById('main-leader').value = savedLeader;
 
-        // Cargar bloques anteriores o crear 4 vacíos
         const savedBlocks = JSON.parse(localStorage.getItem('reportBlocks'));
         if (savedBlocks && savedBlocks.length > 0) {
             savedBlocks.forEach(title => addReportBlock(title));
@@ -155,7 +152,6 @@
         const regex = new RegExp(label + ": ₡([\\d\\s.,]+)", "i");
         const match = text.match(regex);
         if (match) {
-            // Limpiar puntos de miles y espacios, convertir coma en punto decimal
             let cleanNumber = match[1].replace(/\s/g, '').replace(/[.](?=\d{3})/g, '');
             cleanNumber = cleanNumber.replace(',', '.');
             return parseFloat(cleanNumber) || 0;
@@ -170,11 +166,9 @@
             const val = block.querySelector('textarea').value;
             if(!val) return;
 
-            // Ofrendas
             sSum += extractMoney(val, "Sinpe");
             eSum += extractMoney(val, "Efectivo");
 
-            // Función para números enteros (asistencia)
             const getInt = (regex) => { 
                 const m = val.match(regex); 
                 return m ? parseInt(m[1]) : 0; 
@@ -185,7 +179,6 @@
             rjR += getInt(/Total RJ Red:\s*(\d+)/i);
             tkR += getInt(/Total Takers Red:\s*(\d+)/i);
 
-            // Nuevos (Regex corregida para mayor flexibilidad)
             const rjMatch = val.match(/NUEVOS:.*?RJ:\s*(\d+)/i);
             if (rjMatch) rjN += parseInt(rjMatch[1]);
 
@@ -193,7 +186,6 @@
             if (tkMatch) tkN += parseInt(tkMatch[1]);
         });
 
-        // Actualizar UI
         document.getElementById('tot-sinpe').innerText = "₡" + sSum.toLocaleString('es-CR');
         document.getElementById('tot-efectivo').innerText = "₡" + eSum.toLocaleString('es-CR');
         document.getElementById('tot-rj-c').innerText = rjC;
@@ -202,11 +194,51 @@
         document.getElementById('tot-tk-r').innerText = tkR;
         document.getElementById('tot-rj-n').innerText = rjN;
         
-        // Guardar en variables globales para el copiado
         window.currentRJN = rjN; 
         window.currentTKN = tkN;
         window.currentS = sSum; 
         window.currentE = eSum;
+    }
+
+    function copyToClipboard(text) {
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextArea);
+    }
+
+    function copyOnlyMoney() {
+        processAll(); // Asegurar datos frescos
+        const unitName = document.getElementById('unit-name').value || "UNIDAD";
+        let report = `${unitName.toUpperCase()}\n* REPORTE DE OFRENDAS *\n\n`;
+        
+        document.querySelectorAll('.report-block').forEach(block => {
+            const leader = block.querySelector('.leader-title').value || "LÍDER";
+            const val = block.querySelector('textarea').value;
+            
+            if(val.trim() !== "") {
+                const sinpe = extractMoney(val, "Sinpe");
+                const efectivo = extractMoney(val, "Efectivo");
+                const total = extractMoney(val, "Total");
+
+                report += `🔥 LÍDER: ${leader.toUpperCase()} 🔥\n`;
+                report += `Sinpe: ₡${sinpe.toLocaleString('es-CR')}\n`;
+                report += `Efectivo: ₡${efectivo.toLocaleString('es-CR')}\n`;
+                report += `Total: ₡${total.toLocaleString('es-CR')}\n\n`;
+            }
+        });
+
+        const finalTotal = (window.currentS + window.currentE).toLocaleString('es-CR');
+        report += `==============================\n`;
+        report += `*SUMATORIA FINAL*\n`;
+        report += `Total Sinpe: ₡${window.currentS.toLocaleString('es-CR')}\n`;
+        report += `Total Efectivo: ₡${window.currentE.toLocaleString('es-CR')}\n`;
+        report += `*GRAN TOTAL: ₡${finalTotal}*`;
+
+        copyToClipboard(report);
+        alert("¡Reporte de Ofrendas copiado!");
     }
 
     function copyConsolidated() {
@@ -242,11 +274,11 @@
             }
         });
 
-        const totalOff = ((window.currentS || 0) + (window.currentE || 0)).toLocaleString('es-CR');
+        const totalOff = (window.currentS + window.currentE).toLocaleString('es-CR');
         fullReport += `==============================\n\n`;
         fullReport += `*📊 RESUMEN OFRENDAS ACUMULADO*\n`;
-        fullReport += `Sinpes: ₡${(window.currentS || 0).toLocaleString('es-CR')}\n`;
-        fullReport += `Efectivo: ₡${(window.currentE || 0).toLocaleString('es-CR')}\n`;
+        fullReport += `Sinpes: ₡${window.currentS.toLocaleString('es-CR')}\n`;
+        fullReport += `Efectivo: ₡${window.currentE.toLocaleString('es-CR')}\n`;
         fullReport += `*Total: ₡${totalOff}*\n\n`;
 
         const rjC = parseInt(document.getElementById('tot-rj-c').innerText) || 0;
@@ -263,20 +295,13 @@
         fullReport += `RJ Red: ${rjR}\n`;
         fullReport += `Takers Red: ${tkR}\n`;
         fullReport += `Total Red: ${rjR + tkR}\n\n`;
-        fullReport += `*-> Nuevos (Ya contados en los datos previos)*\n`;
+        fullReport += `*-> Nuevos*\n`;
         fullReport += `RJ Nuevos: ${window.currentRJN || 0}\n`;
         fullReport += `Takers Nuevos: ${window.currentTKN || 0}\n`;
         fullReport += `Total Nuevos: ${(window.currentRJN || 0) + (window.currentTKN || 0)}\n`;
 
-        // Copiar al portapapeles
-        const tempTextArea = document.createElement('textarea');
-        tempTextArea.value = fullReport;
-        document.body.appendChild(tempTextArea);
-        tempTextArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempTextArea);
-        
-        alert("¡Reporte consolidado de " + unitName + " copiado!");
+        copyToClipboard(fullReport);
+        alert("¡Reporte consolidado completo copiado!");
     }
 </script>
 
