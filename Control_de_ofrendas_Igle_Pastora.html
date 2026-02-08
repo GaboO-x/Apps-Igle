@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Unidades 2026</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .header-inputs { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 25px; }
+        select, .date-display { padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; }
+        .date-display { border: none; color: #666; font-style: italic; font-weight: normal; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 3px solid #007bff; }
+        .tab { padding: 12px 15px; cursor: pointer; border: none; background: #e9ecef; border-radius: 10px 10px 0 0; font-weight: bold; flex: 1; text-align: center; }
+        .tab.active { background: #007bff; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .unit-section { margin-bottom: 25px; border: 1px solid #dee2e6; border-radius: 10px; overflow: hidden; page-break-inside: avoid; }
+        .unit-header { padding: 12px; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .equipo { background: #a3008d; }
+        .azul { background: #007bff; } .roja { background: #dc3545; } .verde { background: #28a745; } 
+        .naranja { background: #fd7e14; } .amarilla { background: #ffc107; color: #333; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        input { border: 1px solid transparent; width: 85%; padding: 5px; border-radius: 4px; font-size: 14px; background: transparent; }
+        .btn-add, .btn-del { cursor: pointer; }
+        .btn-add { background: rgba(255,255,255,0.3); border: 1px solid white; color: white; padding: 4px 12px; border-radius: 5px; font-size: 1.2em; }
+        .btn-del { color: #dc3545; border: none; background: none; font-weight: bold; font-size: 1.1em; padding: 0 8px; }
+        .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+        .btn-main { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
+        .btn-blue { background: #007bff; }
+        .btn-red { background: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app-content">
+    <div class="header-inputs">
+        <select id="week-selector" onchange="updateWeekDates()"></select>
+        <div id="week-dates-display" class="date-display"></div>
+    </div>
+    <div class="tabs">
+        <div class="tab active" onclick="openTab(event, 'Makers')">Makers</div>
+        <div class="tab" onclick="openTab(event, 'Takers')">Takers</div>
+    </div>
+    <div id="Makers" class="tab-content active"></div>
+    <div id="Takers" class="tab-content"></div>
+</div>
+
+<div class="action-bar">
+    <button class="btn-main btn-blue" onclick="copyToClipboard()">📋 Copiar WhatsApp</button>
+    <button class="btn-main btn-blue" onclick="downloadPDF()">📄 Descargar PDF</button>
+    <button class="btn-main btn-red" onclick="resetToTemplate()">🔄 Resetear</button>
+</div>
+
+<script>
+    const plantillaMakers = {
+        '__EQUIPOS__': ['Hombre', 'Mujeres'],
+        'Azul':    ['Pr. Francela Virtual', 'Pra. Francela', 'Ana Yansi', 'Miriam'],
+        'Roja':    ['John, Esther', 'Esther', 'Marina'],
+        'Verde':   ['Pr. Julio', 'Javier, Yorleni', 'Migdalia'],
+        'Naranja': ['Nuria', 'Yorleny M', 'Roxana'],
+        'Amarilla':['Pr Carlos ', 'Joyce', 'Dany, Sandra', 'Alex V', 'Guillermo, Antonieta', 'Gladys']
+    };
+
+    const plantillaTakers = {
+        '__EQUIPOS__': ['Jovenes'],
+        'Azul':    ['Alonso, Amanda', 'Evelyn' , 'Tony G', 'Abraham, Sharon', 'Jorge, Melany', 'Alex, Yuli', 'Valery B'],
+        'Roja':    ['Gabriel, Raquel', 'Josue R', 'Joel', 'Jean y Anyel ', 'Mario, Ginny', 'Cynthia', 'Tony R'],
+        'Verde':   ['Byron, Ariel', 'Jose, Eva', 'Maiky, Giovanna', 'Iveth', 'Greivin', 'Richard', 'Sarai Armas'],
+        'Naranja': ['Angie, Bayron', 'Jonathan V', 'Stephen', 'Dago, Maira', 'Brayan, Kelly', 'Keneth', 'Josué S'],
+        'Amarilla':['Aaron, Heyling', 'Pablo A', 'Hazel', 'Abigail', 'Laura', 'Yehilin']
+    };
+
+    const unidades = [
+        { nombre: 'Azul', clase: 'azul', emoji: '💙' },
+        { nombre: 'Roja', clase: 'roja', emoji: '❤️' },
+        { nombre: 'Verde', clase: 'verde', emoji: '💚' },
+        { nombre: 'Naranja', clase: 'naranja', emoji: '🧡' },
+        { nombre: 'Amarilla', clase: 'amarilla', emoji: '💛' }
+    ];
+
+    function setupWeekSelector() {
+        const selector = document.getElementById('week-selector');
+        for (let i = 1; i <= 52; i++) {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.text = `Semana ${i.toString().padStart(2, '0')}`;
+            selector.add(opt);
+        }
+        const now = new Date();
+        const start = new Date(2026, 0, 1);
+        const currentWeek = Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24 * 7)));
+        selector.value = currentWeek > 52 ? 52 : currentWeek;
+        updateWeekDates();
+    }
+
+    function updateWeekDates() {
+        const week = document.getElementById('week-selector').value;
+        const firstMonday = new Date(2025, 11, 29); 
+        const monday = new Date(firstMonday);
+        monday.setDate(firstMonday.getDate() + (week - 1) * 7);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        document.getElementById('week-dates-display').innerText = 
+            `del ${monday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} al ${sunday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} 2026`;
+    }
+
+    
+    function ensureEquipos(tabId, data) {
+        if (Array.isArray(data) && data.some(u => u && u.nombre === 'Equipos')) return data;
+        const source = (tabId === 'Makers') ? plantillaMakers : plantillaTakers;
+        const equipos = source['__EQUIPOS__'] || [];
+        const equiposData = {
+            nombre: 'Equipos',
+            clase: 'equipo',
+            emoji: '👥',
+            filas: equipos.map(n => ({n: n, a: '', m: ''}))
+        };
+        return [equiposData].concat(Array.isArray(data) ? data : []);
+    }
+
+function init() {
+        setupWeekSelector();
+        ['Makers', 'Takers'].forEach(tabId => {
+            const savedDataRaw = JSON.parse(localStorage.getItem(`vFinalUnique_data_${tabId}`));
+            const savedData = savedDataRaw ? ensureEquipos(tabId, savedDataRaw) : null;
+            savedData ? renderFromStorage(tabId, savedData) : renderDefaults(tabId);
+        });
+    }
+
+    function renderDefaults(tabId) {
+        const container = document.getElementById(tabId);
+        container.innerHTML = '';
+        const source = (tabId === 'Makers') ? plantillaMakers : plantillaTakers;
+
+        // Sección Equipos (si existe)
+        if (source['__EQUIPOS__']) {
+            const equiposData = {
+                nombre: 'Equipos',
+                clase: 'equipo',
+                emoji: '👥',
+                filas: source['__EQUIPOS__'].map(n => ({n: n, a: '', m: ''}))
+            };
+            container.appendChild(createUnitElement(tabId, equiposData));
+        }
+
+        unidades.forEach(u => {
+            const unitData = { 
+                nombre: u.nombre, clase: u.clase, emoji: u.emoji,
+                filas: (source[u.nombre] || []).map(nombre => ({n: nombre, a: '', m: ''}))
+            };
+            container.appendChild(createUnitElement(tabId, unitData));
+        });
+    }
+
+    function createUnitElement(tabId, unitData) {
+        const div = document.createElement('div');
+        div.className = 'unit-section';
+        div.innerHTML = `
+            <div class="unit-header ${unitData.clase}">
+                <span>Unidad ${unitData.nombre} ${unitData.emoji}</span>
+                <button class="btn-add" onclick="addRow('${tabId}', '${unitData.nombre}')">+</button>
+            </div>
+            <table id="table-${tabId}-${unitData.nombre}">
+                <thead><tr><th style="width:30px"></th><th>Nombre</th><th style="width:50px">Asist</th><th style="width:100px">Monto ₡</th></tr></thead>
+                <tbody>${unitData.filas.map(f => renderRowHtml(f)).join('')}</tbody>
+            </table>`;
+        return div;
+    }
+
+    function renderRowHtml(f = {n:'', a:'', m:''}) {
+        return `<tr>
+            <td><button class="btn-del" onclick="removeThisRow(this)">✕</button></td>
+            <td><input type="text" class="in-n" value="${f.n}" onchange="saveAll()"></td>
+            <td><input type="text" class="in-a" value="${f.a}" placeholder="##"></td>
+            <td><input type="text" class="in-m" value="${f.m}" placeholder="0.000"></td>
+        </tr>`;
+    }
+
+    function addRow(tabId, unitName) {
+        document.querySelector(`#table-${tabId}-${unitName} tbody`).insertAdjacentHTML('beforeend', renderRowHtml({n: 'Nuevo', a:'', m:''}));
+        saveAll();
+    }
+
+    function removeThisRow(btn) {
+        if(confirm("¿Eliminar esta fila?")) { btn.closest('tr').remove(); saveAll(); }
+    }
+
+    function saveAll() {
+        ['Makers', 'Takers'].forEach(tabId => {
+            const units = [];
+            document.getElementById(tabId).querySelectorAll('.unit-section').forEach(sec => {
+                const headerText = sec.querySelector('.unit-header span').innerText;
+                const nombre = headerText.replace('Unidad ', '').split(' ')[0].trim();
+                const uInfo = unidades.find(u => u.nombre === nombre) || { clase:'equipo', emoji:'👥' };
+                const filas = Array.from(sec.querySelectorAll('tbody tr')).map(tr => ({
+                    n: tr.querySelector('.in-n').value,
+                    a: tr.querySelector('.in-a').value,
+                    m: tr.querySelector('.in-m').value
+                }));
+                units.push({ nombre, clase: uInfo.clase, emoji: uInfo.emoji, filas });
+            });
+            localStorage.setItem(`vFinalUnique_data_${tabId}`, JSON.stringify(units));
+        });
+    }
+
+    function resetToTemplate() {
+        if(confirm("Se cargarán los nombres del archivo y se borrarán montos. ¿Continuar?")){
+            localStorage.clear();
+            renderDefaults('Makers');
+            renderDefaults('Takers');
+        }
+    }
+
+    function openTab(evt, tabName) {
+        document.querySelectorAll('.tab-content, .tab').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        evt.currentTarget.classList.add('active');
+    }
+
+    function copyToClipboard() {
+        const activeTab = document.querySelector('.tab-content.active');
+        const weekStr = document.getElementById('week-selector').options[document.getElementById('week-selector').selectedIndex].text;
+        let text = `*REPORTE ${activeTab.id.toUpperCase()}*\n*${weekStr}*\n_${document.getElementById('week-dates-display').innerText}_\n\n`;
+        
+        activeTab.querySelectorAll('.unit-section').forEach(sec => {
+            text += `*--- ${sec.querySelector('.unit-header span').innerText.toUpperCase()} ---*\n`;
+            sec.querySelectorAll('tbody tr').forEach(tr => {
+                const n = tr.querySelector('.in-n').value;
+                if(n) text += `• ${n} | Asist: ${tr.querySelector('.in-a').value || 0} | ₡${tr.querySelector('.in-m').value || 0}\n`;
+            });
+            text += `\n`;
+        });
+
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('¡Copiado para WhatsApp!');
+    }
+
+    function downloadPDF() {
+        saveAll();
+        const weekVal = document.getElementById('week-selector').value;
+        const weekStr = document.getElementById('week-selector').options[document.getElementById('week-selector').selectedIndex].text;
+        const dateStr = document.getElementById('week-dates-display').innerText;
+
+        // Construye una página (1 tab = 1 página) y elimina espacios extra para el PDF
+        function buildPdfPage(tabId, tabLabel) {
+            const element = document.createElement('div');
+            element.style.padding = '10px';
+            element.style.background = 'white';
+            element.style.width = '800px';
+            element.style.boxSizing = 'border-box';
+
+            const style = `
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: 'Segoe UI', sans-serif; color: #333; }
+                    .pdf-title { text-align: center; border-bottom: 2px solid #333; margin-bottom: 10px; padding-bottom: 8px; }
+                    .pdf-title h1 { margin: 0; font-size: 18px; }
+                    .pdf-title p { margin: 4px 0 0 0; font-size: 12px; }
+                    .tab-title { color: #007bff; background: #f0f7ff; padding: 6px 10px; margin: 10px 0 10px 0; border-radius: 5px; font-size: 14px; }
+                    .unit-section { margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
+                    .unit-header { padding: 6px 10px; color: white; font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+                    .equipo { background: #a3008d; }
+                    .azul { background: #007bff; } .roja { background: #dc3545; } .verde { background: #28a745; }
+                    .naranja { background: #fd7e14; } .amarilla { background: #ffc107; color: #333; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { border: 1px solid #eee; padding: 4px 6px; text-align: left; font-size: 10px; }
+                    th { font-weight: 700; }
+                    .btn-add, .btn-del { display: none !important; }
+                </style>`;
+
+            element.innerHTML = style + `
+                <div class="pdf-title">
+                    <h1>REPORTE DE UNIDADES 2026</h1>
+                    <p>${weekStr} (${dateStr})</p>
+                </div>
+                <h2 class="tab-title">${tabLabel}</h2>
+                <div class="content">${document.getElementById(tabId).innerHTML}</div>`;
+
+            // Convertir inputs a texto para el PDF
+            element.querySelectorAll('input').forEach(i => {
+                const span = document.createElement('span');
+                span.innerText = i.value || '-';
+                i.parentNode.replaceChild(span, i);
+            });
+
+            return element;
+        }
+
+        // Generación en 2 páginas exactas: 1 Makers + 1 Takers
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+        async function addTabAsSinglePage(tabId, tabLabel, isFirstPage) {
+            const pageEl = buildPdfPage(tabId, tabLabel);
+            pageEl.style.position = 'fixed';
+            pageEl.style.left = '-10000px';
+            pageEl.style.top = '0';
+            document.body.appendChild(pageEl);
+
+            const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+
+            // Ajuste para que SIEMPRE quepa en 1 página (si es muy alto, se reduce proporcionalmente)
+            let imgW = pageW;
+            let imgH = (canvas.height * imgW) / canvas.width;
+            if (imgH > pageH) {
+                imgH = pageH;
+                imgW = (canvas.width * imgH) / canvas.height;
+            }
+
+            const x = (pageW - imgW) / 2;
+            const y = 0;
+
+            if (!isFirstPage) pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', x, y, imgW, imgH);
+
+            document.body.removeChild(pageEl);
+        }
+
+        (async () => {
+            try {
+                await addTabAsSinglePage('Makers', 'MAKERS', true);
+                await addTabAsSinglePage('Takers', 'TAKERS', false);
+                pdf.save(`Reporte_Unidades_Semana_${weekVal}.pdf`);
+            } catch (e) {
+                console.error(e);
+                alert('No se pudo generar el PDF.');
+            }
+        })();
+    }
+
+    function renderFromStorage(tabId, data) {
+        const container = document.getElementById(tabId);
+        container.innerHTML = '';
+        data.forEach(u => container.appendChild(createUnitElement(tabId, u)));
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
