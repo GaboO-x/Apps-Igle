@@ -94,12 +94,14 @@
         const now = new Date();
         const start = new Date(2026, 0, 1);
         const currentWeek = Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24 * 7)));
-        selector.value = currentWeek > 52 ? 52 : currentWeek;
+        const savedWeek = localStorage.getItem('vFinalUnique_selectedWeek');
+        selector.value = savedWeek ? savedWeek : (currentWeek > 52 ? 52 : currentWeek);
         updateWeekDates();
     }
 
     function updateWeekDates() {
         const week = document.getElementById('week-selector').value;
+        localStorage.setItem('vFinalUnique_selectedWeek', week);
         const firstMonday = new Date(2025, 11, 29); 
         const monday = new Date(firstMonday);
         monday.setDate(firstMonday.getDate() + (week - 1) * 7);
@@ -176,8 +178,8 @@ function init() {
         return `<tr>
             <td><button class="btn-del" onclick="removeThisRow(this)">✕</button></td>
             <td><input type="text" class="in-n" value="${f.n}" onchange="saveAll()"></td>
-            <td><input type="text" class="in-a" value="${f.a}" placeholder="##"></td>
-            <td><input type="text" class="in-m" value="${f.m}" placeholder="0.000"></td>
+            <td><input type="text" class="in-a" value="${f.a}" placeholder="##" onchange="saveAll()"></td>
+            <td><input type="text" class="in-m" value="${f.m}" placeholder="0.000" onchange="saveAll()"></td>
         </tr>`;
     }
 
@@ -210,9 +212,12 @@ function init() {
 
     function resetToTemplate() {
         if(confirm("Se cargarán los nombres del archivo y se borrarán montos. ¿Continuar?")){
-            localStorage.clear();
+            // Solo resetea los datos de ESTA app (no borra todo el localStorage del navegador)
+            localStorage.removeItem(`vFinalUnique_data_Makers`);
+            localStorage.removeItem(`vFinalUnique_data_Takers`);
             renderDefaults('Makers');
             renderDefaults('Takers');
+            saveAll(); // guarda la plantilla para que también se conserve al refrescar
         }
     }
 
