@@ -5,59 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consolidador General de Red</title>
     <style>
+
         :root {
-            --roja: #ff4d4d; --azul: #4d94ff; --amarilla: #ffd633; 
-            --naranja: #ff944d; --verde: #5cd65c;
+            --roja: #dc3545;
+            --azul: #007bff;
+            --amarilla: #ffc107;
+            --naranja: #fd7e14;
+            --verde: #28a745;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; padding: 15px; padding-bottom: 100px; }
-        .container { max-width: 600px; margin: auto; }
-        .unit-block { 
-            border-radius: 10px; padding: 15px; margin-bottom: 15px; 
-            background: #2d2d2d; border-left: 10px solid var(--color);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        .u-roja { --color: var(--roja); }
-        .u-azul { --color: var(--azul); }
-        .u-amarilla { --color: var(--amarilla); }
-        .u-naranja { --color: var(--naranja); }
-        .u-verde { --color: var(--verde); }
-        h2 { color: var(--color); margin: 0 0 10px 0; font-size: 1.1em; letter-spacing: 1px; }
-        textarea { 
-            width: 100%; height: 100px; background: #111; color: #0f0; 
-            border: 1px solid #444; border-radius: 5px; padding: 10px;
-            font-family: monospace; font-size: 0.85em; box-sizing: border-box; resize: none;
+
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; color: #333; padding-bottom: 30px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+
+        h1 { text-align: center; color: #333; margin: 0 0 25px 0; }
+
+        /* Unidades (mismo “bloque” visual de la primera app) */
+        .unit-section { margin-bottom: 25px; border: 1px solid #dee2e6; border-radius: 10px; overflow: hidden; }
+        .unit-header { padding: 12px; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px; }
+        .u-roja .unit-header { background: var(--roja); }
+        .u-azul .unit-header { background: var(--azul); }
+        .u-amarilla .unit-header { background: var(--amarilla); color: #333; }
+        .u-naranja .unit-header { background: var(--naranja); }
+        .u-verde .unit-header { background: var(--verde); }
+
+        textarea {
+            width: 100%; height: 140px;
+            border: 1px solid #eee; border-top: none;
+            padding: 12px; box-sizing: border-box; resize: vertical;
+            font-family: monospace; font-size: 0.9em;
+            background: #fafafa; color: #111;
             outline: none;
         }
-        textarea:focus { border-color: var(--color); }
-        
-        /* Botón Flotante Estilizado */
-        .footer-actions {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 500px; z-index: 1000;
-        }
-        .btn-copy {
-            width: 100%; padding: 18px; background: #25d366; color: white;
-            border: none; border-radius: 50px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-size: 1em;
-            transition: transform 0.2s, background 0.2s;
-        }
-        .btn-copy:active { transform: scale(0.95); background: #1ebe57; }
-        
-        #status-msg {
-            text-align: center; font-size: 0.8em; color: #888; margin-top: 5px; height: 1em;
-        }
+        .u-roja textarea:focus { border-color: var(--roja); }
+        .u-azul textarea:focus { border-color: var(--azul); }
+        .u-amarilla textarea:focus { border-color: var(--amarilla); }
+        .u-naranja textarea:focus { border-color: var(--naranja); }
+        .u-verde textarea:focus { border-color: var(--verde); }
+
+        .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        .btn-main { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95em; }
+        .btn-blue { background: #007bff; }
+        .btn-blue:active { transform: scale(0.98); }
+        .btn-red { background: #dc3545; }
+        .btn-red:active { transform: scale(0.98); }
+
+        #status-msg { text-align: center; font-size: 0.9em; color: #666; margin-top: 10px; min-height: 1.2em; }
+
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align: center; color: #fff; margin-bottom: 30px;">📊 CONSOLIDADO</h1>
+    <h1>📊 CONSOLIDADO</h1>
     
     <div id="units-container"></div>
     <div id="status-msg"></div>
-
-    <div class="footer-actions">
-        <button class="btn-copy" onclick="copyFinalReport()">📋 COPIAR REPORTE COMPLETO</button>
+    <div class="action-bar">
+        <button id="btn-copy" class="btn-main btn-blue" onclick="copyFinalReport()">📋 COPIAR REPORTE COMPLETO</button>
+        <button id="btn-reset" class="btn-main btn-red" onclick="resetData()"> RESETEAR</button>
     </div>
 </div>
 
@@ -70,17 +75,61 @@
         { id: 'VERDE', color: 'u-verde' }
     ];
 
+    const STORAGE_KEY = 'reporte_red_completo_data_v1';
+
+    function saveAll() {
+        const data = {};
+        units.forEach(u => {
+            const el = document.getElementById(`txt-${u.id}`);
+            data[u.id] = el ? el.value : '';
+        });
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+    }
+
+    function loadAll() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if(!raw) return;
+            const data = JSON.parse(raw);
+            units.forEach(u => {
+                const el = document.getElementById(`txt-${u.id}`);
+                if(el && typeof data[u.id] === 'string') el.value = data[u.id];
+            });
+        } catch(e) {}
+    }
+
+    function resetData() {
+        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+        units.forEach(u => {
+            const el = document.getElementById(`txt-${u.id}`);
+            if(el) el.value = '';
+        });
+        window.finalReportStr = '';
+        const status = document.getElementById('status-msg');
+        if(status) status.innerText = '';
+        const btn = document.getElementById('btn-copy');
+        if(btn) {
+            btn.innerText = '📋 COPIAR REPORTE COMPLETO';
+            btn.style.background = '#007bff';
+        }
+    }
+
+
     const container = document.getElementById('units-container');
     units.forEach(u => {
         container.innerHTML += `
-            <div class="unit-block ${u.color}">
-                <h2>UNIDAD ${u.id}</h2>
+            <div class="unit-section ${u.color}">
+                <div class="unit-header">UNIDAD ${u.id}</div>
                 <textarea id="txt-${u.id}" placeholder="Pegar reporte aquí..." oninput="calculateAll()"></textarea>
             </div>
         `;
     });
 
-    function extractValue(text, regex) {
+    
+    // Cargar datos persistidos al iniciar
+    loadAll();
+    calculateAll();
+function extractValue(text, regex) {
         const parts = text.split(/RESUMEN OFRENDAS ACUMULADO/i);
         if (parts.length < 2) return 0;
         const summaryText = parts[1];
@@ -161,6 +210,7 @@
             window.finalReportStr = "";
             document.getElementById('status-msg').innerText = "";
         }
+        saveAll();
     }
 
     function copyFinalReport() {
@@ -169,12 +219,12 @@
             return;
         }
         navigator.clipboard.writeText(window.finalReportStr);
-        const btn = document.querySelector('.btn-copy');
+        const btn = document.querySelector('.btn-main');
         btn.innerText = "¡COPIADO! ✅";
-        btn.style.background = "#075e54";
+        btn.style.background = "#28a745";
         setTimeout(() => {
             btn.innerText = "📋 COPIAR REPORTE COMPLETO";
-            btn.style.background = "#25d366";
+            btn.style.background = "#007bff";
         }, 2000);
     }
 </script>
