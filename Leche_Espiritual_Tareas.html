@@ -289,11 +289,11 @@
                 checks: Array.from(row.querySelectorAll('.check-cycle')).map(c => c.innerText)
             }));
         });
-        localStorage.setItem('app_unidades_vFINAL', JSON.stringify(data));
+        localStorage.setItem('app_leche_tareas', JSON.stringify(data));
     }
 
     function loadFromStorage() {
-        const saved = localStorage.getItem('app_unidades_vFINAL');
+        const saved = localStorage.getItem('app_leche_tareas');
         if (saved) {
             const data = JSON.parse(saved);
             document.getElementById('date-picker').value = data.date;
