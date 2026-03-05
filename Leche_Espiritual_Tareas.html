@@ -325,7 +325,7 @@
     function copyToWhatsApp() {
         const dateP = document.getElementById('date-picker').value.split('-');
         const dateF = dateP.length > 1 ? `${dateP[2]}/${dateP[1]}/${dateP[0]}` : "";
-        let text = `*REPORTE SEMANA ${document.getElementById('week-selector').value}* (${dateF})\n\n`;
+        let text = `*REPORTE TAREAS SEMANA ${document.getElementById('week-selector').value}* (${dateF})\n\n`;
         
         units.forEach(unit => {
             let uText = "";
