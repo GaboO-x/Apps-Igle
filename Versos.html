@@ -460,8 +460,23 @@
 // ═══════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════
-const LEVEL_HIDE_PCT = [ 0.00, 0.25, 0.60, null ];
-const LEVEL4_VISIBLE = 2;
+// 3 levels: 100% | 50% hidden smart | first 2 words only
+const LEVEL_MAX = 3;
+const LEVEL_LAST_VISIBLE = 2;
+
+// Skip these when choosing words to hide (connectors, monosyllables, prepositions)
+const SKIP_WORDS = new Set([
+    'de','del','la','las','el','los','le','les','lo',
+    'un','una','unos','unas',
+    'y','e','o','u','ni','que','si','ya',
+    'a','al','en','con','sin','por','para','sobre','bajo','ante','tras',
+    'como','más','mas','pero','sino','aunque','porque','pues',
+    'me','te','se','tu','ti','su','sus',
+    'yo','nos','vos','mi','mis',
+    'no','muy','tan',
+    'es','era','fue','son','ser',
+    'ha','he','has','han','hay',
+]);
 
 const monthNames = {
     january:'Enero', february:'Febrero', march:'Marzo', april:'Abril',
@@ -557,20 +572,35 @@ function wordLetterCount(w) { return w.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚ
 function makeBlank(w) { return '_'.repeat(Math.max(wordLetterCount(w),1)); }
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function chooseHiddenIndices(n, level) {
+function cleanWord(w) { return w.replace(/[^a-zA-Z\u00C0-\u024F]/g,'').toLowerCase(); }
+function isSkippable(w) { return SKIP_WORDS.has(cleanWord(w)) || cleanWord(w).length <= 2; }
+
+function chooseHiddenIndices(words, level) {
+    const n = words.length;
     if (level === 1) return new Set();
-    if (level === 4) { const s=new Set(); for(let i=LEVEL4_VISIBLE;i<n;i++) s.add(i); return s; }
-    const pct = LEVEL_HIDE_PCT[level-1];
-    const hideCount = Math.round(n * pct);
-    const candidates = [];
-    for (let i=1; i<n; i++) candidates.push(i);
-    shuffleArr(candidates);
-    return new Set(candidates.slice(0, hideCount));
+    if (level === 3) {
+        // Hide everything after first LEVEL_LAST_VISIBLE words
+        const s = new Set();
+        for (let i = LEVEL_LAST_VISIBLE; i < n; i++) s.add(i);
+        return s;
+    }
+    // Level 2: hide ~50% but only meaningful words (not connectors/monosyllables)
+    // Build pool of "hideable" indices (skip word 0 and skip-list words)
+    const pool = [];
+    for (let i = 1; i < n; i++) {
+        if (!isSkippable(words[i])) pool.push(i);
+    }
+    // If not enough meaningful words, fall back to all non-skip words
+    shuffleArr(pool);
+    const target = Math.max(1, Math.round(n * 0.50));
+    // Take up to target from pool; if pool too small, pad with any remaining words
+    const chosen = new Set(pool.slice(0, target));
+    return chosen;
 }
 
 function buildVerseHTML(text, level) {
     const words = text.split(' ');
-    const hidden = chooseHiddenIndices(words.length, level);
+    const hidden = chooseHiddenIndices(words, level);
     return words.map((w,i) => hidden.has(i)
         ? `<span class="w-blank" data-word="${esc(w)}" onclick="revealWord(this)">${makeBlank(w)}</span>`
         : `<span class="w-vis">${esc(w)}</span>`
@@ -632,7 +662,7 @@ function getLearnedVerses() {
         const st = monthState[id];
         if (!st) continue;
         versesData[id].forEach((v, i) => {
-            if (st.nextLevel[i] >= 4 || st.completed) {
+            if (st.nextLevel[i] >= LEVEL_MAX || st.completed) {
                 result.push({ monthId: id, verseIdx: i, text: v.text, reference: v.reference, monthName: monthNames[id] });
             }
         });
@@ -700,7 +730,7 @@ function buildUI() {
               <span class="verse-counter-label" id="vc-${id}"></span>
               <div class="diff-pips" id="dp-${id}">
                 <div class="diff-pip"></div><div class="diff-pip"></div>
-                <div class="diff-pip"></div><div class="diff-pip"></div>
+                <div class="diff-pip"></div>
               </div>
             </div>
             <div class="verse-display-area" id="da-${id}"></div>
@@ -760,7 +790,7 @@ function mark(id, knew) {
     const st=monthState[id];
     if (!st||st.queue.length===0) return;
     const vi=st.queue[0];
-    if (knew) { st.nextLevel[vi]=Math.min(st.curLevel[vi]+1,4); st.cycleKnown++; }
+    if (knew) { st.nextLevel[vi]=Math.min(st.curLevel[vi]+1,LEVEL_MAX); st.cycleKnown++; }
     else { st.nextLevel[vi]=1; }
     ctrlDisabled(id,true);
     const card=document.getElementById(`da-${id}`)?.querySelector('.verse-card');
@@ -773,7 +803,7 @@ function showCycleEnd(id) {
     const st=monthState[id], n=versesData[id].length;
     const da=document.getElementById(`da-${id}`);
     da.innerHTML=''; ctrlDisabled(id,true);
-    if (Object.values(st.curLevel).every(l=>l===4) && st.cycleKnown===n) {
+    if (Object.values(st.curLevel).every(l=>l===LEVEL_MAX) && st.cycleKnown===n) {
         st.completed=true; updateBadge(id); saveState(); showFinal(id); return;
     }
     const notKnown=n-st.cycleKnown;
@@ -811,14 +841,14 @@ function showFinal(id) {
 
 function repeatMonth(id) {
     const n=versesData[id].length, curLevel={}, nextLevel={};
-    for (let i=0;i<n;i++) curLevel[i]=nextLevel[i]=4;
+    for (let i=0;i<n;i++) curLevel[i]=nextLevel[i]=LEVEL_MAX;
     monthState[id]={queue:[...Array(n).keys()],curLevel,nextLevel,cycleKnown:0,completed:false};
     updateBadge(id); renderCurrent(id); saveState();
 }
 
 function updateBadge(id) {
     const st=monthState[id], n=versesData[id].length;
-    const mastered=Object.values(st.nextLevel).filter(l=>l>=4).length;
+    const mastered=Object.values(st.nextLevel).filter(l=>l>=LEVEL_MAX).length;
     const pf=document.getElementById(`pf-${id}`), ct=document.getElementById(`ct-${id}`);
     if (pf) pf.style.width=st.completed?'100%':`${(mastered/n)*100}%`;
     if (ct) ct.textContent=st.completed?'✦ ¡Mes completado!':`${mastered} / ${n} dominados`;
