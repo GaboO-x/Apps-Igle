@@ -27,8 +27,12 @@
         th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
         input { border: 1px solid transparent; width: 85%; padding: 5px; border-radius: 4px; font-size: 14px; background: transparent; }
         .btn-add, .btn-del { cursor: pointer; }
-        .btn-add { background: rgba(255,255,255,0.3); border: 1px solid white; color: white; padding: 4px 12px; border-radius: 5px; font-size: 1.2em; }
-        .btn-del { color: #dc3545; border: none; background: none; font-weight: bold; font-size: 1.1em; padding: 0 8px; }
+        .btn-add { display: none; }
+        .btn-del { display: none; }
+        .subgroup-header { background: #f0f0f0; font-weight: bold; font-size: 12px; padding: 4px 8px; color: #555; border-top: 1px solid #ddd; }
+        .summary-row td { font-weight: bold; font-size: 12px; padding: 5px 8px; background: #e8e8e8; border-top: 2px solid #bbb; }
+        .summary-row.total-row td { background: #d0d0d0; font-size: 13px; }
+        .summary-label { color: #444; }
         .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
         .btn-main { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
         .btn-blue { background: #007bff; }
@@ -44,7 +48,7 @@
     </div>
     <div class="tabs">
         <div class="tab active" onclick="openTab(event, 'Makers')">Makers</div>
-        <div class="tab" onclick="openTab(event, 'Takers')">Takers</div>
+        <div class="tab" onclick="openTab(event, 'Takers')">TAKERS/RJ</div>
     </div>
     <div id="Makers" class="tab-content active"></div>
     <div id="Takers" class="tab-content"></div>
@@ -59,20 +63,20 @@
 <script>
     const plantillaMakers = {
         '__EQUIPOS__': ['Hombre', 'Mujeres'],
-        'Azul':    ['Pr. Francela Virtual', 'Pra. Francela', 'Ana Yansi', 'Miriam'],
-        'Roja':    ['John, Esther', 'Esther', 'Marina'],
-        'Verde':   ['Pr. Julio', 'Javier, Yorleni', 'Migdalia'],
-        'Naranja': ['Nuria', 'Yorleny M', 'Roxana'],
-        'Amarilla':['Pr Carlos ', 'Joyce', 'Dany, Sandra', 'Alex V', 'Guillermo, Antonieta', 'Gladys']
+        'Roja':    { MAKERS: ['John y Esther', 'Esther', 'Marina'] },
+        'Azul':    { MAKERS: ['Pra Francela Virtual', 'Pra. Francela2', 'Ana Yansi', 'Miriam'] },
+        'Verde':   { MAKERS: ['Pr. Julio', 'Javier y Yorleni', 'Migdalia'] },
+        'Naranja': { MAKERS: ['Nuria', 'Roxana', 'Yorleny M'] },
+        'Amarilla':{ MAKERS: ['Pr Carlos', 'Alex V', 'Dany y Sandra','Guillermo y Antonieta', 'Joyce'] },
     };
 
     const plantillaTakers = {
         '__EQUIPOS__': ['Jovenes'],
-        'Azul':    ['Alonso, Amanda', 'Evelyn' , 'Tony G', 'Abraham, Sharon', 'Jorge, Melany', 'Alex, Yuli', 'Valery B'],
-        'Roja':    ['Gabriel, Raquel', 'Josue R', 'Joel', 'Jean y Anyel ', 'Mario, Ginny', 'Cynthia', 'Tony R'],
-        'Verde':   ['Byron, Ariel', 'Jose, Eva', 'Maiky, Giovanna', 'Iveth', 'Greivin', 'Richard', 'Sarai Armas'],
-        'Naranja': ['Angie, Bayron', 'Jonathan V', 'Stephen', 'Dago, Maira', 'Brayan, Kelly', 'Keneth', 'Josué S'],
-        'Amarilla':['Aaron, Heyling', 'Pablo A', 'Hazel', 'Abigail', 'Laura', 'Yehilin']
+        'Roja':    { TAKERS: ['EQUIPO Gabriel, Raquel', 'Cynthia', 'Jean', 'Tony R'], RJ: ['Anyel', 'Joel', 'Josue R', 'Waldin'] },
+        'Azul':    { TAKERS: ['EQUIPO Alonso, Amanda', 'Evelyn', 'Jorge, Melany', 'Tony G', 'Valery B'], RJ: ['Alex y Yuli', 'Sharon y abraham'] },
+        'Verde':   { TAKERS: ['EQUIPO Byron, Ariel', 'Gaudy', 'Iveth', 'Jose, Eva', 'Maiky y Giovanna', 'Sarai Armas'], RJ: ['Will y Dani', 'Greivin'] },
+        'Naranja': { TAKERS: ['EQUIPO Angie, Bayron', 'Brayan y Kelly', 'Dago y Maira', 'Jonathan y Priscilla', 'Keneth'], RJ: ['Andres Matus', 'Josué S', 'Stephen y Valery'] },
+        'Amarilla':{ TAKERS: ['EQUIPO Aaron, Heyling', 'Abigail', 'Hazel', 'Laura'], RJ: ['Pablo A', 'Yehilin'] }
     };
 
     const unidades = [
@@ -83,6 +87,18 @@
         { nombre: 'Amarilla', clase: 'amarilla', emoji: '💛' }
     ];
 
+    // Semana: Domingo a Sábado. Semana 1 = 28 Dic 2025
+    const FIRST_SUNDAY = new Date(2025, 11, 28); // 28 de diciembre 2025
+
+    function getCurrentWeekNumber() {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const diff = now - FIRST_SUNDAY;
+        if (diff < 0) return 1;
+        const week = Math.floor(diff / (1000 * 60 * 60 * 24 * 7)) + 1;
+        return Math.min(week, 52);
+    }
+
     function setupWeekSelector() {
         const selector = document.getElementById('week-selector');
         for (let i = 1; i <= 52; i++) {
@@ -91,24 +107,18 @@
             opt.text = `Semana ${i.toString().padStart(2, '0')}`;
             selector.add(opt);
         }
-        const now = new Date();
-        const start = new Date(2026, 0, 1);
-        const currentWeek = Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24 * 7)));
-        const savedWeek = localStorage.getItem('vFinalUnique_selectedWeek');
-        selector.value = savedWeek ? savedWeek : (currentWeek > 52 ? 52 : currentWeek);
+        selector.value = getCurrentWeekNumber();
         updateWeekDates();
     }
 
     function updateWeekDates() {
-        const week = document.getElementById('week-selector').value;
-        localStorage.setItem('vFinalUnique_selectedWeek', week);
-        const firstMonday = new Date(2025, 11, 29); 
-        const monday = new Date(firstMonday);
-        monday.setDate(firstMonday.getDate() + (week - 1) * 7);
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        document.getElementById('week-dates-display').innerText = 
-            `del ${monday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} al ${sunday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} 2026`;
+        const week = parseInt(document.getElementById('week-selector').value);
+        const sunday = new Date(FIRST_SUNDAY);
+        sunday.setDate(FIRST_SUNDAY.getDate() + (week - 1) * 7);
+        const saturday = new Date(sunday);
+        saturday.setDate(sunday.getDate() + 6);
+        document.getElementById('week-dates-display').innerText =
+            `del ${sunday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} al ${saturday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} 2026`;
     }
 
     
@@ -128,9 +138,55 @@
 function init() {
         setupWeekSelector();
         ['Makers', 'Takers'].forEach(tabId => {
+            // Siempre renderiza desde la plantilla (nombres siempre del código)
+            renderDefaults(tabId);
+            // Luego restaura solo los datos ingresados (asistencia y montos) desde localStorage
             const savedDataRaw = JSON.parse(localStorage.getItem(`vFinalUnique_data_${tabId}`));
-            const savedData = savedDataRaw ? ensureEquipos(tabId, savedDataRaw) : null;
-            savedData ? renderFromStorage(tabId, savedData) : renderDefaults(tabId);
+            if (savedDataRaw) restoreInputData(tabId, savedDataRaw);
+            rebuildSummaries();
+        });
+    }
+
+    // Restaura únicamente los valores de asistencia y monto, sin tocar los nombres
+    function restoreInputData(tabId, savedData) {
+        const container = document.getElementById(tabId);
+        savedData.forEach(savedUnit => {
+            const tableId = `table-${tabId}-${savedUnit.nombre}`;
+            const table = container.querySelector(`#${tableId}`);
+            if (!table) return;
+
+            if (savedUnit.subgroups) {
+                // TAKERS/RJ: recorre filas por subgrupo
+                ['TAKERS', 'RJ'].forEach(group => {
+                    const savedRows = savedUnit.subgroups[group] || [];
+                    // Encuentra las filas del DOM correspondientes a este subgrupo
+                    let inGroup = false;
+                    let rowIdx = 0;
+                    table.querySelectorAll('tbody tr').forEach(tr => {
+                        const sep = tr.querySelector('.subgroup-header');
+                        if (sep) {
+                            inGroup = sep.innerText.includes(group);
+                            if (inGroup) rowIdx = 0;
+                            return;
+                        }
+                        if (inGroup && tr.querySelector('.in-n') && savedRows[rowIdx]) {
+                            tr.querySelector('.in-a').value = savedRows[rowIdx].a || '';
+                            tr.querySelector('.in-m').value = savedRows[rowIdx].m || '';
+                            rowIdx++;
+                        }
+                    });
+                });
+            } else {
+                // Makers / Equipos: recorre filas en orden
+                const savedRows = savedUnit.filas || [];
+                const domRows = Array.from(table.querySelectorAll('tbody tr')).filter(tr => tr.querySelector('.in-n'));
+                domRows.forEach((tr, i) => {
+                    if (savedRows[i]) {
+                        tr.querySelector('.in-a').value = savedRows[i].a || '';
+                        tr.querySelector('.in-m').value = savedRows[i].m || '';
+                    }
+                });
+            }
         });
     }
 
@@ -139,7 +195,6 @@ function init() {
         container.innerHTML = '';
         const source = (tabId === 'Makers') ? plantillaMakers : plantillaTakers;
 
-        // Sección Equipos (si existe)
         if (source['__EQUIPOS__']) {
             const equiposData = {
                 nombre: 'Equipos',
@@ -151,10 +206,29 @@ function init() {
         }
 
         unidades.forEach(u => {
-            const unitData = { 
-                nombre: u.nombre, clase: u.clase, emoji: u.emoji,
-                filas: (source[u.nombre] || []).map(nombre => ({n: nombre, a: '', m: ''}))
-            };
+            const srcUnit = source[u.nombre];
+            let unitData;
+            if (tabId === 'Takers' && srcUnit && typeof srcUnit === 'object' && !Array.isArray(srcUnit)) {
+                unitData = {
+                    nombre: u.nombre, clase: u.clase, emoji: u.emoji,
+                    subgroups: {
+                        TAKERS: (srcUnit.TAKERS || []).map(n => ({n, a: '', m: ''})),
+                        RJ:     (srcUnit.RJ     || []).map(n => ({n, a: '', m: ''}))
+                    }
+                };
+            } else {
+                // Para Makers: srcUnit es { MAKERS: [...] }, extraer el array
+                let filas = [];
+                if (Array.isArray(srcUnit)) {
+                    filas = srcUnit;
+                } else if (srcUnit && Array.isArray(srcUnit.MAKERS)) {
+                    filas = srcUnit.MAKERS;
+                }
+                unitData = {
+                    nombre: u.nombre, clase: u.clase, emoji: u.emoji,
+                    filas: filas.map(n => ({n, a: '', m: ''}))
+                };
+            }
             container.appendChild(createUnitElement(tabId, unitData));
         });
     }
@@ -162,24 +236,36 @@ function init() {
     function createUnitElement(tabId, unitData) {
         const div = document.createElement('div');
         div.className = 'unit-section';
+
+        let tbodyContent = '';
+        if (unitData.subgroups) {
+            // TAKERS/RJ sub-groups
+            tbodyContent += `<tr><td colspan="3" class="subgroup-header">— TAKERS —</td></tr>`;
+            tbodyContent += (unitData.subgroups.TAKERS || []).map(f => renderRowHtml(f)).join('');
+            tbodyContent += `<tr><td colspan="3" class="subgroup-header">— RJ —</td></tr>`;
+            tbodyContent += (unitData.subgroups.RJ || []).map(f => renderRowHtml(f)).join('');
+        } else {
+            tbodyContent = (unitData.filas || []).map(f => renderRowHtml(f)).join('');
+        }
+
         div.innerHTML = `
             <div class="unit-header ${unitData.clase}">
                 <span>Unidad ${unitData.nombre} ${unitData.emoji}</span>
-                <button class="btn-add" onclick="addRow('${tabId}', '${unitData.nombre}')">+</button>
             </div>
             <table id="table-${tabId}-${unitData.nombre}">
-                <thead><tr><th style="width:30px"></th><th>Nombre</th><th style="width:50px">Asist</th><th style="width:100px">Monto ₡</th></tr></thead>
-                <tbody>${unitData.filas.map(f => renderRowHtml(f)).join('')}</tbody>
+                <thead><tr><th>Nombre</th><th style="width:50px">Asist</th><th style="width:100px">Monto ₡</th></tr></thead>
+                <tbody>${tbodyContent}</tbody>
             </table>`;
         return div;
     }
 
     function renderRowHtml(f = {n:'', a:'', m:''}) {
         return `<tr>
-            <td><button class="btn-del" onclick="removeThisRow(this)">✕</button></td>
             <td><input type="text" class="in-n" value="${f.n}" onchange="saveAll()"></td>
-            <td><input type="text" class="in-a" value="${f.a}" placeholder="##" onchange="saveAll()"></td>
-            <td><input type="text" class="in-m" value="${f.m}" placeholder="0.000" onchange="saveAll()"></td>
+            <td><input type="text" class="in-a" value="${f.a}" placeholder="##" inputmode="numeric"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')" onchange="saveAll()"></td>
+            <td><input type="text" class="in-m" value="${f.m}" placeholder="0.000" inputmode="decimal"
+                oninput="this.value=this.value.replace(/[^0-9.]/g,'')" onchange="saveAll()"></td>
         </tr>`;
     }
 
@@ -199,25 +285,48 @@ function init() {
                 const headerText = sec.querySelector('.unit-header span').innerText;
                 const nombre = headerText.replace('Unidad ', '').split(' ')[0].trim();
                 const uInfo = unidades.find(u => u.nombre === nombre) || { clase:'equipo', emoji:'👥' };
-                const filas = Array.from(sec.querySelectorAll('tbody tr')).map(tr => ({
-                    n: tr.querySelector('.in-n').value,
-                    a: tr.querySelector('.in-a').value,
-                    m: tr.querySelector('.in-m').value
-                }));
-                units.push({ nombre, clase: uInfo.clase, emoji: uInfo.emoji, filas });
+
+                // Check if this unit has subgroups (TAKERS/RJ)
+                const separators = sec.querySelectorAll('.subgroup-header');
+                if (separators.length > 0) {
+                    // Has subgroups: collect rows per section
+                    const subgroups = { TAKERS: [], RJ: [] };
+                    let currentGroup = null;
+                    sec.querySelectorAll('tbody tr').forEach(tr => {
+                        const sep = tr.querySelector('.subgroup-header');
+                        if (sep) {
+                            if (sep.innerText.includes('TAKERS')) currentGroup = 'TAKERS';
+                            else if (sep.innerText.includes('RJ')) currentGroup = 'RJ';
+                        } else if (currentGroup && tr.querySelector('.in-n')) {
+                            subgroups[currentGroup].push({
+                                n: tr.querySelector('.in-n').value,
+                                a: tr.querySelector('.in-a').value,
+                                m: tr.querySelector('.in-m').value
+                            });
+                        }
+                    });
+                    units.push({ nombre, clase: uInfo.clase, emoji: uInfo.emoji, subgroups });
+                } else {
+                    const filas = Array.from(sec.querySelectorAll('tbody tr')).filter(tr => tr.querySelector('.in-n')).map(tr => ({
+                        n: tr.querySelector('.in-n').value,
+                        a: tr.querySelector('.in-a').value,
+                        m: tr.querySelector('.in-m').value
+                    }));
+                    units.push({ nombre, clase: uInfo.clase, emoji: uInfo.emoji, filas });
+                }
             });
             localStorage.setItem(`vFinalUnique_data_${tabId}`, JSON.stringify(units));
         });
+        rebuildSummaries();
     }
 
     function resetToTemplate() {
-        if(confirm("Se cargarán los nombres del archivo y se borrarán montos. ¿Continuar?")){
-            // Solo resetea los datos de ESTA app (no borra todo el localStorage del navegador)
+        if(confirm("Se borrarán todos los montos y asistencias ingresados. ¿Continuar?")) {
             localStorage.removeItem(`vFinalUnique_data_Makers`);
             localStorage.removeItem(`vFinalUnique_data_Takers`);
             renderDefaults('Makers');
             renderDefaults('Takers');
-            saveAll(); // guarda la plantilla para que también se conserve al refrescar
+            rebuildSummaries();
         }
     }
 
@@ -234,9 +343,18 @@ function init() {
         
         activeTab.querySelectorAll('.unit-section').forEach(sec => {
             text += `*--- ${sec.querySelector('.unit-header span').innerText.toUpperCase()} ---*\n`;
+            let lastSep = '';
             sec.querySelectorAll('tbody tr').forEach(tr => {
-                const n = tr.querySelector('.in-n').value;
-                if(n) text += `• ${n} | Asist: ${tr.querySelector('.in-a').value || 0} | ₡${tr.querySelector('.in-m').value || 0}\n`;
+                const sepEl = tr.querySelector('.subgroup-header');
+                if (sepEl) {
+                    lastSep = sepEl.innerText.trim();
+                    text += `_${lastSep}_\n`;
+                } else {
+                    const nEl = tr.querySelector('.in-n');
+                    if (nEl && nEl.value) {
+                        text += `• ${nEl.value} | Asist: ${tr.querySelector('.in-a').value || 0} | ₡${tr.querySelector('.in-m').value || 0}\n`;
+                    }
+                }
             });
             text += `\n`;
         });
@@ -351,6 +469,85 @@ function init() {
         const container = document.getElementById(tabId);
         container.innerHTML = '';
         data.forEach(u => container.appendChild(createUnitElement(tabId, u)));
+    }
+    // renderFromStorage already handles subgroups via createUnitElement
+
+    function calcSummary(rows) {
+        let asist = 0, monto = 0;
+        rows.forEach(tr => {
+            const aEl = tr.querySelector('.in-a');
+            const mEl = tr.querySelector('.in-m');
+            if (aEl) asist += parseFloat(aEl.value) || 0;
+            if (mEl) monto += parseFloat(mEl.value) || 0;
+        });
+        return { asist, monto };
+    }
+
+    function fmtMonto(v) {
+        return v % 1 === 0 ? v.toLocaleString('es-CR') : v.toLocaleString('es-CR', {minimumFractionDigits:0, maximumFractionDigits:3});
+    }
+
+    function summaryRowHtml(label, asist, monto, isTotal=false) {
+        const cls = isTotal ? 'summary-row total-row' : 'summary-row';
+        return `<tr class="${cls}">
+            <td class="summary-label">${label}</td>
+            <td>${asist}</td>
+            <td>₡${fmtMonto(monto)}</td>
+        </tr>`;
+    }
+
+    function rebuildSummaries() {
+        document.querySelectorAll('.unit-section').forEach(sec => {
+            // Remove old summaries
+            sec.querySelectorAll('.summary-row').forEach(r => r.remove());
+
+            const tbody = sec.querySelector('tbody');
+            if (!tbody) return;
+
+            const subHeaders = sec.querySelectorAll('.subgroup-header');
+            const hasSubs = subHeaders.length > 0;
+
+            if (hasSubs) {
+                // TAKERS/RJ mode: collect rows per group
+                let currentGroup = null;
+                const groups = { TAKERS: [], RJ: [] };
+                let rjHeaderRow = null;
+
+                tbody.querySelectorAll('tr').forEach(tr => {
+                    const sep = tr.querySelector('.subgroup-header');
+                    if (sep) {
+                        if (sep.innerText.includes('TAKERS')) {
+                            currentGroup = 'TAKERS';
+                        } else if (sep.innerText.includes('RJ')) {
+                            currentGroup = 'RJ';
+                            rjHeaderRow = tr;
+                        }
+                    } else if (currentGroup && tr.querySelector('.in-n')) {
+                        groups[currentGroup].push(tr);
+                    }
+                });
+
+                const t = calcSummary(groups.TAKERS);
+                const r = calcSummary(groups.RJ);
+
+                // Insertar subtotal TAKERS justo antes del encabezado RJ
+                if (rjHeaderRow) {
+                    rjHeaderRow.insertAdjacentHTML('beforebegin', summaryRowHtml('Total TAKERS', t.asist, t.monto));
+                }
+                // Insertar subtotal RJ y gran total al final
+                tbody.insertAdjacentHTML('beforeend',
+                    summaryRowHtml('Total RJ', r.asist, r.monto) +
+                    summaryRowHtml('⬛ GRAN TOTAL', t.asist + r.asist, t.monto + r.monto, true)
+                );
+            } else {
+                // Makers mode
+                const rows = Array.from(tbody.querySelectorAll('tr')).filter(tr => tr.querySelector('.in-n'));
+                const tot = calcSummary(rows);
+                tbody.insertAdjacentHTML('beforeend',
+                    summaryRowHtml('⬛ TOTAL', tot.asist, tot.monto, true)
+                );
+            }
+        });
     }
 
     window.onload = init;
