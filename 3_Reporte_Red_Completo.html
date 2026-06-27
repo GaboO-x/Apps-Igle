@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consolidador General de Red</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-
         :root {
             --roja: #dc3545;
             --azul: #007bff;
@@ -19,9 +19,20 @@
 
         h1 { text-align: center; color: #333; margin: 0 0 25px 0; }
 
-        /* Unidades (mismo “bloque” visual de la primera app) */
-        .unit-section { margin-bottom: 25px; border: 1px solid #dee2e6; border-radius: 10px; overflow: hidden; }
-        .unit-header { padding: 12px; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px; }
+        .color-group { margin-bottom: 30px; }
+        .color-group-title {
+            font-size: 1.05em; font-weight: bold; letter-spacing: 1px;
+            padding: 6px 12px; border-radius: 6px; color: white;
+            margin-bottom: 10px; display: inline-block;
+        }
+        .title-roja { background: var(--roja); }
+        .title-azul { background: var(--azul); }
+        .title-amarilla { background: var(--amarilla); color: #333; }
+        .title-naranja { background: var(--naranja); }
+        .title-verde { background: var(--verde); }
+
+        .unit-section { margin-bottom: 12px; border: 1px solid #dee2e6; border-radius: 10px; overflow: hidden; }
+        .unit-header { padding: 10px 12px; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px; font-size: 0.9em; }
         .u-roja .unit-header { background: var(--roja); }
         .u-azul .unit-header { background: var(--azul); }
         .u-amarilla .unit-header { background: var(--amarilla); color: #333; }
@@ -29,10 +40,10 @@
         .u-verde .unit-header { background: var(--verde); }
 
         textarea {
-            width: 100%; height: 140px;
+            width: 100%; height: 130px;
             border: 1px solid #eee; border-top: none;
             padding: 12px; box-sizing: border-box; resize: vertical;
-            font-family: monospace; font-size: 0.9em;
+            font-family: monospace; font-size: 0.85em;
             background: #fafafa; color: #111;
             outline: none;
         }
@@ -45,188 +56,646 @@
         .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
         .btn-main { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95em; }
         .btn-blue { background: #007bff; }
-        .btn-blue:active { transform: scale(0.98); }
+        .btn-green { background: #28a745; }
         .btn-red { background: #dc3545; }
-        .btn-red:active { transform: scale(0.98); }
+        .btn-main:active { transform: scale(0.98); }
 
         #status-msg { text-align: center; font-size: 0.9em; color: #666; margin-top: 10px; min-height: 1.2em; }
-
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>📊 CONSOLIDADO</h1>
-    
+    <div style="text-align:center; margin:-15px 0 10px 0;">
+        <select id="week-selector" style="padding:8px 14px; border-radius:8px; border:1px solid #ddd; font-size:1em; font-weight:bold; color:#555; background:white; cursor:pointer;" onchange="onWeekChange()"></select>
+        <div id="week-dates-display" style="font-size:0.78em; color:#888; font-style:italic; margin-top:3px;"></div>
+    </div>
+    <div style="text-align:center; margin-bottom:18px;">
+        <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:0.95em; font-weight:bold; color:#555; user-select:none; background:#f0f0f0; padding:7px 16px; border-radius:8px; border:1px solid #ddd;">
+            <input type="checkbox" id="makers-checkbox" checked style="width:17px;height:17px;cursor:pointer;" onchange="toggleAllMakers(this.checked)">
+            MAKERS
+        </label>
+    </div>
     <div id="units-container"></div>
     <div id="status-msg"></div>
     <div class="action-bar">
-        <button id="btn-copy" class="btn-main btn-blue" onclick="copyFinalReport()">📋 COPIAR REPORTE COMPLETO</button>
-        <button id="btn-reset" class="btn-main btn-red" onclick="resetData()"> RESETEAR</button>
+        <button class="btn-main btn-blue" onclick="copyFinalReport()">📋 COPIAR REPORTE</button>
+        <button class="btn-main btn-green" onclick="generateExcel()">📊 REPORTE OFRENDAS</button>
+        <button class="btn-main btn-red" onclick="resetData()">🗑 RESETEAR</button>
     </div>
 </div>
 
 <script>
-    const units = [
-        { id: 'ROJA', color: 'u-roja' },
-        { id: 'AZUL', color: 'u-azul' },
-        { id: 'AMARILLA', color: 'u-amarilla' },
-        { id: 'NARANJA', color: 'u-naranja' },
-        { id: 'VERDE', color: 'u-verde' }
-    ];
+const units = [
+    { id: 'ROJA_TK',  label: 'UNIDAD ROJA — TAKERS/RJ',  color: 'u-roja',     group: 'roja',     tipo: 'TK' },
+    { id: 'ROJA_MK',  label: 'UNIDAD ROJA — MAKERS',      color: 'u-roja',     group: 'roja',     tipo: 'MK' },
+    { id: 'AZUL_TK',  label: 'UNIDAD AZUL — TAKERS/RJ',  color: 'u-azul',     group: 'azul',     tipo: 'TK' },
+    { id: 'AZUL_MK',  label: 'UNIDAD AZUL — MAKERS',      color: 'u-azul',     group: 'azul',     tipo: 'MK' },
+    { id: 'AMAR_TK',  label: 'UNIDAD AMARILLA — TAKERS/RJ', color: 'u-amarilla', group: 'amarilla', tipo: 'TK' },
+    { id: 'AMAR_MK',  label: 'UNIDAD AMARILLA — MAKERS',  color: 'u-amarilla', group: 'amarilla', tipo: 'MK' },
+    { id: 'NARA_TK',  label: 'UNIDAD NARANJA — TAKERS/RJ', color: 'u-naranja',  group: 'naranja',  tipo: 'TK' },
+    { id: 'NARA_MK',  label: 'UNIDAD NARANJA — MAKERS',   color: 'u-naranja',  group: 'naranja',  tipo: 'MK' },
+    { id: 'VERD_TK',  label: 'UNIDAD VERDE — TAKERS/RJ',  color: 'u-verde',    group: 'verde',    tipo: 'TK' },
+    { id: 'VERD_MK',  label: 'UNIDAD VERDE — MAKERS',     color: 'u-verde',    group: 'verde',    tipo: 'MK' },
+];
 
-    const STORAGE_KEY = 'reporte_red_completo_data_v1';
+const colorGroups = [
+    { key: 'roja',     label: 'UNIDAD ROJA',     titleClass: 'title-roja' },
+    { key: 'azul',     label: 'UNIDAD AZUL',     titleClass: 'title-azul' },
+    { key: 'amarilla', label: 'UNIDAD AMARILLA', titleClass: 'title-amarilla' },
+    { key: 'naranja',  label: 'UNIDAD NARANJA',  titleClass: 'title-naranja' },
+    { key: 'verde',    label: 'UNIDAD VERDE',     titleClass: 'title-verde' },
+];
 
-    function saveAll() {
-        const data = {};
-        units.forEach(u => {
-            const el = document.getElementById(`txt-${u.id}`);
-            data[u.id] = el ? el.value : '';
-        });
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
-    }
+const STORAGE_KEY = 'reporte_red_v2';
 
-    function loadAll() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if(!raw) return;
-            const data = JSON.parse(raw);
-            units.forEach(u => {
-                const el = document.getElementById(`txt-${u.id}`);
-                if(el && typeof data[u.id] === 'string') el.value = data[u.id];
-            });
-        } catch(e) {}
-    }
-
-    function resetData() {
-        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
-        units.forEach(u => {
-            const el = document.getElementById(`txt-${u.id}`);
-            if(el) el.value = '';
-        });
-        window.finalReportStr = '';
-        const status = document.getElementById('status-msg');
-        if(status) status.innerText = '';
-        const btn = document.getElementById('btn-copy');
-        if(btn) {
-            btn.innerText = '📋 COPIAR REPORTE COMPLETO';
-            btn.style.background = '#007bff';
-        }
-    }
-
-
-    const container = document.getElementById('units-container');
+function saveAll() {
+    const data = {};
     units.forEach(u => {
-        container.innerHTML += `
-            <div class="unit-section ${u.color}">
-                <div class="unit-header">UNIDAD ${u.id}</div>
-                <textarea id="txt-${u.id}" placeholder="Pegar reporte aquí..." oninput="calculateAll()"></textarea>
-            </div>
-        `;
+        const el = document.getElementById(`txt-${u.id}`);
+        data[u.id] = el ? el.value : '';
+    });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function loadAll() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        units.forEach(u => {
+            const el = document.getElementById(`txt-${u.id}`);
+            if (el && typeof data[u.id] === 'string') el.value = data[u.id];
+        });
+    } catch(e) {}
+}
+
+function resetData() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    units.forEach(u => {
+        const el = document.getElementById(`txt-${u.id}`);
+        if (el) el.value = '';
+    });
+    window.finalReportStr = '';
+    document.getElementById('status-msg').innerText = '';
+}
+
+// ── WEEK DROPDOWN ────────────────────────────────────────────────────────
+const BASE_WEEK = new Date(2025, 11, 28); // Semana 1 = 28 dic 2025
+
+function getWeekInfo(weekNum) {
+    const start = new Date(BASE_WEEK);
+    start.setDate(start.getDate() + (weekNum - 1) * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const fmt = d => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    const fmtShort = d => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+    // Label para validación: "del X de mes al Y de mes YYYY"
+    const dateStr = `del ${fmtShort(start)} al ${fmtShort(end)} ${end.getFullYear()}`;
+    return { dateStr };
+}
+
+function getCurrentWeekNum() {
+    const today = new Date();
+    const base = new Date(BASE_WEEK);
+    const diff = Math.floor((today - base) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, diff + 1);
+}
+
+function setupWeekSelector() {
+    const sel = document.getElementById('week-selector');
+    const currentNum = getCurrentWeekNum();
+    // Generate 52 weeks
+    for (let i = 1; i <= 52; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.text = `Semana ${String(i).padStart(2,'0')}`;
+        sel.appendChild(opt);
+    }
+    sel.value = Math.min(currentNum, 52);
+    onWeekChange();
+}
+
+function onWeekChange() {
+    const weekNum = parseInt(document.getElementById('week-selector').value);
+    const { dateStr } = getWeekInfo(weekNum);
+    document.getElementById('week-dates-display').innerText = dateStr;
+}
+
+function getSelectedWeekLabel() {
+    const weekNum = parseInt(document.getElementById('week-selector').value);
+    return `Semana ${weekNum}`;
+}
+
+function getSelectedDateStr() {
+    const weekNum = parseInt(document.getElementById('week-selector').value);
+    return getWeekInfo(weekNum).dateStr;
+}
+
+// ── UNIT VALIDATION ON PASTE ─────────────────────────────────────────────
+// Expected line 2 per unit id
+const UNIT_EXPECTED_LINE2 = {
+    'ROJA_TK':  '🔴 UNIDAD ROJA RJ/TAKERS',
+    'ROJA_MK':  '🔴 UNIDAD ROJA MAKERS',
+    'AZUL_TK':  '🔵 UNIDAD AZUL RJ/TAKERS',
+    'AZUL_MK':  '🔵 UNIDAD AZUL MAKERS',
+    'AMAR_TK':  '🟡 UNIDAD AMARILLA RJ/TAKERS',
+    'AMAR_MK':  '🟡 UNIDAD AMARILLA MAKERS',
+    'NARA_TK':  '🟠 UNIDAD NARANJA RJ/TAKERS',
+    'NARA_MK':  '🟠 UNIDAD NARANJA MAKERS',
+    'VERD_TK':  '🟢 UNIDAD VERDE RJ/TAKERS',
+    'VERD_MK':  '🟢 UNIDAD VERDE MAKERS',
+};
+
+function validatePaste(unitId, pastedText) {
+    const lines = pastedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) return; // Not enough lines to validate
+
+    const line1 = lines[0]; // e.g. *Semana 26* (del 21 de junio al 27 de junio 2026)
+    const line2 = lines[1]; // e.g. *🔴 UNIDAD ROJA RJ/TAKERS*
+
+    const errors = [];
+
+    // Validate week (line 1): extract "Semana N" from *Semana N* (...)
+    const weekMatch = line1.match(/Semana\s+(\d+)/i);
+    if (weekMatch) {
+        const pastedWeekNum = parseInt(weekMatch[1]);
+        const selectedWeekNum = parseInt(document.getElementById('week-selector').value);
+        if (pastedWeekNum !== selectedWeekNum) {
+            errors.push(`⚠️ Semana incorrecta: el reporte es Semana ${pastedWeekNum} pero el app tiene Semana ${selectedWeekNum}`);
+        }
+    } else {
+        errors.push('⚠️ No se encontró número de semana en la línea 1');
+    }
+
+    // Validate unit (line 2): strip asterisks and compare
+    const cleanLine2 = line2.replace(/\*/g, '').trim();
+    const expected = UNIT_EXPECTED_LINE2[unitId];
+    if (expected && cleanLine2 !== expected) {
+        errors.push(`⚠️ Unidad incorrecta: se esperaba "${expected}" pero se recibió "${cleanLine2}"`);
+    }
+
+    return errors;
+}
+
+function attachPasteValidation(unitId) {
+    const el = document.getElementById(`txt-${unitId}`);
+    if (!el) return;
+    el.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+        const errors = validatePaste(unitId, pasted);
+        if (errors.length > 0) {
+            alert(errors.join('\n'));
+            // Discard — do not insert text
+        } else {
+            // Insert at cursor position
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            el.value = el.value.slice(0, start) + pasted + el.value.slice(end);
+            el.selectionStart = el.selectionEnd = start + pasted.length;
+            calculateAll();
+        }
+    });
+}
+
+
+// ── MAKERS TOGGLE STATE ───────────────────────────────────────────────────
+let makersGlobalEnabled = true;
+
+function toggleAllMakers(enabled) {
+    makersGlobalEnabled = enabled;
+    ['roja','azul','amarilla','naranja','verde'].forEach(group => {
+        const mkSection = document.getElementById(`mk-section-${group}`);
+        if (mkSection) mkSection.style.display = enabled ? '' : 'none';
+    });
+    calculateAll();
+}
+
+// ── RENDER BOXES ──────────────────────────────────────────────────────────
+const container = document.getElementById('units-container');
+colorGroups.forEach(group => {
+    const groupUnits = units.filter(u => u.group === group.key);
+    const tkUnit = groupUnits.find(u => u.tipo === 'TK');
+    const mkUnit = groupUnits.find(u => u.tipo === 'MK');
+
+    let html = `<div class="color-group">
+        <div class="color-group-title ${group.titleClass}">🔹 ${group.label}</div>`;
+
+    html += `
+        <div class="unit-section ${tkUnit.color}">
+            <div class="unit-header">${tkUnit.label}</div>
+            <textarea id="txt-${tkUnit.id}" placeholder="Pegar reporte aquí..." oninput="calculateAll()"></textarea>
+        </div>`;
+
+    html += `<div id="mk-section-${group.key}">
+        <div class="unit-section ${mkUnit.color}">
+            <div class="unit-header">${mkUnit.label}</div>
+            <textarea id="txt-${mkUnit.id}" placeholder="Pegar reporte aquí..." oninput="calculateAll()"></textarea>
+        </div>
+    </div>`;
+
+    html += `</div>`;
+    container.innerHTML += html;
+});
+
+// Attach paste validation after all textareas are rendered
+units.forEach(u => attachPasteValidation(u.id));
+
+setupWeekSelector();
+loadAll();
+calculateAll();
+
+// ── PARSERS ──────────────────────────────────────────────────────────────
+
+function extractSummaryValue(text, regex) {
+    const parts = text.split(/RESUMEN OFRENDAS ACUMULADO/i);
+    if (parts.length < 2) return 0;
+    const summaryText = parts[1];
+    const match = summaryText.match(regex);
+    if (!match) return 0;
+    let val = match[1].replace(/[₡\s.]/g, '').replace(',', '.');
+    return parseFloat(val) || 0;
+}
+
+function extractDirectValue(text, regex) {
+    const match = text.match(regex);
+    if (!match) return 0;
+    let val = match[1].replace(/[₡\s.]/g, '').replace(',', '.');
+    return parseFloat(val) || 0;
+}
+
+function extractSinpeFromBlock(text) {
+    // Para reportes individuales (sin RESUMEN ACUMULADO), busca Sinpe directo
+    const hasSummary = /RESUMEN OFRENDAS ACUMULADO/i.test(text);
+    if (hasSummary) return extractSummaryValue(text, /Sinpes?:\s*₡?([\d\s.,]+)/i);
+    return extractDirectValue(text, /Sinpe:\s*₡?([\d\s.,]+)/i);
+}
+
+function extractEfectivoFromBlock(text) {
+    const hasSummary = /RESUMEN OFRENDAS ACUMULADO/i.test(text);
+    if (hasSummary) return extractSummaryValue(text, /Efectivo:\s*₡?([\d\s.,]+)/i);
+    return extractDirectValue(text, /Efectivo:\s*₡?([\d\s.,]+)/i);
+}
+
+function extractRJCelula(text) {
+    const m = text.match(/RJ C[eé]lula:\s*(\d+)/i);
+    return m ? parseInt(m[1]) : 0;
+}
+function extractTakersCelula(text) {
+    const m = text.match(/Takers C[eé]lula:\s*(\d+)/i) || text.match(/MAKERS C[eé]lula:\s*(\d+)/i);
+    return m ? parseInt(m[1]) : 0;
+}
+function extractRJRed(text) {
+    const m = text.match(/RJ Red:\s*(\d+)/i);
+    return m ? parseInt(m[1]) : 0;
+}
+function extractTakersRed(text) {
+    const m = text.match(/Takers Red:\s*(\d+)/i) || text.match(/MAKERS Red:\s*(\d+)/i);
+    return m ? parseInt(m[1]) : 0;
+}
+function extractRJNuevos(text) {
+    const m = text.match(/Nuevos RJ:\s*(\d+)/i) || text.match(/NUEVOS.*?RJ:\s*(\d+)/i);
+    return m ? parseInt(m[1]) : 0;
+}
+function extractTakersNuevos(text) {
+    const m = text.match(/Nuevos Takers:\s*(\d+)/i) || text.match(/NUEVOS.*?Takers:\s*(\d+)/i)
+        || text.match(/Nuevos MAKERS:\s*(\d+)/i) || text.match(/NUEVOS.*?MAKERS:\s*(\d+)/i);
+    return m ? parseInt(m[1]) : 0;
+}
+
+// Extrae semana del texto: "Semana 26 (del 21 de junio al 27 de junio 2026)"
+function extractWeekDate(text) {
+    const m = text.match(/Semana\s+\d+\s*\(([^)]+)\)/i);
+    return m ? m[1].trim() : null;
+}
+
+// Extrae nombre de líder del bloque
+function extractLeaderName(text) {
+    // Formato Takers/RJ: 🔥 *LÍDER: AA* 🔥
+    const m1 = text.match(/LÍDER(?:\s*\(MAKERS\))?:\s*([^\n*🔥]+)/i);
+    if (m1) return m1[1].trim().replace(/\*|\🔥/g, '').trim();
+    return null;
+}
+
+// Para Excel: extrae todos los líderes con su sinpe/efectivo de un bloque TK (multi-líder)
+// Divide el texto en sub-bloques por líder
+function extractLeadersFromBlock(text) {
+    // Busca todos los líderes en el texto
+    const leaderRegex = /LÍDER(?:\s*\(MAKERS\))?:\s*([^\n*🔥]+)/gi;
+    const leaders = [];
+    let match;
+    const positions = [];
+
+    while ((match = leaderRegex.exec(text)) !== null) {
+        positions.push({ name: match[1].trim().replace(/\*/g, '').trim(), index: match.index });
+    }
+
+    if (positions.length === 0) return [];
+
+    positions.forEach((pos, i) => {
+        const start = pos.index;
+        const end = i + 1 < positions.length ? positions[i + 1].index : text.length;
+        const block = text.substring(start, end);
+
+        const sinpe = extractDirectValue(block, /Sinpe:\s*₡?([\d\s.,]+)/i);
+        const efectivo = extractDirectValue(block, /Efectivo:\s*₡?([\d\s.,]+)/i);
+
+        leaders.push({ name: pos.name, sinpe, efectivo });
     });
 
-    
-    // Cargar datos persistidos al iniciar
-    loadAll();
-    calculateAll();
-function extractValue(text, regex) {
-        const parts = text.split(/RESUMEN OFRENDAS ACUMULADO/i);
-        if (parts.length < 2) return 0;
-        const summaryText = parts[1];
-        const match = summaryText.match(regex);
-        if (!match) return 0;
-        let val = match[1].replace(/[₡\s.]/g, '').replace(',', '.');
-        return parseFloat(val) || 0;
-    }
+    return leaders;
+}
 
-    function calculateAll() {
-        let grandTotals = { s: 0, e: 0, rjC: 0, tkC: 0, rjR: 0, tkR: 0, rjN: 0, tkN: 0 };
-        let fullDetailBody = "";
-        let unitsActive = 0;
+// ── CALCULATE ALL (reporte de texto) ────────────────────────────────────
 
-        units.forEach(u => {
-            const val = document.getElementById(`txt-${u.id}`).value;
-            if(!val || val.trim() === "") return;
-            unitsActive++;
+function calculateAll() {
+    const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde'];
+    let grandTotals = { s: 0, e: 0, rjC: 0, tkC: 0, rjR: 0, tkR: 0, rjN: 0, tkN: 0 };
+    let fullDetailBody = "";
+    let unitsActive = 0;
 
-            const s = extractValue(val, /Sinpes?:\s*₡?([\d\s.,]+)/i);
-            const e = extractValue(val, /Efectivo:\s*₡?([\d\s.,]+)/i);
-            const rc = extractValue(val, /RJ Célula:\s*(\d+)/i);
-            const tc = extractValue(val, /Takers Célula:\s*(\d+)/i);
-            const rr = extractValue(val, /RJ Red:\s*(\d+)/i);
-            const tr = extractValue(val, /Takers Red:\s*(\d+)/i);
-            const rn = extractValue(val, /RJ Nuevos:\s*(\d+)/i);
-            const tn = extractValue(val, /Takers Nuevos:\s*(\d+)/i);
+    colorOrder.forEach(color => {
+        const tkUnit = units.find(u => u.group === color && u.tipo === 'TK');
+        const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
+        const tkVal = document.getElementById(`txt-${tkUnit.id}`).value;
+        const mkVal = document.getElementById(`txt-${mkUnit.id}`).value;
 
-            grandTotals.s += s; grandTotals.e += e;
-            grandTotals.rjC += rc; grandTotals.tkC += tc;
-            grandTotals.rjR += rr; grandTotals.tkR += tr;
-            grandTotals.rjN += rn; grandTotals.tkN += tn;
+        if ((!tkVal || !tkVal.trim()) && (!mkVal || !mkVal.trim())) return;
+        unitsActive++;
 
-            fullDetailBody += `*❣️UNIDAD ${u.id}❣️*\n` +
-                `📊 RESUMEN OFRENDAS ACUMULADO\n` +
-                `Sinpes: ₡${s.toLocaleString('es-CR')}\n` +
-                `Efectivo: ₡${e.toLocaleString('es-CR')}\n` +
-                `Total: ₡${(s + e).toLocaleString('es-CR')}\n\n` +
-                `---👥 RESUMEN ASISTENCIA ACUMULADO---\n` +
-                `-> Célula\n` +
-                `RJ Célula: ${rc}\n` +
-                `Takers Célula: ${tc}\n` +
-                `Total Célula: ${rc + tc}\n\n` +
-                `-> Red\n` +
-                `RJ Red: ${rr}\n` +
-                `Takers Red: ${tr}\n` +
-                `Total Red: ${rr + tr}\n\n` +
-                `-> Nuevos\n` +
-                `RJ Nuevos: ${rn}\n` +
-                `Takers Nuevos: ${tn}\n` +
-                `Total Nuevos: ${rn + tn}\n` +
-                `==============================\n\n`;
-        });
+        const colorLabel = color.toUpperCase();
 
-        if (unitsActive > 0) {
-            const finalSumatory = `*🚀 SUMATORIA GENERAL DE RED*\n\n` +
-                `💰 *OFRENDAS TOTALES*\n` +
-                `Sinpes: ₡${grandTotals.s.toLocaleString('es-CR')}\n` +
-                `Efectivo: ₡${grandTotals.e.toLocaleString('es-CR')}\n` +
-                `Total: ₡${(grandTotals.s + grandTotals.e).toLocaleString('es-CR')}\n\n` +
-                `👥 *ASISTENCIA TOTAL*\n` +
-                `-> Célula\n` +
-                `RJ Célula: ${grandTotals.rjC}\n` +
-                `Takers Célula: ${grandTotals.tkC}\n` +
-                `Total Célula: ${grandTotals.rjC + grandTotals.tkC}\n\n` +
-                `-> Red\n` +
-                `RJ Red: ${grandTotals.rjR}\n` +
-                `Takers Red: ${grandTotals.tkR}\n` +
-                `Total Red: ${grandTotals.rjR + grandTotals.tkR}\n\n` +
-                `-> Nuevos\n` +
-                `RJ Nuevos: ${grandTotals.rjN}\n` +
-                `Takers Nuevos: ${grandTotals.tkN}\n` +
-                `Total Nuevos: ${grandTotals.rjN + grandTotals.tkN}`;
+        let s = 0, e = 0, rjC = 0, tkC = 0, rjR = 0, tkR = 0, rjN = 0, tkN = 0;
 
-            window.finalReportStr = fullDetailBody + finalSumatory;
-            document.getElementById('status-msg').innerText = "✅ Reporte actualizado y listo";
-        } else {
-            window.finalReportStr = "";
-            document.getElementById('status-msg').innerText = "";
+        if (tkVal && tkVal.trim()) {
+            s += extractSinpeFromBlock(tkVal);
+            e += extractEfectivoFromBlock(tkVal);
+            rjC += extractRJCelula(tkVal);
+            tkC += extractTakersCelula(tkVal);
+            rjR += extractRJRed(tkVal);
+            tkR += extractTakersRed(tkVal);
+            rjN += extractRJNuevos(tkVal);
+            tkN += extractTakersNuevos(tkVal);
         }
-        saveAll();
-    }
-
-    function copyFinalReport() {
-        if(!window.finalReportStr) {
-            alert("Por favor, ingresa datos en al menos una unidad.");
-            return;
+        if (mkVal && mkVal.trim() && makersGlobalEnabled) {
+            s += extractSinpeFromBlock(mkVal);
+            e += extractEfectivoFromBlock(mkVal);
+            rjC += extractRJCelula(mkVal);
+            tkC += extractTakersCelula(mkVal);
+            rjR += extractRJRed(mkVal);
+            tkR += extractTakersRed(mkVal);
+            rjN += extractRJNuevos(mkVal);
+            tkN += extractTakersNuevos(mkVal);
         }
-        navigator.clipboard.writeText(window.finalReportStr);
-        const btn = document.querySelector('.btn-main');
-        btn.innerText = "¡COPIADO! ✅";
-        btn.style.background = "#28a745";
-        setTimeout(() => {
-            btn.innerText = "📋 COPIAR REPORTE COMPLETO";
-            btn.style.background = "#007bff";
-        }, 2000);
+
+        grandTotals.s += s; grandTotals.e += e;
+        grandTotals.rjC += rjC; grandTotals.tkC += tkC;
+        grandTotals.rjR += rjR; grandTotals.tkR += tkR;
+        grandTotals.rjN += rjN; grandTotals.tkN += tkN;
+
+        fullDetailBody +=
+            `*❣️UNIDAD ${colorLabel}❣️*\n` +
+            `📊 RESUMEN OFRENDAS ACUMULADO\n` +
+            `Sinpes: ₡${s.toLocaleString('es-CR')}\n` +
+            `Efectivo: ₡${e.toLocaleString('es-CR')}\n` +
+            `Total: ₡${(s + e).toLocaleString('es-CR')}\n\n` +
+            `---👥 RESUMEN ASISTENCIA ACUMULADO---\n` +
+            `-> Célula\n` +
+            `RJ Célula: ${rjC}\n` +
+            `Takers Célula: ${tkC}\n` +
+            `Total Célula: ${rjC + tkC}\n\n` +
+            `-> Red\n` +
+            `RJ Red: ${rjR}\n` +
+            `Takers Red: ${tkR}\n` +
+            `Total Red: ${rjR + tkR}\n\n` +
+            `-> Nuevos\n` +
+            `RJ Nuevos: ${rjN}\n` +
+            `Takers Nuevos: ${tkN}\n` +
+            `Total Nuevos: ${rjN + tkN}\n` +
+            `==============================\n\n`;
+    });
+
+    if (unitsActive > 0) {
+        const finalSumatory =
+            `*🚀 SUMATORIA GENERAL DE RED*\n\n` +
+            `💰 *OFRENDAS TOTALES*\n` +
+            `Sinpes: ₡${grandTotals.s.toLocaleString('es-CR')}\n` +
+            `Efectivo: ₡${grandTotals.e.toLocaleString('es-CR')}\n` +
+            `Total: ₡${(grandTotals.s + grandTotals.e).toLocaleString('es-CR')}\n\n` +
+            `👥 *ASISTENCIA TOTAL*\n` +
+            `-> Célula\n` +
+            `RJ Célula: ${grandTotals.rjC}\n` +
+            `Takers Célula: ${grandTotals.tkC}\n` +
+            `Total Célula: ${grandTotals.rjC + grandTotals.tkC}\n\n` +
+            `-> Red\n` +
+            `RJ Red: ${grandTotals.rjR}\n` +
+            `Takers Red: ${grandTotals.tkR}\n` +
+            `Total Red: ${grandTotals.rjR + grandTotals.tkR}\n\n` +
+            `-> Nuevos\n` +
+            `RJ Nuevos: ${grandTotals.rjN}\n` +
+            `Takers Nuevos: ${grandTotals.tkN}\n` +
+            `Total Nuevos: ${grandTotals.rjN + grandTotals.tkN}`;
+
+        window.finalReportStr = fullDetailBody + finalSumatory;
+        document.getElementById('status-msg').innerText = "✅ Reporte actualizado y listo";
+    } else {
+        window.finalReportStr = "";
+        document.getElementById('status-msg').innerText = "";
     }
+    saveAll();
+}
+
+// ── COPY REPORT ──────────────────────────────────────────────────────────
+
+function copyFinalReport() {
+    if (!window.finalReportStr) { alert("Ingresá datos en al menos una unidad."); return; }
+    navigator.clipboard.writeText(window.finalReportStr);
+    const btn = document.querySelectorAll('.btn-main')[0];
+    btn.innerText = "¡COPIADO! ✅";
+    btn.style.background = "#28a745";
+    setTimeout(() => { btn.innerText = "📋 COPIAR REPORTE"; btn.style.background = "#007bff"; }, 2000);
+}
+
+// ── EXCEL EXPORT ─────────────────────────────────────────────────────────
+
+function styleHeader(ws, range, color) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+        const cell = ws[XLSX.utils.encode_cell({ r: range.s.r, c: C })];
+        if (!cell) continue;
+        cell.s = {
+            font: { bold: true, color: { rgb: color === 'dark' ? '333333' : 'FFFFFF' } },
+            fill: { fgColor: { rgb: color === 'dark' ? 'FFC107' : color } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: {
+                top: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                right: { style: 'thin', color: { rgb: 'CCCCCC' } }
+            }
+        };
+    }
+}
+
+function styleCell(ws, r, c, isBold, bgColor) {
+    const addr = XLSX.utils.encode_cell({ r, c });
+    if (!ws[addr]) ws[addr] = { v: '', t: 's' };
+    ws[addr].s = {
+        font: { bold: !!isBold },
+        fill: bgColor ? { fgColor: { rgb: bgColor } } : undefined,
+        border: {
+            top: { style: 'thin', color: { rgb: 'EEEEEE' } },
+            bottom: { style: 'thin', color: { rgb: 'EEEEEE' } },
+            left: { style: 'thin', color: { rgb: 'EEEEEE' } },
+            right: { style: 'thin', color: { rgb: 'EEEEEE' } }
+        },
+        alignment: { vertical: 'center' }
+    };
+}
+
+function generateExcel() {
+    // Detectar fecha desde cualquier box con texto
+    let weekDate = null;
+    for (const u of units) {
+        const val = document.getElementById(`txt-${u.id}`).value;
+        if (val && val.trim()) {
+            weekDate = extractWeekDate(val);
+            if (weekDate) break;
+        }
+    }
+    if (!weekDate) weekDate = new Date().toLocaleDateString('es-CR');
+
+    const wb = XLSX.utils.book_new();
+
+    // Colores por unidad (hex sin #)
+    const unitColors = {
+        roja: 'DC3545', azul: '007BFF', amarilla: 'FFC107',
+        naranja: 'FD7E14', verde: '28A745'
+    };
+    const unitNames = {
+        roja: 'Roja', azul: 'Azul', amarilla: 'Amarilla',
+        naranja: 'Naranja', verde: 'Verde'
+    };
+
+    // ── Pestaña: Sumarización SINPE ──────────────────────────────────────
+    const sumData = [
+        ['UNIDAD', weekDate]
+    ];
+
+    const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde'];
+
+    colorOrder.forEach(color => {
+        const tkUnit = units.find(u => u.group === color && u.tipo === 'TK');
+        const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
+        const tkVal = document.getElementById(`txt-${tkUnit.id}`).value;
+        const mkVal = document.getElementById(`txt-${mkUnit.id}`).value;
+
+        const tkSinpe = tkVal ? extractSinpeFromBlock(tkVal) : 0;
+        const mkSinpe = (mkVal && makersGlobalEnabled) ? extractSinpeFromBlock(mkVal) : 0;
+        const name = unitNames[color];
+
+        sumData.push([`${name} Takers`, tkSinpe]);
+        if (makersGlobalEnabled) sumData.push([`${name} Makers`, mkSinpe]);
+    });
+
+    // Totals row
+    const totalSinpe = sumData.slice(1).reduce((a, r) => a + (r[1] || 0), 0);
+    sumData.push(['Total SINPE', totalSinpe]);
+
+    const wsSuma = XLSX.utils.aoa_to_sheet(sumData);
+    wsSuma['!cols'] = [{ wch: 22 }, { wch: 18 }];
+
+    // Style Sumarización header
+    styleHeader(wsSuma, { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }, '2C3E50');
+
+    // Style each row
+    let rowColors = {
+        roja: 'FFEBEE', azul: 'E3F2FD', amarilla: 'FFFDE7',
+        naranja: 'FFF3E0', verde: 'E8F5E9'
+    };
+    const rowColorMap = [];
+    colorOrder.forEach(c => { rowColorMap.push(c); if (makersGlobalEnabled) rowColorMap.push(c); });
+
+    for (let r = 1; r < sumData.length - 1; r++) {
+        const color = rowColorMap[r - 1];
+        styleCell(wsSuma, r, 0, false, rowColors[color]);
+        styleCell(wsSuma, r, 1, false, rowColors[color]);
+    }
+    // Total row bold
+    const totalRow = sumData.length - 1;
+    styleCell(wsSuma, totalRow, 0, true, 'E0E0E0');
+    styleCell(wsSuma, totalRow, 1, true, 'E0E0E0');
+
+    wsSuma['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sumData.length - 1, c: 1 } });
+    XLSX.utils.book_append_sheet(wb, wsSuma, 'Sumarizacion SINPE');
+
+    // ── Pestañas por color ────────────────────────────────────────────────
+    colorOrder.forEach(color => {
+        const tkUnit = units.find(u => u.group === color && u.tipo === 'TK');
+        const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
+        const tkVal = document.getElementById(`txt-${tkUnit.id}`).value || '';
+        const mkVal = document.getElementById(`txt-${mkUnit.id}`).value || '';
+
+        const sheetData = [['LÍDER', weekDate, 'TIPO']];
+
+        // --- TAKERS / RJ ---
+        if (tkVal.trim()) {
+            sheetData.push(['TAKERS / RJ', '', '']);
+            const leaders = extractLeadersFromBlock(tkVal);
+
+            if (leaders.length > 0) {
+                leaders.forEach(l => {
+                    if (l.sinpe > 0) sheetData.push([l.name, l.sinpe, 'S']);
+                    if (l.efectivo > 0) sheetData.push([l.name, l.efectivo, 'E']);
+                });
+            }
+
+            const tkSinpe = extractSinpeFromBlock(tkVal);
+            const tkEfect = extractEfectivoFromBlock(tkVal);
+            sheetData.push(['Total SINPE', tkSinpe, '']);
+            sheetData.push(['', '', '']);
+        }
+
+        // --- MAKERS ---
+        if (mkVal.trim() && makersGlobalEnabled) {
+            sheetData.push(['MAKERS', '', '']);
+            const leaders = extractLeadersFromBlock(mkVal);
+
+            if (leaders.length > 0) {
+                leaders.forEach(l => {
+                    if (l.sinpe > 0) sheetData.push([l.name, l.sinpe, 'S']);
+                    if (l.efectivo > 0) sheetData.push([l.name, l.efectivo, 'E']);
+                });
+            }
+
+            const mkSinpe = extractSinpeFromBlock(mkVal);
+            sheetData.push(['Total SINPE', mkSinpe, '']);
+        }
+
+        const wsColor = XLSX.utils.aoa_to_sheet(sheetData);
+        wsColor['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 8 }];
+
+        const headerColor = color === 'amarilla' ? 'dark' : unitColors[color];
+        styleHeader(wsColor, { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, headerColor);
+
+        // Style section headers (TAKERS/RJ, MAKERS)
+        for (let r = 1; r < sheetData.length; r++) {
+            const label = sheetData[r][0];
+            const isSectionHeader = label === 'TAKERS / RJ' || label === 'MAKERS';
+            const isTotalRow = label === 'Total SINPE';
+            styleCell(wsColor, r, 0, isSectionHeader || isTotalRow, isSectionHeader ? 'F5F5F5' : (isTotalRow ? 'E0E0E0' : null));
+            styleCell(wsColor, r, 1, isTotalRow, isTotalRow ? 'E0E0E0' : null);
+            styleCell(wsColor, r, 2, false, null);
+        }
+
+        wsColor['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sheetData.length - 1, c: 2 } });
+        XLSX.utils.book_append_sheet(wb, wsColor, unitNames[color]);
+    });
+
+    XLSX.writeFile(wb, `Reporte_Ofrendas_${weekDate.replace(/\s+/g, '_')}.xlsx`);
+    document.getElementById('status-msg').innerText = `✅ Excel generado: ${weekDate}`;
+}
 </script>
 </body>
 </html>
