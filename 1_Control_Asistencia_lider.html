@@ -5,300 +5,599 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asistencia y Ofrendas 2026</title>
     <style>
+        /* ── Tema de color (CSS variables) ── */
+        :root {
+            --accent:      #dc3545;
+            --accent-dark: #b02a37;
+            --accent-bg:   #fff5f5;
+            --accent-bdr:  #feb2b2;
+            --btn-green:   #25d366;
+            --btn-blue:    #3b82f6;
+        }
+
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
         .header-inputs { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; }
-        select, .date-display { padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; }
-        .date-display { border: none; color: #666; font-style: italic; font-weight: normal; margin-top: -5px; }
-        .leader-name { border: none; border-bottom: 2px solid #dc3545; font-size: 1.3em; font-weight: bold; text-align: center; width: 80%; outline: none; padding: 5px; color: #333; }
 
-        .offering-section { background: #fff5f5; border: 1px solid #feb2b2; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .week-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .week-select-styled { padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; background: white; cursor: pointer; }
+        .week-dates-text { font-size: 0.78em; color: #888; font-style: italic; margin-top: 3px; }
+
+        .section-select-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .section-label { font-size: 0.75em; color: #999; text-transform: uppercase; letter-spacing: 0.05em; }
+        .section-select-styled {
+            padding: 9px 16px; border-radius: 8px;
+            border: 2px solid var(--accent);
+            font-size: 1em; font-weight: bold;
+            color: var(--accent); background: white; cursor: pointer;
+        }
+        /* Dropdown de unidad/color — mismo estilo base pero más compacto */
+        .color-select-styled {
+            padding: 9px 16px; border-radius: 8px;
+            border: 2px solid var(--accent);
+            font-size: 1em; font-weight: bold;
+            color: var(--accent); background: white; cursor: pointer;
+        }
+
+        .leader-name {
+            border: none; border-bottom: 2px solid var(--accent);
+            font-size: 1.3em; font-weight: bold; text-align: center;
+            width: 80%; outline: none; padding: 5px; color: #333;
+        }
+
+        /* Ofrenda */
+        .offering-section { background: var(--accent-bg); border: 1px solid var(--accent-bdr); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
         .offering-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .offering-item { display: flex; flex-direction: column; font-size: 0.9em; font-weight: bold; color: #c53030; }
-        .offering-item input { padding: 8px; border: 1px solid #feb2b2; border-radius: 5px; margin-top: 5px; font-size: 1em; }
-        .total-offering { text-align: center; font-weight: bold; border-top: 1px dashed #feb2b2; padding-top: 10px; color: #dc3545; }
+        .offering-item { display: flex; flex-direction: column; font-size: 0.9em; font-weight: bold; color: var(--accent-dark); min-width: 0; }
+        .offering-item input { padding: 8px; border: 1px solid var(--accent-bdr); border-radius: 5px; margin-top: 5px; font-size: 1em; width: 100%; box-sizing: border-box; }
+        .total-offering { text-align: center; font-weight: bold; border-top: 1px dashed var(--accent-bdr); padding-top: 10px; color: var(--accent); }
 
-        .section-title { background: #dc3545; color: white; padding: 12px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-weight: bold; }
+        /* Tablas */
+        .section-title { background: var(--accent); color: white; padding: 12px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #dee2e6; border-top: none; background: white; }
         th { font-size: 0.65em; color: #666; text-transform: uppercase; padding: 8px; background: #f8f9fa; }
         td { padding: 8px 5px; border-bottom: 1px solid #eee; }
         .in-n { border: 1px solid transparent; width: 90%; padding: 5px; font-size: 14px; background: transparent; }
-        .in-n:focus { border-bottom: 1px solid #dc3545; outline: none; }
+        .in-n:focus { border-bottom: 1px solid var(--accent); outline: none; }
         .check-col { text-align: center; width: 50px; }
         input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
         .btn-add { background: rgba(255,255,255,0.3); border: 1px solid white; color: white; padding: 4px 12px; border-radius: 5px; cursor: pointer; font-size: 1.1em; }
-        .btn-del { color: #dc3545; border: none; background: none; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+        .btn-del { color: var(--accent); border: none; background: none; cursor: pointer; font-weight: bold; font-size: 1.1em; }
 
+        /* Resumen */
         .summary { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid #ddd; font-size: 0.9em; }
-        .summary-title { text-align: center; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .summary-group { border-right: 1px solid #eee; padding-right: 5px; }
-        .summary-group:last-child { border-right: none; }
-        
-        .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
-        .btn-main { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; }
-        .btn-whatsapp { background: #25d366; }
-        .btn-reset { background: #e74c3c; }
+        .summary-title { text-align: center; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; color: var(--accent); }
+        .summary-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee; }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row span:first-child { color: #555; }
+        .summary-row span:last-child { font-weight: bold; }
+        .summary-nuevos { text-align: center; margin-top: 8px; font-size: 0.85em; color: #d69e2e; font-weight: bold; }
+
+        /* Botones */
+        .action-bar { display: flex; gap: 8px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+        .btn-main { padding: 11px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 6px; font-size: 0.9em; }
+        .btn-green  { background: #25d366; }
+        .btn-blue   { background: #3b82f6; }
+        .btn-red-action { background: #e74c3c; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-inputs">
-        <select id="week-selector" onchange="updateWeekDates()"></select>
-        <div id="week-dates-display" class="date-display"></div>
-        <input type="text" class="leader-name" id="leader-name" placeholder="Nombre de Líder" oninput="saveDisciples()">
+
+        <!-- Semana -->
+        <div class="week-wrapper">
+            <select id="week-selector" class="week-select-styled" onchange="updateWeekDates()"></select>
+            <div id="week-dates-display" class="week-dates-text"></div>
+        </div>
+
+        <!-- Unidad (color) -->
+        <div class="section-select-wrapper">
+            <select id="color-selector" class="color-select-styled" onchange="applyColor(true)">
+                <option value="red">🔴 Unidad Roja</option>
+                <option value="blue">🔵 Unidad Azul</option>
+                <option value="yellow">🟡 Unidad Amarilla</option>
+                <option value="orange">🟠 Unidad Naranja</option>
+                <option value="green">🟢 Unidad Verde</option>
+            </select>
+        </div>
+
+        <!-- Sección -->
+        <div class="section-select-wrapper">
+            <select id="section-selector" class="section-select-styled" onchange="switchSection()">
+                <option value="rj">RJ (Menores)</option>
+                <option value="takers">Takers (Mayores)</option>
+                <option value="makers">Makers</option>
+            </select>
+        </div>
+
+        <select class="leader-name" id="leader-name" onchange="saveData()"></select>
     </div>
 
     <div class="offering-section">
         <div class="offering-grid">
-            <div class="offering-item"><label>Sinpe ₡</label><input type="number" id="off-sinpe" placeholder="0" oninput="calculateOffering()"></div>
-            <div class="offering-item"><label>Efectivo ₡</label><input type="number" id="off-efectivo" placeholder="0" oninput="calculateOffering()"></div>
+            <div class="offering-item"><label>Sinpe ₡</label><input type="number" id="off-sinpe" placeholder="0" oninput="calculateOffering(); saveData()"></div>
+            <div class="offering-item"><label>Efectivo ₡</label><input type="number" id="off-efectivo" placeholder="0" oninput="calculateOffering(); saveData()"></div>
         </div>
         <div class="total-offering">Total Ofrenda: ₡ <span id="total-offering-val">0</span></div>
     </div>
 
-    <div class="section-title"><span>RJ</span><button class="btn-add" onclick="addRow('rj-body')">+</button></div>
+    <div class="section-title">
+        <span id="active-section-label">RJ</span>
+        <button class="btn-add" onclick="addRow('main-body')">+</button>
+    </div>
     <table>
-        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th></tr></thead>
-        <tbody id="rj-body"></tbody>
+        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col" id="th-cel-main">Célula</th><th class="check-col" id="th-red-main">Red</th></tr></thead>
+        <tbody id="main-body"></tbody>
     </table>
 
-    <div class="section-title"><span>VISITAS RJ</span><button class="btn-add" onclick="addRow('visrj-body', true)">+</button></div>
+    <div class="section-title">
+        <span id="active-visit-label">VISITAS RJ</span>
+        <button class="btn-add" onclick="addRow('visit-body', true)">+</button>
+    </div>
     <table>
-        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th><th class="check-col">🌟Nuevo</th></tr></thead>
-        <tbody id="visrj-body"></tbody>
-    </table>
-
-    <div class="section-title"><span>TAKERS</span><button class="btn-add" onclick="addRow('takers-body')">+</button></div>
-    <table>
-        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th></tr></thead>
-        <tbody id="takers-body"></tbody>
-    </table>
-
-    <div class="section-title"><span>VISITAS TAKERS</span><button class="btn-add" onclick="addRow('vistakers-body', true)">+</button></div>
-    <table>
-        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col">Célula</th><th class="check-col">Red</th><th class="check-col">🌟Nuevo</th></tr></thead>
-        <tbody id="vistakers-body"></tbody>
+        <thead><tr><th></th><th>Nombre del discípulo</th><th class="check-col" id="th-cel-visit">Célula</th><th class="check-col" id="th-red-visit">Red</th><th class="check-col">🌟Nuevo</th></tr></thead>
+        <tbody id="visit-body"></tbody>
     </table>
 
     <div class="summary">
-        <div class="summary-title">*RESUMEN TOTAL*</div>
-        <div class="summary-grid">
-            <div class="summary-group">
-                <div style="font-weight: bold; border-bottom: 1px solid #ddd; margin-bottom: 5px; color: #dc3545;">CÉLULA</div>
-                <div>Total RJ Cel: <span id="trj-c">0</span></div>
-                <div>Total Takers Cel: <span id="ttk-c">0</span></div>
-                <div style="font-weight: bold; margin-top: 5px;">Total Célula: <span id="total-cel-sum">0</span></div>
-            </div>
-            <div class="summary-group">
-                <div style="font-weight: bold; border-bottom: 1px solid #ddd; margin-bottom: 5px; color: #dc3545;">RED</div>
-                <div>Total RJ Red: <span id="trj-r">0</span></div>
-                <div>Total Takers Red: <span id="ttk-r">0</span></div>
-                <div style="font-weight: bold; margin-top: 5px;">Total Red: <span id="total-red-sum">0</span></div>
-            </div>
-        </div>
-        <div style="text-align: center; margin-top: 10px; font-size: 0.85em; color: #d69e2e; font-weight: bold;">
-            Nuevos: RJ (<span id="trj-n">0</span>) | Takers (<span id="ttk-n">0</span>)
-        </div>
+        <div class="summary-title" id="summary-title">RESUMEN TOTAL ASISTENCIA — RJ</div>
+        <div class="summary-row"><span id="lbl-cel">Total Célula:</span><span id="sum-cel">0</span></div>
+        <div class="summary-row"><span id="lbl-red">Total Red:</span><span id="sum-red">0</span></div>
+        <div class="summary-nuevos" id="sum-nuevos" style="display:none;">🌟 Nuevos: <span id="sum-n">0</span></div>
     </div>
 
     <div class="action-bar">
-        <button class="btn-main btn-whatsapp" onclick="copyToClipboard()">📋 Copiar WhatsApp</button>
-        <button class="btn-main btn-reset" onclick="resetApp()">🔄 Resetear</button>
+        <button class="btn-main btn-green"      onclick="copyTodo()">📋 Copiar TODO</button>
+        <button class="btn-main btn-blue"        onclick="copyOfrendas()">💰 Copiar SOLO Ofrendas</button>
+        <button class="btn-main btn-red-action"  onclick="borrarApp()">🗑️ Borrar</button>
     </div>
 </div>
 
 <script>
+    // ── Paleta de colores ──────────────────────────────────────────────────
+    const COLOR_THEMES = {
+        red:    { accent: '#dc3545', dark: '#b02a37', bg: '#fff5f5', bdr: '#feb2b2' },
+        blue:   { accent: '#1d6fa4', dark: '#155780', bg: '#eff8ff', bdr: '#93c5e8' },
+        yellow: { accent: '#b7860b', dark: '#8a6408', bg: '#fffdf0', bdr: '#f5d97a' },
+        orange: { accent: '#d9600a', dark: '#b04c07', bg: '#fff7f0', bdr: '#f8c49a' },
+        green:  { accent: '#1a7a3c', dark: '#145e2d', bg: '#f0fff5', bdr: '#6fcf97' }
+    };
+
+    function applyColor(save = false) {
+        const key   = document.getElementById('color-selector').value;
+        const theme = COLOR_THEMES[key];
+        const root  = document.documentElement.style;
+        root.setProperty('--accent',      theme.accent);
+        root.setProperty('--accent-dark', theme.dark);
+        root.setProperty('--accent-bg',   theme.bg);
+        root.setProperty('--accent-bdr',  theme.bdr);
+        if (save) updateLeaderDropdown();
+    }
+
+    // ── Secciones ──────────────────────────────────────────────────────────
+    const SECTIONS = {
+        rj:     { label: 'RJ',     visitLabel: 'VISITAS RJ',     copyLabel: 'RJ',     copyVisitLabel: 'VISITAS RJ' },
+        takers: { label: 'TAKERS', visitLabel: 'VISITAS TAKERS', copyLabel: 'TAKERS', copyVisitLabel: 'VISITAS TAKERS' },
+        makers: { label: 'MAKERS', visitLabel: 'VISITAS MAKERS', copyLabel: 'MAKERS', copyVisitLabel: 'VISITAS MAKERS' }
+    };
+
+    let sectionData = {
+        rj:     { main: [], visit: [] },
+        takers: { main: [], visit: [] },
+        makers: { main: [], visit: [] }
+    };
+
+    let currentSection = 'rj';
+
+    // ── Semana ─────────────────────────────────────────────────────────────
+    function getWeekNumber(date) {
+        const d = new Date(date);
+        d.setDate(d.getDate() - d.getDay());
+        const firstSunday = new Date(d.getFullYear(), 0, 1);
+        firstSunday.setDate(firstSunday.getDate() - firstSunday.getDay());
+        return Math.floor((d - firstSunday) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    }
+
+    function getWeekDates(weekNum, year) {
+        const firstSunday = new Date(year, 0, 1);
+        firstSunday.setDate(firstSunday.getDate() - firstSunday.getDay());
+        const sunday = new Date(firstSunday);
+        sunday.setDate(firstSunday.getDate() + (weekNum - 1) * 7);
+        const saturday = new Date(sunday);
+        saturday.setDate(sunday.getDate() + 6);
+        return { sunday, saturday };
+    }
+
     function setupWeekSelector() {
         const selector = document.getElementById('week-selector');
         for (let i = 1; i <= 52; i++) {
             let opt = document.createElement('option');
-            opt.value = i; opt.text = `Semana ${i.toString().padStart(2, '0')}`;
+            opt.value = i;
+            opt.text  = `Semana ${i.toString().padStart(2, '0')}`;
             selector.add(opt);
         }
-        const now = new Date(); const start = new Date(2026, 0, 1);
-        const currentWeek = Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24 * 7)));
-        selector.value = currentWeek > 52 ? 52 : currentWeek;
+        selector.value = Math.min(Math.max(getWeekNumber(new Date()), 1), 52);
         updateWeekDates();
     }
 
     function updateWeekDates() {
-        const week = document.getElementById('week-selector').value;
-        const firstMonday = new Date(2025, 11, 29); 
-        const monday = new Date(firstMonday);
-        monday.setDate(firstMonday.getDate() + (week - 1) * 7);
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        document.getElementById('week-dates-display').innerText = 
-            `del ${monday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} al ${sunday.toLocaleDateString('es-ES', {day:'numeric', month:'long'})} 2026`;
+        const week = parseInt(document.getElementById('week-selector').value);
+        const { sunday, saturday } = getWeekDates(week, 2026);
+        const fmt = d => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+        document.getElementById('week-dates-display').innerText =
+            `del ${fmt(sunday)} al ${fmt(saturday)} 2026`;
     }
 
-    function calculateOffering() {
-        const sinpe = parseFloat(document.getElementById('off-sinpe').value) || 0;
-        const efectivo = parseFloat(document.getElementById('off-efectivo').value) || 0;
-        document.getElementById('total-offering-val').innerText = (sinpe + efectivo).toLocaleString('es-CR');
+    function getHeaderStrings() {
+        const weekNum   = document.getElementById('week-selector').value;
+        const dateStr   = document.getElementById('week-dates-display').innerText;
+        const weekLabel = `Semana ${parseInt(weekNum).toString().padStart(2, '0')}`;
+        const leader    = document.getElementById('leader-name').value;
+        return { weekLabel, dateStr, leader };
     }
 
-    function addRow(targetBodyId, isNewCol = false, nameValue = "") {
+    // ── Sección activa ─────────────────────────────────────────────────────
+    function switchSection() {
+        saveCurrentSectionToMemory();
+        currentSection = document.getElementById('section-selector').value;
+        const sec = SECTIONS[currentSection];
+        document.getElementById('active-section-label').innerText = sec.label;
+        document.getElementById('active-visit-label').innerText   = sec.visitLabel;
+
+        const col2 = currentSection === 'makers' ? 'Culto' : 'Red';
+        document.getElementById('th-cel-main').innerText  = 'Célula';
+        document.getElementById('th-red-main').innerText  = col2;
+        document.getElementById('th-cel-visit').innerText = 'Célula';
+        document.getElementById('th-red-visit').innerText = col2;
+        document.getElementById('lbl-cel').innerText = 'Total Célula:';
+        document.getElementById('lbl-red').innerText = `Total ${col2}:`;
+
+        renderSection('main-body',  sectionData[currentSection].main,  false);
+        renderSection('visit-body', sectionData[currentSection].visit, true);
+        updateCounts();
+        updateLeaderDropdown();
+    }
+
+    function saveCurrentSectionToMemory() {
+        sectionData[currentSection].main  = getSectionData('main-body', false);
+        sectionData[currentSection].visit = getSectionData('visit-body', true);
+    }
+
+    // ── Filas ──────────────────────────────────────────────────────────────
+    function addRow(targetBodyId, isNewCol = false, nameValue = "", celChecked = false, redChecked = false, newChecked = false) {
         const body = document.getElementById(targetBodyId);
-        const tr = document.createElement('tr');
+        const tr   = document.createElement('tr');
         let html = `
-            <td><button class="btn-del" onclick="this.closest('tr').remove(); updateCounts(); saveDisciples();">✕</button></td>
-            <td><input type="text" class="in-n" placeholder="Nombre" value="${nameValue}" oninput="saveDisciples()"></td>
-            <td class="check-col"><input type="checkbox" class="chk-cel" onchange="updateCounts()"></td>
-            <td class="check-col"><input type="checkbox" class="chk-red" onchange="updateCounts()"></td>
+            <td><button class="btn-del" onclick="this.closest('tr').remove(); updateCounts(); saveData();">✕</button></td>
+            <td><input type="text" class="in-n" placeholder="Nombre" value="${nameValue}" oninput="saveData()"></td>
+            <td class="check-col"><input type="checkbox" class="chk-cel" onchange="updateCounts(); saveData();" ${celChecked ? 'checked' : ''}></td>
+            <td class="check-col"><input type="checkbox" class="chk-red" onchange="updateCounts(); saveData();" ${redChecked ? 'checked' : ''}></td>
         `;
-        if(isNewCol) html += `<td class="check-col"><input type="checkbox" class="chk-new" onchange="updateCounts()"></td>`;
+        if (isNewCol) html += `<td class="check-col"><input type="checkbox" class="chk-new" onchange="updateCounts(); saveData();" ${newChecked ? 'checked' : ''}></td>`;
         tr.innerHTML = html;
         body.appendChild(tr);
         updateCounts();
     }
 
-    function saveDisciples() {
+    function renderSection(bodyId, rows, isNew) {
+        const body = document.getElementById(bodyId);
+        body.innerHTML = "";
+        if (rows && rows.length > 0) {
+            rows.forEach(r => addRow(bodyId, isNew, r.name || "", !!r.cel, !!r.red, !!r.new));
+        } else {
+            for (let i = 0; i < 3; i++) addRow(bodyId, isNew);
+        }
+    }
+
+    // ── Conteos ────────────────────────────────────────────────────────────
+    function updateCounts() {
+        // Visitas: excluir filas marcadas como "Nuevo" del conteo de Célula y Red
+        let visitCel = 0, visitRed = 0;
+        document.querySelectorAll('#visit-body tr').forEach(tr => {
+            const isNew = tr.querySelector('.chk-new')?.checked;
+            if (!isNew) {
+                if (tr.querySelector('.chk-cel')?.checked) visitCel++;
+                if (tr.querySelector('.chk-red')?.checked) visitRed++;
+            }
+        });
+        const cel = document.querySelectorAll('#main-body .chk-cel:checked').length + visitCel;
+        const red = document.querySelectorAll('#main-body .chk-red:checked').length + visitRed;
+        const nw  = document.querySelectorAll('#visit-body .chk-new:checked').length;
+
+        const secLabel = SECTIONS[currentSection].label;
+        document.getElementById('summary-title').innerText = `RESUMEN TOTAL ASISTENCIA — ${secLabel}`;
+        document.getElementById('sum-cel').innerText = cel;
+        document.getElementById('sum-red').innerText = red;
+
+        const nuevosEl = document.getElementById('sum-nuevos');
+        if (nw > 0) {
+            document.getElementById('sum-n').innerText = nw;
+            nuevosEl.style.display = 'block';
+        } else {
+            nuevosEl.style.display = 'none';
+        }
+    }
+
+    // ── Ofrenda ────────────────────────────────────────────────────────────
+    function calculateOffering() {
+        const sinpe    = parseFloat(document.getElementById('off-sinpe').value) || 0;
+        const efectivo = parseFloat(document.getElementById('off-efectivo').value) || 0;
+        document.getElementById('total-offering-val').innerText = (sinpe + efectivo).toLocaleString('es-CR');
+    }
+
+    // ── Persistencia ───────────────────────────────────────────────────────
+    function getSectionData(id, hasNewCol) {
+        return Array.from(document.querySelectorAll(`#${id} tr`)).map(tr => ({
+            name: tr.querySelector('.in-n')?.value || "",
+            cel:  !!tr.querySelector('.chk-cel')?.checked,
+            red:  !!tr.querySelector('.chk-red')?.checked,
+            new:  hasNewCol ? !!tr.querySelector('.chk-new')?.checked : false
+        }));
+    }
+
+    // ── Nombres persistentes ───────────────────────────────────────────────
+    function saveNames() {
+        const names = {};
+        ['rj','takers','makers'].forEach(sec => {
+            names[sec] = { main: [], visit: [] };
+            if (sec === currentSection) {
+                names[sec].main  = Array.from(document.querySelectorAll('#main-body .in-n')).map(i => i.value);
+                names[sec].visit = Array.from(document.querySelectorAll('#visit-body .in-n')).map(i => i.value);
+            } else {
+                names[sec].main  = (sectionData[sec].main  || []).map(r => r.name || "");
+                names[sec].visit = (sectionData[sec].visit || []).map(r => r.name || "");
+            }
+        });
+        localStorage.setItem('nombresData_v1', JSON.stringify(names));
+    }
+
+    function loadNames() {
+        const saved = localStorage.getItem('nombresData_v1');
+        if (!saved) return;
+        const names = JSON.parse(saved);
+        ['rj','takers','makers'].forEach(sec => {
+            if (!names[sec]) return;
+            ['main','visit'].forEach(tbl => {
+                const nameList = names[sec][tbl] || [];
+                if (!sectionData[sec][tbl]) sectionData[sec][tbl] = [];
+                while (sectionData[sec][tbl].length < nameList.length) {
+                    sectionData[sec][tbl].push({ name: "", cel: false, red: false, new: false });
+                }
+                nameList.forEach((n, i) => { sectionData[sec][tbl][i].name = n; });
+            });
+        });
+    }
+
+    function saveData() {
+        // Siempre leer sección activa del DOM antes de guardar
+        sectionData[currentSection].main  = getSectionData('main-body', false);
+        sectionData[currentSection].visit = getSectionData('visit-body', true);
         const data = {
-            leader: document.getElementById('leader-name').value,
-            rj: getNames('rj-body'),
-            visrj: getNames('visrj-body'),
-            takers: getNames('takers-body'),
-            vistakers: getNames('vistakers-body')
+            leader:   document.getElementById('leader-name').value,
+            week:     document.getElementById('week-selector').value,
+            color:    document.getElementById('color-selector').value,
+            offering: {
+                sinpe:    document.getElementById('off-sinpe')?.value || "",
+                efectivo: document.getElementById('off-efectivo')?.value || ""
+            },
+            sections: sectionData
         };
-        localStorage.setItem('asistenciaData_2026', JSON.stringify(data));
+        localStorage.setItem('asistenciaData_2026_v4', JSON.stringify(data));
     }
 
-    function getNames(id) {
-        return Array.from(document.querySelectorAll(`#${id} .in-n`)).map(input => input.value);
-    }
-
-    function loadDisciples() {
-        const saved = localStorage.getItem('asistenciaData_2026');
+    function loadData() {
+        let savedLeader = null;
+        const saved = localStorage.getItem('asistenciaData_2026_v4');
         if (saved) {
             const data = JSON.parse(saved);
-            document.getElementById('leader-name').value = data.leader || "";
-            fillSection('rj-body', data.rj, false);
-            fillSection('visrj-body', data.visrj, true);
-            fillSection('takers-body', data.takers, false);
-            fillSection('vistakers-body', data.vistakers, true);
-        } else {
-            ['rj-body', 'visrj-body', 'takers-body', 'vistakers-body'].forEach(id => {
-                const isNewCol = (id === 'visrj-body' || id === 'vistakers-body');
-                for(let i=0; i<3; i++) addRow(id, isNewCol);
-            });
+            savedLeader = data.leader || null;
+            if (data.week)  document.getElementById('week-selector').value  = data.week;
+            if (data.color) document.getElementById('color-selector').value = data.color;
+            if (data.offering) {
+                document.getElementById('off-sinpe').value    = data.offering.sinpe || "";
+                document.getElementById('off-efectivo').value = data.offering.efectivo || "";
+            }
+            calculateOffering();
+            if (data.sections) sectionData = data.sections;
         }
+        applyColor();
+        renderSection('main-body',  sectionData[currentSection].main,  false);
+        renderSection('visit-body', sectionData[currentSection].visit, true);
+        updateWeekDates();
+        updateCounts();
+        updateLeaderDropdown(savedLeader);
     }
 
-    function fillSection(id, names, isNew) {
-        const body = document.getElementById(id);
-        body.innerHTML = "";
-        if (names && names.length > 0) {
-            names.forEach(name => addRow(id, isNew, name));
-        } else {
-            for(let i=0; i<3; i++) addRow(id, isNew);
-        }
-    }
-
-    // FUNCIÓN DE CONTEO Y SUMATORIA ACTUALIZADA
-    function updateCounts() {
-        const count = (id, cls) => document.querySelectorAll(`#${id} .${cls}:checked`).length;
-        
-        const rjC = count('rj-body', 'chk-cel') + count('visrj-body', 'chk-cel');
-        const rjR = count('rj-body', 'chk-red') + count('visrj-body', 'chk-red');
-        const rjN = count('visrj-body', 'chk-new');
-        
-        const tkC = count('takers-body', 'chk-cel') + count('vistakers-body', 'chk-cel');
-        const tkR = count('takers-body', 'chk-red') + count('vistakers-body', 'chk-red');
-        const tkN = count('vistakers-body', 'chk-new');
-
-        document.getElementById('trj-c').innerText = rjC;
-        document.getElementById('trj-r').innerText = rjR;
-        document.getElementById('trj-n').innerText = rjN;
-        document.getElementById('ttk-c').innerText = tkC;
-        document.getElementById('ttk-r').innerText = tkR;
-        document.getElementById('ttk-n').innerText = tkN;
-
-        // Nuevos campos de sumatoria total
-        document.getElementById('total-cel-sum').innerText = rjC + tkC;
-        document.getElementById('total-red-sum').innerText = rjR + tkR;
-    }
-
-    function resetApp() {
-        if(confirm("¿Deseas limpiar asistencia y ofrendas? (Nombres se mantienen)")) {
+    // ── Borrar ─────────────────────────────────────────────────────────────
+    function borrarApp() {
+        if (confirm("¿Borrar ofrendas y asistencia? Los nombres se conservan.")) {
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            document.getElementById('off-sinpe').value = "";
+            ['rj','takers','makers'].forEach(sec => {
+                ['main','visit'].forEach(tbl => {
+                    (sectionData[sec][tbl] || []).forEach(r => { r.cel = false; r.red = false; r.new = false; });
+                });
+            });
+            document.getElementById('off-sinpe').value    = "";
             document.getElementById('off-efectivo').value = "";
             calculateOffering();
             updateCounts();
+            saveData();
         }
     }
 
-    // FUNCIÓN DE COPIADO ACTUALIZADA CON EL NUEVO FORMATO
-    function copyToClipboard() {
-        const leader = document.getElementById('leader-name').value;
-        const weekStr = document.getElementById('week-selector').options[document.getElementById('week-selector').selectedIndex].text;
-        const dateStr = document.getElementById('week-dates-display').innerText;
-        
-        let text = `*${weekStr}* (${dateStr})\n*LÍDER:* ${leader.toUpperCase()}\n\n`;
-
-        const sinpe = document.getElementById('off-sinpe').value;
-        const efectivo = document.getElementById('off-efectivo').value;
-        if(sinpe || efectivo) {
-            const total = (parseFloat(sinpe)||0) + (parseFloat(efectivo)||0);
-            text += `*--- OFRENDAS ---*\n${sinpe?`Sinpe: ₡${sinpe}\n`:''}${efectivo?`Efectivo: ₡${efectivo}\n`:''}*Total: ₡${total}*\n\n`;
-        }
-
-        const rj = formatSection('rj-body'); if(rj) text += `*--- RJ ---*\n${rj}\n`;
-        const vrj = formatSection('visrj-body', true); if(vrj) text += `*--- VISITAS RJ ---*\n${vrj}\n`;
-        const tk = formatSection('takers-body'); if(tk) text += `*--- TAKERS ---*\n${tk}\n`;
-        const vtk = formatSection('vistakers-body', true); if(vtk) text += `*--- VISITAS TAKERS ---*\n${vtk}\n`;
-
-        // Datos del resumen
-        const rjC = parseInt(document.getElementById('trj-c').innerText);
-        const tkC = parseInt(document.getElementById('ttk-c').innerText);
-        const rjR = parseInt(document.getElementById('trj-r').innerText);
-        const tkR = parseInt(document.getElementById('ttk-r').innerText);
-        const rjN = parseInt(document.getElementById('trj-n').innerText);
-        const tkN = parseInt(document.getElementById('ttk-n').innerText);
-
-        text += `*RESUMEN TOTAL*\n`;
-        text += `Total RJ Célula: ${rjC}\n`;
-        text += `Total Takers Célula: ${tkC}\n`;
-        text += `*Total Célula: ${rjC + tkC}*\n\n---\n`;
-        text += `Total RJ Red: ${rjR}\n`;
-        text += `Total Takers Red: ${tkR}\n`;
-        text += `*Total Red: ${rjR + tkR}*`;
-
-        if(rjN > 0 || tkN > 0) {
-            text += `\n\n*NUEVOS:* ${rjN > 0 ? `RJ: ${rjN} ` : ''}${tkN > 0 ? `Takers: ${tkN}` : ''}`;
-        }
-
-        const textArea = document.createElement("textarea");
-        textArea.value = text; document.body.appendChild(textArea);
-        textArea.select(); document.execCommand('copy');
-        document.body.removeChild(textArea);
-        alert('¡Copiado para WhatsApp!');
-    }
-
-function formatSection(id, hasNew = false) {
-        let content = "";
-        // Seleccionamos todas las filas y usamos el segundo parámetro 'i' como contador
-        document.querySelectorAll(`#${id} tr`).forEach((tr, i) => {
-            const name = tr.querySelector('.in-n').value.trim();
-            if (name !== "") {
-                const cel = tr.querySelector('.chk-cel').checked ? "✅" : "❌";
-                const red = tr.querySelector('.chk-red').checked ? "✅" : "❌";
-                const nFlag = (hasNew && tr.querySelector('.chk-new').checked) ? " | 🌟 Nuevo" : "";
-                // Cambiamos el '•' por '(i + 1).' para que empiece desde 1
-                content += `${i + 1}. ${name} | Célula: ${cel} | Red: ${red}${nFlag}\n`;
+    // ── Formato filas ──────────────────────────────────────────────────────
+    function formatRows(rows, hasNew) {
+        const col2Label = currentSection === 'makers' ? 'Culto' : 'Red';
+        let out = ""; let idx = 1;
+        rows.forEach(r => {
+            if (r.name && r.name.trim()) {
+                const cel   = r.cel ? "✅" : "❌";
+                const red   = r.red ? "✅" : "❌";
+                const nFlag = (hasNew && r.new) ? " | 🌟 Nuevo" : "";
+                out += `${idx}. ${r.name.trim()} | Célula: ${cel} | ${col2Label}: ${red}${nFlag}\n`;
+                idx++;
             }
         });
-        return content;
+        return out;
     }
 
-    window.onload = () => {
-        setupWeekSelector();
-        loadDisciples();
+    function countFromRows(rows, key) { return rows.filter(r => r[key]).length; }
+
+    // ── Ordenar alfabéticamente ────────────────────────────────────────────
+    function sortTableAlphabetically(bodyId) {
+        const body = document.getElementById(bodyId);
+        const rows = Array.from(body.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+            const nameA = (a.querySelector('.in-n')?.value || '').trim().toLowerCase();
+            const nameB = (b.querySelector('.in-n')?.value || '').trim().toLowerCase();
+            if (!nameA) return 1;
+            if (!nameB) return -1;
+            return nameA.localeCompare(nameB, 'es');
+        });
+        rows.forEach(r => body.appendChild(r));
+    }
+
+    // ── Validar checkboxes ─────────────────────────────────────────────────
+    function validateCheckboxes() {
+        const missing = [];
+        document.querySelectorAll('#main-body tr, #visit-body tr').forEach(function(tr) {
+            var nameEl = tr.querySelector('.in-n');
+            if (!nameEl) return;
+            var name = nameEl.value.trim();
+            if (!name) return;
+            var celEl = tr.querySelector('.chk-cel');
+            var redEl = tr.querySelector('.chk-red');
+            var cel = celEl ? celEl.checked : false;
+            var red = redEl ? redEl.checked : false;
+            if (!cel && !red) missing.push(name);
+        });
+        return missing;
+    }
+
+    // ── Copiar TODO ────────────────────────────────────────────────────────
+    function copyTodo() {
+        if (!document.getElementById('leader-name').value) { alert('⚠️ Debes seleccionar el nombre del líder antes de copiar.'); return; }
+
+        saveCurrentSectionToMemory();
+
+        // Ordenar y guardar
+        sortTableAlphabetically('main-body');
+        sortTableAlphabetically('visit-body');
+        saveCurrentSectionToMemory();
+        saveData();
+
+        const { weekLabel, dateStr, leader } = getHeaderStrings();
+        const sec   = SECTIONS[currentSection];
+        const main  = sectionData[currentSection].main;
+        const visit = sectionData[currentSection].visit;
+
+        const secName = SECTIONS[currentSection].label;
+        let text = `*${weekLabel}* (${dateStr})\n*LÍDER (${secName}): ${leader ? leader.toUpperCase() : ''}*\n\n`;
+
+        const mainRows  = formatRows(main, false);
+        const visitRows = formatRows(visit, true);
+        if (mainRows)  text += `*--- ${sec.copyLabel} ---*\n${mainRows}\n`;
+        if (visitRows) text += `*--- ${sec.copyVisitLabel} ---*\n${visitRows}\n`;
+
+        const visitNoNew = visit.filter(r => !r.new);
+        const cel = countFromRows(main, 'cel') + countFromRows(visitNoNew, 'cel');
+        const red = countFromRows(main, 'red') + countFromRows(visitNoNew, 'red');
+        const nw  = countFromRows(visit, 'new');
+
+        const col2Label = currentSection === 'makers' ? 'Culto' : 'Red';
+        text += `*RESUMEN TOTAL ASISTENCIA*\n`;
+        text += `Total ${sec.copyLabel} Célula: ${cel}\n`;
+        text += `Total ${sec.copyLabel} ${col2Label}: ${red}`;
+        if (nw > 0) text += `\n*NUEVOS:* ${sec.copyLabel}: ${nw}`;
+
+        const sinpe    = document.getElementById('off-sinpe').value;
+        const efectivo = document.getElementById('off-efectivo').value;
+        if (sinpe || efectivo) {
+            const total = (parseFloat(sinpe)||0) + (parseFloat(efectivo)||0);
+            text += `\n\n*--- OFRENDAS ---*\n`;
+            if (sinpe)    text += `Sinpe: ₡${sinpe}\n`;
+            if (efectivo) text += `Efectivo: ₡${efectivo}\n`;
+            text += `*Total: ₡${total.toLocaleString('es-CR')}*`;
+        }
+
+        copyText(text, '¡Copiado!');
+    }
+
+    // ── Copiar SOLO Ofrendas ───────────────────────────────────────────────
+    function copyOfrendas() {
+        const { weekLabel, dateStr, leader } = getHeaderStrings();
+        const sinpe    = document.getElementById('off-sinpe').value;
+        const efectivo = document.getElementById('off-efectivo').value;
+        if (!sinpe && !efectivo) { alert('No hay datos de ofrenda para copiar.'); return; }
+        const total = (parseFloat(sinpe)||0) + (parseFloat(efectivo)||0);
+        const secNameOf = SECTIONS[currentSection].label;
+        let text = `*${weekLabel}* (${dateStr})\n*LÍDER (${secNameOf}): ${leader ? leader.toUpperCase() : ''}*\n\n`;
+        text += `*--- OFRENDAS ---*\n`;
+        if (sinpe)    text += `Sinpe: ₡${sinpe}\n`;
+        if (efectivo) text += `Efectivo: ₡${efectivo}\n`;
+        text += `*Total: ₡${total.toLocaleString('es-CR')}*`;
+        copyText(text, '¡Ofrendas copiadas!');
+    }
+
+    function copyText(text, msg) {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta); alert(msg);
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────────
+
+    // ── Datos de líderes ──────────────────────────────────────────────────
+    const LIDERES = {
+        red: {
+            rj:     ['Anyel', 'Joel', 'Josue R', 'Waldin'],
+            takers: ['EQUIPO Gabriel, Raquel', 'Cynthia', 'Jean', 'Tony R'],
+            makers: ['John y Esther', 'Esther', 'Marina']
+        },
+        blue: {
+            rj:     ['Alex y Yuli', 'Sharon y abraham'],
+            takers: ['EQUIPO Alonso, Amanda', 'Evelyn', 'Jorge, Melany', 'Tony G', 'Valery B'],
+            makers: ['Pra Francela Virtual', 'Pra. Francela2', 'Ana Yansi', 'Miriam']
+        },
+        green: {
+            rj:     ['Will y Dani', 'Greivin'],
+            takers: ['EQUIPO Byron, Ariel', 'Gaudy', 'Iveth', 'Jose, Eva', 'Maiky y Giovanna', 'Sarai Armas'],
+            makers: ['Pr. Julio', 'Javier y Yorleni', 'Migdalia']
+        },
+        orange: {
+            rj:     ['Andres Matus', 'Josué S', 'Stephen y Valery'],
+            takers: ['EQUIPO Angie, Bayron', 'Brayan y Kelly', 'Dago y Maira', 'Jonathan y Priscilla', 'Keneth'],
+            makers: ['Nuria', 'Roxana', 'Yorleny M']
+        },
+        yellow: {
+            rj:     ['Pablo A', 'Yehilin'],
+            takers: ['EQUIPO Aaron, Heyling', 'Abigail', 'Hazel', 'Laura'],
+            makers: ['Pr Carlos', 'Alex V', 'Dany y Sandra', 'Guillermo y Antonieta', 'Joyce']
+        }
     };
+
+    function updateLeaderDropdown(keepValue = null) {
+        const color   = document.getElementById('color-selector').value;
+        const section = currentSection;
+        const select  = document.getElementById('leader-name');
+        const prev    = keepValue !== null ? keepValue : select.value;
+
+        const names = (LIDERES[color] && LIDERES[color][section]) ? LIDERES[color][section] : [];
+        select.innerHTML = '<option value="">— Seleccionar Líder —</option>';
+        names.forEach(n => {
+            const opt = document.createElement('option');
+            opt.value = n; opt.text = n;
+            if (n === prev) opt.selected = true;
+            select.appendChild(opt);
+        });
+        saveData();
+    }
+
+    window.onload = () => { setupWeekSelector(); loadData(); };
 </script>
 </body>
 </html>
