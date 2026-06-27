@@ -5,305 +5,812 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consolidador de Reportes Pro</title>
     <style>
+        :root {
+            --accent:      #dc3545;
+            --accent-dark: #b02a37;
+            --accent-bg:   #fff5f5;
+            --accent-bdr:  #feb2b2;
+        }
+
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
         .container { max-width: 650px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #dc3545; padding-bottom: 10px; }
-        
+
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+        .header h2 { margin: 0; color: var(--accent); }
+
         .config-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        
-        .unit-name { 
-            width: 100%; padding: 12px; border: 2px solid #dc3545; border-radius: 8px; 
-            font-size: 1.3em; font-weight: bold; text-align: center; box-sizing: border-box; 
-            outline: none; background: #fff5f5; color: #dc3545; 
-        }
-        
-        .main-leader { 
-            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; 
-            font-size: 1em; text-align: center; box-sizing: border-box; outline: none; 
+
+        .color-select-styled {
+            width: 100%; padding: 9px 16px; border-radius: 8px;
+            border: 2px solid var(--accent);
+            font-size: 1em; font-weight: bold;
+            color: var(--accent); background: white; cursor: pointer;
+            box-sizing: border-box; outline: none;
         }
 
-        .report-block { 
-            background: #fff; border: 1px solid #ddd; border-left: 5px solid #dc3545; 
-            border-radius: 8px; padding: 15px; margin-bottom: 15px; position: relative; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        .main-leader {
+            width: 100%; padding: 10px; border: 2px solid #e74c3c; border-radius: 8px;
+            font-size: 1em; text-align: center; box-sizing: border-box; outline: none;
+            background: #fff5f5;
         }
-        
-        .leader-title { 
-            width: calc(100% - 30px); margin-bottom: 10px; border: none; 
-            border-bottom: 1px solid #ccc; font-weight: bold; color: #dc3545; 
-            outline: none; padding: 5px 0; font-size: 0.9em; text-transform: uppercase; 
+        .main-leader.filled {
+            border-color: #ddd;
+            background: white;
         }
-        
-        .report-block textarea { 
-            width: 100%; height: 120px; border-radius: 5px; border: 1px solid #eee; 
-            padding: 10px; font-family: 'Courier New', monospace; font-size: 0.85em; 
-            box-sizing: border-box; resize: vertical; background: #fafafa; 
-        }
-        
-        .btn-remove { 
-            position: absolute; top: 5px; right: 5px; background: #eee; color: #999; 
-            border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 12px; 
-        }
-        .btn-remove:hover { background: #dc3545; color: white; }
-        
-        .btn-add { 
-            background: #6c757d; color: white; border: none; padding: 12px; 
-            border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 20px; 
-            width: 100%; transition: 0.3s; 
-        }
-        .btn-add:hover { background: #5a6268; }
 
-        .result-panel { background: #2d3436; color: white; padding: 20px; border-radius: 10px; margin-top: 20px; border-bottom: 5px solid #dc3545; }
-        .result-panel h3 { margin-top: 0; color: #fab1a0; text-align: center; font-size: 1.1em; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        
-        .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .res-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; border: 1px solid #444; }
-        .res-box small { font-size: 0.7em; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 3px; }
-        .res-box div { font-size: 1.1em; font-weight: bold; color: #fff; }
-        
-        .btn-copy { 
-            width: 100%; border: none; padding: 15px; 
-            border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; 
-            margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; 
+        /* ── Grupos de sección ── */
+        .section-group {
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            margin-bottom: 18px;
+            overflow: hidden;
         }
-        .copy-full { background: #25d366; color: white; }
-        .copy-full:hover { background: #1ebe57; }
-        .copy-money { background: #00a8ff; color: white; }
-        .copy-money:hover { background: #0097e6; }
+        .section-group-header {
+            background: var(--accent);
+            color: white;
+            font-weight: bold;
+            font-size: 0.95em;
+            padding: 8px 14px;
+            letter-spacing: 0.05em;
+        }
+        .section-group-body {
+            padding: 12px;
+            background: var(--accent-bg);
+        }
+
+        .report-block {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-left: 5px solid var(--accent);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .leader-title {
+            width: 100%; margin-bottom: 10px; border: none;
+            border-bottom: 1px solid #ccc; font-weight: bold; color: var(--accent);
+            outline: none; padding: 5px 0; font-size: 0.9em; text-transform: uppercase;
+        }
+
+        .report-block textarea {
+            width: 100%; height: 120px; border-radius: 5px; border: 1px solid #eee;
+            padding: 10px; font-family: 'Courier New', monospace; font-size: 0.85em;
+            box-sizing: border-box; resize: vertical; background: #fafafa;
+        }
+
+        .btn-remove {
+            position: absolute; top: 5px; right: 5px; background: #eee; color: #999;
+            border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 12px;
+        }
+        .btn-remove:hover { background: var(--accent); color: white; }
+
+        .btn-add-section {
+            background: var(--accent);
+            color: white; border: none; padding: 9px 14px;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+            width: 100%; margin-top: 4px; font-size: 0.88em;
+            opacity: 0.85; transition: 0.2s;
+        }
+        .btn-add-section:hover { opacity: 1; }
+
+        /* Action bar */
+        .action-bar { display: flex; gap: 8px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        .btn-main { padding: 11px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; gap: 6px; font-size: 0.9em; transition: 0.2s; }
+        .btn-green  { background: #25d366; }
+        .btn-green:hover { background: #1ebe57; }
+        .btn-blue   { background: #3b82f6; }
+        .btn-blue:hover { background: #2563eb; }
+        .btn-red-action { background: #e74c3c; }
+        .btn-red-action:hover { background: #c0392b; }
+        .btn-gray { background: #6c757d; }
+        .btn-gray:hover { background: #5a6268; }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: white; border-radius: 14px; padding: 28px 24px;
+            max-width: 340px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .modal-box h3 { margin: 0 0 8px; color: var(--accent); font-size: 1.1em; }
+        .modal-box p  { margin: 0 0 16px; color: #555; font-size: 0.9em; line-height: 1.5; }
+        .modal-box input {
+            width: 100%; padding: 10px; border: 2px solid var(--accent);
+            border-radius: 8px; font-size: 1em; text-align: center;
+            box-sizing: border-box; outline: none; margin-bottom: 14px;
+            text-transform: uppercase;
+        }
+        .modal-btn {
+            background: var(--accent); color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; font-size: 0.95em; width: 100%;
+        }
+        .modal-btn:hover { opacity: 0.9; }
+
+        /* leader-title con indicador de error */
+        .leader-title.mismatch { border-bottom: 2px solid #e74c3c; background: #fff5f5; }
+
+        /* ── Semana activa ── */
+        .week-wrapper { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
+        .week-select-styled { padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; background: white; cursor: pointer; }
+        .week-dates-text { font-size: 0.78em; color: #888; font-style: italic; margin-top: 3px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h2 style="margin:0; color:#dc3545;">Consolidador de Reportes</h2>
+        <h2>Consolidador de Reportes</h2>
+        <!-- Selector de semana -->
+        <div class="week-wrapper">
+            <select id="week-selector" class="week-select-styled" onchange="onWeekChange()"></select>
+            <div id="week-dates-display" class="week-dates-text"></div>
+        </div>
     </div>
 
     <div class="config-section">
-        <input type="text" id="unit-name" class="unit-name" placeholder="NOMBRE DE LA UNIDAD" oninput="saveData()">
-        <input type="text" id="main-leader" class="main-leader" placeholder="NOMBRE DEL SUPERVISOR" oninput="saveData()">
+        <select id="color-selector" class="color-select-styled" onchange="applyColor(); onUnitChange();">
+            <option value="red_rj">🔴 Unidad Roja RJ/TAKERS</option>
+            <option value="red_makers">🔴 Unidad Roja MAKERS</option>
+            <option value="blue_rj">🔵 Unidad Azul RJ/TAKERS</option>
+            <option value="blue_makers">🔵 Unidad Azul MAKERS</option>
+            <option value="yellow_rj">🟡 Unidad Amarilla RJ/TAKERS</option>
+            <option value="yellow_makers">🟡 Unidad Amarilla MAKERS</option>
+            <option value="orange_rj">🟠 Unidad Naranja RJ/TAKERS</option>
+            <option value="orange_makers">🟠 Unidad Naranja MAKERS</option>
+            <option value="green_rj">🟢 Unidad Verde RJ/TAKERS</option>
+            <option value="green_makers">🟢 Unidad Verde MAKERS</option>
+        </select>
+        <input type="text" id="main-leader" class="main-leader" placeholder="⚠️ NOMBRE DEL SUPERVISOR (obligatorio)" oninput="validateSupervisor(); saveData()">
     </div>
 
     <div id="reports-container"></div>
 
-    <button class="btn-add" onclick="addReportBlock(); saveData();">+ AGREGAR LÍDER/REPORTE</button>
-
-    <div class="result-panel">
-        <h3>VISTA PREVIA ACUMULADA</h3>
-        <div class="res-grid">
-            <div class="res-box"><small>RJ Célula</small><div id="tot-rj-c">0</div></div>
-            <div class="res-box"><small>RJ Red</small><div id="tot-rj-r">0</div></div>
-            <div class="res-box"><small>Takers Célula</small><div id="tot-tk-c">0</div></div>
-            <div class="res-box"><small>Takers Red</small><div id="tot-tk-r">0</div></div>
-            <div class="res-box"><small>Nuevos RJ</small><div id="tot-rj-n">0</div></div>
-            <div class="res-box"><small>Total Sinpe</small><div id="tot-sinpe">₡0</div></div>
-            <div class="res-box"><small>Total Efectivo</small><div id="tot-efectivo">₡0</div></div>
-        </div>
+    <div class="action-bar">
+        <button class="btn-main btn-green"     onclick="copyConsolidated()">📋 Copiar Reporte</button>
+        <button class="btn-main btn-blue"      onclick="copyOnlyMoney()">💰 Copiar Ofrendas</button>
+        <button class="btn-main btn-gray"      onclick="clearTextareas()">🧹 Limpiar</button>
     </div>
+</div>
 
-    <button class="btn-copy copy-full" onclick="copyConsolidated()">
-        COPIAR REPORTE CONSOLIDADO
-    </button>
-    <button class="btn-copy copy-money" onclick="copyOnlyMoney()">
-        COPIAR REPORTE DE OFRENDAS
-    </button>
+<!-- Modal: Supervisor obligatorio -->
+<div class="modal-overlay" id="modal-supervisor">
+    <div class="modal-box">
+        <h3>⚠️ Supervisor requerido</h3>
+        <p>Ingrese el nombre del Supervisor para continuar.</p>
+        <input type="text" id="modal-supervisor-input" placeholder="NOMBRE DEL SUPERVISOR"
+               onkeydown="if(event.key==='Enter') confirmSupervisorModal()">
+        <button class="modal-btn" onclick="confirmSupervisorModal()">Confirmar</button>
+    </div>
 </div>
 
 <script>
-    window.onload = () => {
-        const savedUnit = localStorage.getItem('unitName');
-        document.getElementById('unit-name').value = savedUnit || "❤️🧡💛💚💙 UNIDAD : *EDITAR* 💙💚💛🧡❤️";
+    // ── Sistema de Semanas ──────────────────────────────────────────────────
+    // Semana 1: 28 dic 2025 → 3 ene 2026
+    const WEEK1_START = new Date(2025, 11, 28); // meses en JS: 0=enero, 11=diciembre
 
-        const savedLeader = localStorage.getItem('mainLeader');
-        if(savedLeader) document.getElementById('main-leader').value = savedLeader;
+    const MONTH_NAMES_ES = ['enero','febrero','marzo','abril','mayo','junio',
+                            'julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
-        const savedBlocks = JSON.parse(localStorage.getItem('reportBlocks'));
-        if (savedBlocks && savedBlocks.length > 0) {
-            savedBlocks.forEach(title => addReportBlock(title));
-        } else {
-            for(let i=0; i<4; i++) addReportBlock();
+    function getWeekNumber(date) {
+        const ms   = date - WEEK1_START;
+        const days = Math.floor(ms / 86400000);
+        return days < 0 ? null : Math.floor(days / 7) + 1;
+    }
+
+    function getWeekRange(weekNum) {
+        const startMs  = WEEK1_START.getTime() + (weekNum - 1) * 7 * 86400000;
+        const start    = new Date(startMs);
+        const end      = new Date(startMs + 6 * 86400000);
+        const fmtDay   = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
+        return { start, end, label: `Semana ${weekNum} (del ${fmtDay(start)} al ${fmtDay(end)} ${end.getFullYear()})` };
+    }
+
+    // Poblar el selector con ±4 semanas alrededor de la actual
+    function buildWeekSelector(currentWeek) {
+        const sel = document.getElementById('week-selector');
+        sel.innerHTML = '';
+        const MIN_WEEK = Math.max(1, currentWeek - 4);
+        const MAX_WEEK = currentWeek + 4;
+        for (let w = MIN_WEEK; w <= MAX_WEEK; w++) {
+            const opt = document.createElement('option');
+            opt.value = w;
+            opt.textContent = `Semana ${String(w).padStart(2, '0')}`;
+            if (w === currentWeek) opt.selected = true;
+            sel.appendChild(opt);
         }
+    }
+
+    function getActiveWeek() {
+        return parseInt(document.getElementById('week-selector').value) || 1;
+    }
+
+    function onWeekChange() {
+        const w = getActiveWeek();
+        const { start, end } = getWeekRange(w);
+        const fmtDay = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
+        document.getElementById('week-dates-display').textContent =
+            `del ${fmtDay(start)} al ${fmtDay(end)} ${end.getFullYear()}`;
+    }
+
+    function initWeekBar() {
+        const today   = new Date();
+        const current = getWeekNumber(today) || 1;
+        buildWeekSelector(current);
+        onWeekChange();
+    }
+
+    // Extrae el número de semana del texto del reporte
+    // Acepta: "*Semana 25*" o "Semana 25 (del..." etc.
+    function extractWeekFromReport(text) {
+        const match = text.match(/semana\s+(\d+)/i);
+        return match ? parseInt(match[1]) : null;
+    }
+
+    // Modificar estas listas directamente en el código fuente.
+    // Estos nombres se usan como referencia; no afectan la lógica actual.
+
+    const plantillaRJ = {
+        Roja:     ['Anyel', 'Joel', 'Josue R', 'Waldin'],
+        Azul:     ['Alex y Yuli', 'Sharon y Abraham'],
+        Verde:    ['Will y Dani', 'Greivin'],
+        Naranja:  ['Andres Matus', 'Josué S', 'Stephen y Valery'],
+        Amarilla: ['Pablo A', 'Yehilin'],
     };
 
-    function addReportBlock(title = '') {
+    const plantillaTakers = {
+        Roja:     ['EQUIPO Gabriel, Raquel', 'Cynthia', 'Jean', 'Tony R'],
+        Azul:     ['EQUIPO Alonso, Amanda', 'Evelyn', 'Jorge, Melany', 'Tony G', 'Valery B'],
+        Verde:    ['EQUIPO Byron, Ariel', 'Gaudy', 'Iveth', 'Jose, Eva', 'Maiky y Giovanna', 'Sarai Armas'],
+        Naranja:  ['EQUIPO Angie, Bayron', 'Brayan y Kelly', 'Dago y Maira', 'Jonathan y Priscilla', 'Keneth'],
+        Amarilla: ['EQUIPO Aaron, Heyling', 'Abigail', 'Hazel', 'Laura'],
+    };
+
+    const plantillaMakers = {
+        Roja:     ['John y Esther', 'Esther', 'Marina'],
+        Azul:     ['Pra Francela Virtual', 'Pra. Francela2', 'Ana Yansi', 'Miriam'],
+        Verde:    ['Pr. Julio', 'Javier y Yorleni', 'Migdalia'],
+        Naranja:  ['Nuria', 'Roxana', 'Yorleny M'],
+        Amarilla: ['Pr Carlos', 'Alex V', 'Dany y Sandra', 'Guillermo y Antonieta', 'Joyce'],
+    };
+
+    // ── Paletas ─────────────────────────────────────────────────────────────
+    const COLOR_PALETTES = {
+        red_rj:        { accent: '#dc3545', dark: '#b02a37', bg: '#fff5f5', bdr: '#feb2b2' },
+        red_makers:    { accent: '#dc3545', dark: '#b02a37', bg: '#fff5f5', bdr: '#feb2b2' },
+        blue_rj:       { accent: '#1a73e8', dark: '#1557b0', bg: '#f0f4ff', bdr: '#a8c4f8' },
+        blue_makers:   { accent: '#1a73e8', dark: '#1557b0', bg: '#f0f4ff', bdr: '#a8c4f8' },
+        yellow_rj:     { accent: '#d69e2e', dark: '#b7791f', bg: '#fffff0', bdr: '#faf089' },
+        yellow_makers: { accent: '#d69e2e', dark: '#b7791f', bg: '#fffff0', bdr: '#faf089' },
+        orange_rj:     { accent: '#dd6b20', dark: '#c05621', bg: '#fff8f0', bdr: '#fbd38d' },
+        orange_makers: { accent: '#dd6b20', dark: '#c05621', bg: '#fff8f0', bdr: '#fbd38d' },
+        green_rj:      { accent: '#276749', dark: '#1c4532', bg: '#f0fff4', bdr: '#9ae6b4' },
+        green_makers:  { accent: '#276749', dark: '#1c4532', bg: '#f0fff4', bdr: '#9ae6b4' },
+    };
+
+    function applyColor() {
+        const val = document.getElementById('color-selector').value;
+        const p = COLOR_PALETTES[val] || COLOR_PALETTES['red_rj'];
+        const root = document.documentElement;
+        root.style.setProperty('--accent',      p.accent);
+        root.style.setProperty('--accent-dark', p.dark);
+        root.style.setProperty('--accent-bg',   p.bg);
+        root.style.setProperty('--accent-bdr',  p.bdr);
+    }
+
+    function isRjTakers() {
+        return document.getElementById('color-selector').value.endsWith('_rj');
+    }
+
+    // ── Render de grupos ────────────────────────────────────────────────────
+    function renderGroups(data) {
         const container = document.getElementById('reports-container');
+        container.innerHTML = '';
+
+        if (isRjTakers()) {
+            container.appendChild(buildGroup('takers', 'TAKERS', data ? data.takers : []));
+            container.appendChild(buildGroup('rj',     'RJ',     data ? data.rj     : []));
+        } else {
+            container.appendChild(buildGroup('makers', 'MAKERS', data ? data.makers : []));
+        }
+    }
+
+    function buildGroup(groupId, label, blocks) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'section-group';
+        wrapper.dataset.group = groupId;
+
+        const header = document.createElement('div');
+        header.className = 'section-group-header';
+        header.textContent = `— ${label} —`;
+
+        const body = document.createElement('div');
+        body.className = 'section-group-body';
+        body.id = `group-body-${groupId}`;
+
+        wrapper.appendChild(header);
+        wrapper.appendChild(body);
+
+        // Siempre cargar nombres desde plantilla del código fuente
+        const colorVal  = document.getElementById('color-selector').value;
+        const colorMap  = { red: 'Roja', blue: 'Azul', green: 'Verde', orange: 'Naranja', yellow: 'Amarilla' };
+        const colorKey  = colorVal.split('_')[0];
+        const unidad    = colorMap[colorKey] || null;
+
+        const plantilla = groupId === 'rj' ? plantillaRJ : groupId === 'takers' ? plantillaTakers : plantillaMakers;
+        const nombres   = (unidad && plantilla[unidad]) ? plantilla[unidad] : [];
+
+        if (nombres.length > 0) {
+            nombres.forEach((nombre, i) => {
+                const savedText = (blocks && blocks[i]) ? blocks[i].text || '' : '';
+                addBlock(groupId, nombre, savedText, body);
+            });
+        } else {
+            addBlock(groupId, '', '', body);
+        }
+
+        return wrapper;
+    }
+
+    function addBlock(groupId, title = '', text = '', bodyEl = null) {
+        const body = bodyEl || document.getElementById(`group-body-${groupId}`);
+        if (!body) return;
+
         const div = document.createElement('div');
         div.className = 'report-block';
+        div.dataset.group = groupId;
         div.innerHTML = `
-            <button class="btn-remove" onclick="this.parentElement.remove(); processAll(); saveData();">✕</button>
-            <input type="text" class="leader-title" placeholder="LÍDER" value="${title}" oninput="saveData()">
-            <textarea placeholder="Pegue el reporte aquí..." oninput="processAll()"></textarea>
+            <input type="text" class="leader-title" placeholder="LÍDER" value="${title.replace(/"/g, '&quot;')}" oninput="saveData()">
+            <textarea placeholder="Pegue el reporte aquí..." oninput="onReportPasted(this)">${text}</textarea>
         `;
-        container.appendChild(div);
+        body.appendChild(div);
     }
 
+    // ── Utilidades de nombre ────────────────────────────────────────────────
+    function toTitleCase(str) {
+        return str.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+    }
+
+    function normalizeForCompare(str) {
+        return str.trim().toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    // Extrae el nombre del líder del reporte del App 1
+    // Formato: *LÍDER (SECCIÓN): NOMBRE*
+    function extractLeaderFromReport(text) {
+        const match = text.match(/L[IÍ]DER\s*\([^)]+\):\s*([^\n*]+)/i);
+        if (!match) return null;
+        return toTitleCase(match[1].trim());
+    }
+
+    // Extrae la SECCIÓN del reporte: *LÍDER (TAKERS): NOMBRE* → "TAKERS"
+    function extractSectionFromReport(text) {
+        const match = text.match(/L[IÍ]DER\s*\(([^)]+)\)/i);
+        if (!match) return null;
+        return match[1].trim().toUpperCase();
+    }
+
+    // Mapeo de groupId → secciones válidas que pertenecen a ese grupo
+    const GROUP_VALID_SECTIONS = {
+        rj:     ['RJ'],
+        takers: ['TAKERS'],
+        makers: ['MAKERS'],
+    };
+
+    // ── Lógica al pegar reporte ─────────────────────────────────────────────
+    function onReportPasted(textarea) {
+        setTimeout(() => {
+            const block      = textarea.closest('.report-block');
+            const titleInput = block.querySelector('.leader-title');
+            const groupId    = block.dataset.group;
+            const rawText    = textarea.value;
+
+            if (!rawText.trim()) { saveData(); return; }
+
+            // 1. Verificar cruce de sección
+            const reportSection = extractSectionFromReport(rawText);
+            if (reportSection) {
+                const validSections = GROUP_VALID_SECTIONS[groupId] || [];
+                if (!validSections.includes(reportSection)) {
+                    alert(`⚠️⚠️ Información mal ingresada a un Líder en la Sección (${reportSection}).⚠️⚠️\nEste bloque pertenece a ${groupId.toUpperCase()}.\nPor favor ingrese el reporte en la sección correcta.`);
+                    textarea.value = '';
+                    saveData();
+                    return;
+                }
+            }
+
+            // 1b. Verificar semana del reporte vs semana activa
+            const reportWeek = extractWeekFromReport(rawText);
+            const activeWeek = getActiveWeek();
+            if (reportWeek !== null && reportWeek !== activeWeek) {
+                const { label: activeLabel } = getWeekRange(activeWeek);
+                const { label: reportLabel } = getWeekRange(reportWeek);
+                alert(`⚠️ Semana incorrecta en el reporte.\n\nSemana activa: ${activeLabel}\nSemana del reporte: ${reportLabel}\n\nEl reporte fue descartado.`);
+                textarea.value = '';
+                saveData();
+                return;
+            }
+
+            // 2. Extraer nombre
+            const extractedName = extractLeaderFromReport(rawText);
+            if (!extractedName) { saveData(); return; }
+
+            const currentName = titleInput.value.trim();
+
+            if (!currentName) {
+                titleInput.value = extractedName;
+                titleInput.classList.remove('mismatch');
+            } else {
+                const normCurrent   = normalizeForCompare(currentName);
+                const normExtracted = normalizeForCompare(extractedName);
+
+                if (normCurrent !== normExtracted) {
+                    titleInput.classList.add('mismatch');
+                    alert(`⚠️ La información del reporte del LÍDER "${extractedName}" no pertenece a este Líder ("${currentName}"). El reporte fue descartado.`);
+                    textarea.value = '';
+                } else {
+                    titleInput.value = extractedName;
+                    titleInput.classList.remove('mismatch');
+                }
+            }
+
+            saveData();
+        }, 0);
+    }
+
+    // ── Modal Supervisor ────────────────────────────────────────────────────
+    let _pendingCopyFn = null;
+
+    function showSupervisorModal(callbackFn) {
+        _pendingCopyFn = callbackFn;
+        document.getElementById('modal-supervisor-input').value = '';
+        document.getElementById('modal-supervisor').classList.add('active');
+        setTimeout(() => document.getElementById('modal-supervisor-input').focus(), 100);
+    }
+
+    function confirmSupervisorModal() {
+        const val = document.getElementById('modal-supervisor-input').value.trim();
+        if (!val) {
+            document.getElementById('modal-supervisor-input').style.borderColor = '#e74c3c';
+            return;
+        }
+        const formatted = toTitleCase(val);
+        const mainLeaderInput = document.getElementById('main-leader');
+        mainLeaderInput.value = formatted;
+        validateSupervisor();
+        saveData();
+        document.getElementById('modal-supervisor').classList.remove('active');
+        if (_pendingCopyFn) { _pendingCopyFn(); _pendingCopyFn = null; }
+    }
+
+    // ── Cambio de unidad ────────────────────────────────────────────────────
+    function onUnitChange() {
+        saveData(); // guardar estado actual (grupos visibles) antes de cambiar
+        const savedData = JSON.parse(localStorage.getItem('consolidadorData_v2') || 'null');
+        renderGroups(savedData); // reconstruir DOM con datos completos desde storage
+        // NO llamar saveData() aquí — evita sobreescribir grupos no visibles
+    }
+
+    // ── Persistencia ────────────────────────────────────────────────────────
     function saveData() {
-        const titles = [];
-        document.querySelectorAll('.leader-title').forEach(input => {
-            titles.push(input.value);
+        // Partir de los datos ya guardados para no perder grupos no visibles
+        const existing = JSON.parse(localStorage.getItem('consolidadorData_v2') || '{}');
+        const data = {
+            rj:     existing.rj     || [],
+            takers: existing.takers || [],
+            makers: existing.makers || [],
+        };
+
+        // Solo sobreescribir los grupos que están actualmente en el DOM
+        // Los títulos (líderes) NO se guardan; siempre vienen del código fuente
+        ['rj', 'takers', 'makers'].forEach(gid => {
+            const body = document.getElementById(`group-body-${gid}`);
+            if (!body) return; // grupo no visible → conservar datos existentes
+            data[gid] = [];
+            body.querySelectorAll('.report-block').forEach(block => {
+                data[gid].push({
+                    text: block.querySelector('textarea')?.value || ''
+                });
+            });
         });
-        localStorage.setItem('reportBlocks', JSON.stringify(titles));
-        localStorage.setItem('mainLeader', document.getElementById('main-leader').value);
-        localStorage.setItem('unitName', document.getElementById('unit-name').value);
+
+        localStorage.setItem('consolidadorColor_v2',  document.getElementById('color-selector').value);
+        localStorage.setItem('consolidadorLeader_v2', document.getElementById('main-leader').value);
+        localStorage.setItem('consolidadorData_v2',   JSON.stringify(data));
     }
 
+    function loadData() {
+        const savedColor  = localStorage.getItem('consolidadorColor_v2');
+        const savedLeader = localStorage.getItem('consolidadorLeader_v2');
+        const savedData   = JSON.parse(localStorage.getItem('consolidadorData_v2') || 'null');
+
+        if (savedColor)  document.getElementById('color-selector').value = savedColor;
+        if (savedLeader) document.getElementById('main-leader').value = savedLeader;
+
+        validateSupervisor();
+        applyColor();
+        renderGroups(savedData);
+    }
+
+    // ── Validar supervisor ──────────────────────────────────────────────────
+    function validateSupervisor() {
+        const input = document.getElementById('main-leader');
+        if (input.value.trim()) {
+            input.classList.add('filled');
+        } else {
+            input.classList.remove('filled');
+        }
+    }
+
+    function supervisorOk(callbackFn) {
+        const val = document.getElementById('main-leader').value.trim();
+        if (!val) {
+            showSupervisorModal(callbackFn);
+            return false;
+        }
+        return true;
+    }
+
+    // ── Validar líderes con nombre pero sin reporte ─────────────────────────
+    function missingReportsOk() {
+        const missing = [];
+        ['rj', 'takers', 'makers'].forEach(gid => {
+            const body = document.getElementById(`group-body-${gid}`);
+            if (!body) return;
+            body.querySelectorAll('.report-block').forEach(block => {
+                const name = block.querySelector('.leader-title')?.value.trim();
+                const text = block.querySelector('textarea')?.value.trim();
+                if (name && !text) missing.push(name);
+            });
+        });
+
+        if (missing.length > 0) {
+            alert(`⚠️ Falta la información de los Líderes:\n${missing.map(n => `• ${n}`).join('\n')}`);
+            return false;
+        }
+        return true;
+    }
+
+    // ── Ordenar bloques alfabéticamente dentro de cada grupo ────────────────
+    function sortGroupAlpha(groupId) {
+        const body = document.getElementById(`group-body-${groupId}`);
+        if (!body) return;
+
+        const blocks = Array.from(body.querySelectorAll('.report-block'));
+        blocks.sort((a, b) => {
+            const nameA = (a.querySelector('.leader-title')?.value || '').trim().toUpperCase();
+            const nameB = (b.querySelector('.leader-title')?.value || '').trim().toUpperCase();
+            return nameA.localeCompare(nameB, 'es');
+        });
+
+        blocks.forEach(b => body.appendChild(b));
+    }
+
+    function sortAllGroups() {
+        ['rj', 'takers', 'makers'].forEach(sortGroupAlpha);
+        saveData();
+    }
+
+    // ── Extracción ──────────────────────────────────────────────────────────
     function extractMoney(text, label) {
-        const regex = new RegExp(label + ": ₡([\\d\\s.,]+)", "i");
+        const regex = new RegExp(label + ":\\s*₡([\\d\\s.,]+)", "i");
         const match = text.match(regex);
         if (match) {
-            let cleanNumber = match[1].replace(/\s/g, '').replace(/[.](?=\d{3})/g, '');
-            cleanNumber = cleanNumber.replace(',', '.');
-            return parseFloat(cleanNumber) || 0;
+            let clean = match[1].replace(/\s/g, '').replace(/[.](?=\d{3})/g, '').replace(',', '.');
+            return parseFloat(clean) || 0;
         }
         return 0;
     }
 
+    const ATT_SECTIONS = ['RJ', 'Takers', 'Makers'];
+
+    function extractAttendance(text) {
+        const result = {};
+        ATT_SECTIONS.forEach(sec => { result[sec] = { cel: 0, red: 0, new: 0 }; });
+        ATT_SECTIONS.forEach(sec => {
+            const celMatch = text.match(new RegExp(`Total\\s+${sec}\\s+C[eé]lula:\\s*(\\d+)`, 'i'));
+            const redMatch = text.match(new RegExp(`Total\\s+${sec}\\s+Red:\\s*(\\d+)`, 'i'));
+            const newMatch = text.match(new RegExp(`NUEVOS[^\\n]*${sec}[^\\n]*(\\d+)`, 'i'));
+            if (celMatch) result[sec].cel = parseInt(celMatch[1]);
+            if (redMatch) result[sec].red = parseInt(redMatch[1]);
+            if (newMatch) result[sec].new = parseInt(newMatch[1]);
+        });
+        return result;
+    }
+
+    function getAllBlocks() {
+        const blocks = [];
+        ['rj', 'takers', 'makers'].forEach(gid => {
+            const body = document.getElementById(`group-body-${gid}`);
+            if (!body) return;
+            body.querySelectorAll('.report-block').forEach(block => {
+                blocks.push({
+                    group: gid,
+                    title: block.querySelector('.leader-title')?.value || '',
+                    text:  block.querySelector('textarea')?.value || ''
+                });
+            });
+        });
+        return blocks;
+    }
+
     function processAll() {
-        let sSum = 0, eSum = 0, rjC = 0, rjR = 0, tkC = 0, tkR = 0, rjN = 0, tkN = 0;
-        
-        document.querySelectorAll('.report-block').forEach(block => {
-            const val = block.querySelector('textarea').value;
-            if(!val) return;
+        let sinpeTotal = 0, efectivoTotal = 0;
+        const attendance = {};
+        ATT_SECTIONS.forEach(s => { attendance[s] = { cel: 0, red: 0, new: 0 }; });
 
-            sSum += extractMoney(val, "Sinpe");
-            eSum += extractMoney(val, "Efectivo");
-
-            const getInt = (regex) => { 
-                const m = val.match(regex); 
-                return m ? parseInt(m[1]) : 0; 
-            };
-            
-            rjC += getInt(/Total RJ Célula:\s*(\d+)/i);
-            tkC += getInt(/Total Takers Célula:\s*(\d+)/i);
-            rjR += getInt(/Total RJ Red:\s*(\d+)/i);
-            tkR += getInt(/Total Takers Red:\s*(\d+)/i);
-
-            const rjMatch = val.match(/NUEVOS:.*?RJ:\s*(\d+)/i);
-            if (rjMatch) rjN += parseInt(rjMatch[1]);
-
-            const tkMatch = val.match(/NUEVOS:.*?Takers:\s*(\d+)/i);
-            if (tkMatch) tkN += parseInt(tkMatch[1]);
+        getAllBlocks().forEach(({ text }) => {
+            if (!text.trim()) return;
+            sinpeTotal    += extractMoney(text, 'Sinpe');
+            efectivoTotal += extractMoney(text, 'Efectivo');
+            const att = extractAttendance(text);
+            ATT_SECTIONS.forEach(s => {
+                attendance[s].cel += att[s].cel;
+                attendance[s].red += att[s].red;
+                attendance[s].new += att[s].new;
+            });
         });
 
-        document.getElementById('tot-sinpe').innerText = "₡" + sSum.toLocaleString('es-CR');
-        document.getElementById('tot-efectivo').innerText = "₡" + eSum.toLocaleString('es-CR');
-        document.getElementById('tot-rj-c').innerText = rjC;
-        document.getElementById('tot-rj-r').innerText = rjR;
-        document.getElementById('tot-tk-c').innerText = tkC;
-        document.getElementById('tot-tk-r').innerText = tkR;
-        document.getElementById('tot-rj-n').innerText = rjN;
-        
-        window.currentRJN = rjN; 
-        window.currentTKN = tkN;
-        window.currentS = sSum; 
-        window.currentE = eSum;
+        return { sinpeTotal, efectivoTotal, attendance };
     }
 
-    function copyToClipboard(text) {
-        const tempTextArea = document.createElement('textarea');
-        tempTextArea.value = text;
-        document.body.appendChild(tempTextArea);
-        tempTextArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempTextArea);
+    // ── Copiar Reporte Consolidado ──────────────────────────────────────────
+    function copyConsolidated() {
+        if (!supervisorOk(copyConsolidated)) return;
+        if (!missingReportsOk()) return;
+        sortAllGroups();
+
+        const { sinpeTotal, efectivoTotal, attendance } = processAll();
+        const colorOpt = document.getElementById('color-selector');
+        const unitName = colorOpt.options[colorOpt.selectedIndex].text;
+        const leader   = document.getElementById('main-leader').value || 'SUPERVISOR';
+
+        const activeWeek = getActiveWeek();
+        const { start, end } = getWeekRange(activeWeek);
+        const fmtDay = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
+        const weekHeader = `*Semana ${activeWeek}* (del ${fmtDay(start)} al ${fmtDay(end)} ${end.getFullYear()})`;
+
+        let report = `${weekHeader}\n`;
+        report    += `*${unitName.toUpperCase()}*\n`;
+        report    += `*SUPERVISOR:* ${leader.toUpperCase()}\n\n`;
+        report    += `==============================\n\n`;
+
+        const GROUP_LABELS = { rj: 'RJ', takers: 'TAKERS', makers: 'MAKERS' };
+        const activeGroups = isRjTakers() ? ['takers', 'rj'] : ['makers'];
+
+        activeGroups.forEach(gid => {
+            const body = document.getElementById(`group-body-${gid}`);
+            if (!body) return;
+            const blocksInGroup = Array.from(body.querySelectorAll('.report-block'));
+            const hasContent = blocksInGroup.some(b => b.querySelector('textarea')?.value.trim());
+            if (!hasContent) return;
+
+            report += `*══════ ${GROUP_LABELS[gid]} ══════*\n\n`;
+
+            blocksInGroup.forEach(block => {
+                const leaderTitle = block.querySelector('.leader-title').value || 'LÍDER';
+                const rawText     = block.querySelector('textarea').value.trim();
+                if (!rawText) return;
+
+                const lines = rawText.split('\n').filter(line => {
+                    const l = line.toUpperCase();
+                    return !l.includes('SEMANA') &&
+                           !l.includes('LÍDER') &&
+                           !l.includes('LIDER') &&
+                           !l.includes('--- OFRENDAS ---');
+                });
+
+                report += `🔥🚨🔥🚨🔥🚨🔥\n\n`;
+                report += `🔥 *LÍDER: ${leaderTitle.toUpperCase()}* 🔥\n\n`;
+                report += `--- OFRENDAS ---\n`;
+                report += lines.join('\n').trim() + '\n\n';
+            });
+        });
+
+        report += `==============================\n\n`;
+        report += `*📊 RESUMEN OFRENDAS ACUMULADO*\n`;
+        report += `Sinpes: ₡${sinpeTotal.toLocaleString('es-CR')}\n`;
+        report += `Efectivo: ₡${efectivoTotal.toLocaleString('es-CR')}\n`;
+        report += `*Total: ₡${(sinpeTotal + efectivoTotal).toLocaleString('es-CR')}*\n\n`;
+
+        report += `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n`;
+        ATT_SECTIONS.forEach(sec => {
+            const d = attendance[sec];
+            if (d.cel === 0 && d.red === 0 && d.new === 0) return;
+            report += `\n*-> ${sec}*\n`;
+            report += `${sec} Célula: ${d.cel}\n`;
+            report += `${sec} Red: ${d.red}\n`;
+            report += `Total ${sec}: ${d.cel + d.red}\n`;
+            if (d.new > 0) report += `Nuevos ${sec}: ${d.new}\n`;
+        });
+
+        copyToClipboard(report);
+        alert('¡Reporte consolidado copiado!');
     }
 
+    // ── Copiar Solo Ofrendas ────────────────────────────────────────────────
     function copyOnlyMoney() {
-        processAll(); // Asegurar datos frescos
-        const unitName = document.getElementById('unit-name').value || "UNIDAD";
-        let report = `${unitName.toUpperCase()}\n* REPORTE DE OFRENDAS *\n\n`;
-        
-        document.querySelectorAll('.report-block').forEach(block => {
-            const leader = block.querySelector('.leader-title').value || "LÍDER";
-            const val = block.querySelector('textarea').value;
-            
-            if(val.trim() !== "") {
-                const sinpe = extractMoney(val, "Sinpe");
-                const efectivo = extractMoney(val, "Efectivo");
-                const total = extractMoney(val, "Total");
+        if (!supervisorOk(copyOnlyMoney)) return;
+        if (!missingReportsOk()) return;
+        sortAllGroups();
 
-                report += `🔥 LÍDER: ${leader.toUpperCase()} 🔥\n`;
+        const { sinpeTotal, efectivoTotal } = processAll();
+        const colorOpt = document.getElementById('color-selector');
+        const unitName = colorOpt.options[colorOpt.selectedIndex].text;
+
+        const activeWeekM = getActiveWeek();
+        const { start: startM, end: endM } = getWeekRange(activeWeekM);
+        const fmtDayM = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
+        const weekHeaderM = `*Semana ${activeWeekM}* (del ${fmtDayM(startM)} al ${fmtDayM(endM)} ${endM.getFullYear()})`;
+
+        let report = `${weekHeaderM}\n${unitName.toUpperCase()}\n* REPORTE DE OFRENDAS *\n\n`;
+
+        const GROUP_LABELS = { rj: 'RJ', takers: 'TAKERS', makers: 'MAKERS' };
+        const activeGroups = isRjTakers() ? ['takers', 'rj'] : ['makers'];
+
+        activeGroups.forEach(gid => {
+            const body = document.getElementById(`group-body-${gid}`);
+            if (!body) return;
+            const blocksInGroup = Array.from(body.querySelectorAll('.report-block'));
+            const hasContent = blocksInGroup.some(b => b.querySelector('textarea')?.value.trim());
+            if (!hasContent) return;
+
+            report += `*══════ ${GROUP_LABELS[gid]} ══════*\n\n`;
+
+            blocksInGroup.forEach(block => {
+                const leaderName = block.querySelector('.leader-title').value || 'LÍDER';
+                const val        = block.querySelector('textarea').value;
+                if (!val.trim()) return;
+
+                const sinpe    = extractMoney(val, 'Sinpe');
+                const efectivo = extractMoney(val, 'Efectivo');
+                const total    = extractMoney(val, 'Total');
+
+                report += `🔥 LÍDER: ${leaderName.toUpperCase()} 🔥\n`;
                 report += `Sinpe: ₡${sinpe.toLocaleString('es-CR')}\n`;
                 report += `Efectivo: ₡${efectivo.toLocaleString('es-CR')}\n`;
                 report += `Total: ₡${total.toLocaleString('es-CR')}\n\n`;
-            }
+            });
         });
 
-        const finalTotal = (window.currentS + window.currentE).toLocaleString('es-CR');
         report += `==============================\n`;
         report += `*SUMATORIA FINAL*\n`;
-        report += `Total Sinpe: ₡${window.currentS.toLocaleString('es-CR')}\n`;
-        report += `Total Efectivo: ₡${window.currentE.toLocaleString('es-CR')}\n`;
-        report += `*GRAN TOTAL: ₡${finalTotal}*`;
+        report += `Total Sinpe: ₡${sinpeTotal.toLocaleString('es-CR')}\n`;
+        report += `Total Efectivo: ₡${efectivoTotal.toLocaleString('es-CR')}\n`;
+        report += `*GRAN TOTAL: ₡${(sinpeTotal + efectivoTotal).toLocaleString('es-CR')}*`;
 
         copyToClipboard(report);
-        alert("¡Reporte de Ofrendas copiado!");
+        alert('¡Reporte de Ofrendas copiado!');
     }
 
-    function copyConsolidated() {
-        const unitName = document.getElementById('unit-name').value || "UNIDAD";
-        const leader = document.getElementById('main-leader').value || "SUPERVISOR";
-        const blocks = document.querySelectorAll('.report-block');
-        
-        let fullReport = `*${unitName.toUpperCase()}*\n`;
-        fullReport += `*SUPERVISOR:* ${leader.toUpperCase()}\n\n`;
-        fullReport += `==============================\n\n`;
-
-        blocks.forEach((block) => {
-            const leaderTitle = block.querySelector('.leader-title').value || "LÍDER";
-            let rawText = block.querySelector('textarea').value.trim();
-            
-            if(rawText !== "") {
-                let lines = rawText.split('\n');
-                let cleanLines = lines.filter(line => {
-                    const l = line.toUpperCase();
-                    return !l.includes("SEMANA") && 
-                           !l.includes("LÍDER") && 
-                           !l.includes("LIDER") &&
-                           !l.includes("--- OFRENDAS ---") &&
-                           !l.includes(unitName.toUpperCase()); 
-                });
-                
-                let finalBlockText = cleanLines.join('\n').trim();
-
-                fullReport += `🔥🚨🔥🚨🔥🚨🔥\n\n`;
-                fullReport += `🔥 *LÍDER: ${leaderTitle.toUpperCase()}* 🔥\n\n`;
-                fullReport += `--- OFRENDAS ---\n`;
-                fullReport += `${finalBlockText}\n\n`;
-            }
-        });
-
-        const totalOff = (window.currentS + window.currentE).toLocaleString('es-CR');
-        fullReport += `==============================\n\n`;
-        fullReport += `*📊 RESUMEN OFRENDAS ACUMULADO*\n`;
-        fullReport += `Sinpes: ₡${window.currentS.toLocaleString('es-CR')}\n`;
-        fullReport += `Efectivo: ₡${window.currentE.toLocaleString('es-CR')}\n`;
-        fullReport += `*Total: ₡${totalOff}*\n\n`;
-
-        const rjC = parseInt(document.getElementById('tot-rj-c').innerText) || 0;
-        const rjR = parseInt(document.getElementById('tot-rj-r').innerText) || 0;
-        const tkC = parseInt(document.getElementById('tot-tk-c').innerText) || 0;
-        const tkR = parseInt(document.getElementById('tot-tk-r').innerText) || 0;
-
-        fullReport += `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n`;
-        fullReport += `*-> Célula*\n`;
-        fullReport += `RJ Célula: ${rjC}\n`;
-        fullReport += `Takers Célula: ${tkC}\n`;
-        fullReport += `Total Célula: ${rjC + tkC}\n\n`;
-        fullReport += `*-> Red*\n`;
-        fullReport += `RJ Red: ${rjR}\n`;
-        fullReport += `Takers Red: ${tkR}\n`;
-        fullReport += `Total Red: ${rjR + tkR}\n\n`;
-        fullReport += `*-> Nuevos*\n`;
-        fullReport += `RJ Nuevos: ${window.currentRJN || 0}\n`;
-        fullReport += `Takers Nuevos: ${window.currentTKN || 0}\n`;
-        fullReport += `Total Nuevos: ${(window.currentRJN || 0) + (window.currentTKN || 0)}\n`;
-
-        copyToClipboard(fullReport);
-        alert("¡Reporte consolidado completo copiado!");
+    // ── Limpiar textareas ───────────────────────────────────────────────────
+    function clearTextareas() {
+        if (!confirm('¿Limpiar los reportes pegados? Los nombres de líderes se conservan.')) return;
+        document.querySelectorAll('.report-block textarea').forEach(t => t.value = '');
+        saveData();
+        alert('Listo: reportes limpiados.');
     }
+
+    function copyToClipboard(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+
+    // ── Init ────────────────────────────────────────────────────────────────
+    window.onload = () => { initWeekBar(); loadData(); };
 </script>
-
 </body>
 </html>
