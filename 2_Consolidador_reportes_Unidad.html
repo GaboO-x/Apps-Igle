@@ -611,14 +611,16 @@
 
     function extractAttendance(text) {
         const result = {};
-        ATT_SECTIONS.forEach(sec => { result[sec] = { cel: 0, red: 0, new: 0 }; });
+        ATT_SECTIONS.forEach(sec => { result[sec] = { cel: 0, red: 0, culto: 0, new: 0 }; });
         ATT_SECTIONS.forEach(sec => {
-            const celMatch = text.match(new RegExp(`Total\\s+${sec}\\s+C[eé]lula:\\s*(\\d+)`, 'i'));
-            const redMatch = text.match(new RegExp(`Total\\s+${sec}\\s+Red:\\s*(\\d+)`, 'i'));
-            const newMatch = text.match(new RegExp(`NUEVOS[^\\n]*${sec}[^\\n]*(\\d+)`, 'i'));
-            if (celMatch) result[sec].cel = parseInt(celMatch[1]);
-            if (redMatch) result[sec].red = parseInt(redMatch[1]);
-            if (newMatch) result[sec].new = parseInt(newMatch[1]);
+            const celMatch  = text.match(new RegExp(`Total\\s+${sec}\\s+C[eé]lula:\\s*(\\d+)`, 'i'));
+            const redMatch  = text.match(new RegExp(`Total\\s+${sec}\\s+Red:\\s*(\\d+)`, 'i'));
+            const cultoMatch = text.match(new RegExp(`Total\\s+${sec}\\s+Culto:\\s*(\\d+)`, 'i'));
+            const newMatch  = text.match(new RegExp(`NUEVOS[^\\n]*${sec}[^\\n]*(\\d+)`, 'i'));
+            if (celMatch)   result[sec].cel   = parseInt(celMatch[1]);
+            if (redMatch)   result[sec].red   = parseInt(redMatch[1]);
+            if (cultoMatch) result[sec].culto = parseInt(cultoMatch[1]);
+            if (newMatch)   result[sec].new   = parseInt(newMatch[1]);
         });
         return result;
     }
@@ -642,7 +644,7 @@
     function processAll() {
         let sinpeTotal = 0, efectivoTotal = 0;
         const attendance = {};
-        ATT_SECTIONS.forEach(s => { attendance[s] = { cel: 0, red: 0, new: 0 }; });
+        ATT_SECTIONS.forEach(s => { attendance[s] = { cel: 0, red: 0, culto: 0, new: 0 }; });
 
         getAllBlocks().forEach(({ text }) => {
             if (!text.trim()) return;
@@ -650,9 +652,10 @@
             efectivoTotal += extractMoney(text, 'Efectivo');
             const att = extractAttendance(text);
             ATT_SECTIONS.forEach(s => {
-                attendance[s].cel += att[s].cel;
-                attendance[s].red += att[s].red;
-                attendance[s].new += att[s].new;
+                attendance[s].cel   += att[s].cel;
+                attendance[s].red   += att[s].red;
+                attendance[s].culto += att[s].culto;
+                attendance[s].new   += att[s].new;
             });
         });
 
@@ -729,28 +732,18 @@
 
 const activeSections = ATT_SECTIONS.filter(sec => {
     const d = attendance[sec];
-    return d.cel > 0 || d.red > 0 || d.new > 0;
+    return d.cel > 0 || d.red > 0 || d.culto > 0 || d.new > 0;
 });
 
-const totalCel = activeSections.reduce((s, sec) => s + attendance[sec].cel, 0);
-const totalRed = activeSections.reduce((s, sec) => s + attendance[sec].red, 0);
-const totalNew = activeSections.reduce((s, sec) => s + attendance[sec].new, 0);
+const totalCel   = activeSections.reduce((s, sec) => s + attendance[sec].cel, 0);
+const totalRed   = activeSections.filter(s => s !== 'Makers').reduce((s, sec) => s + attendance[sec].red, 0);
+const totalCulto = activeSections.filter(s => s === 'Makers').reduce((s, sec) => s + attendance[sec].culto, 0);
+const totalNew   = activeSections.reduce((s, sec) => s + attendance[sec].new, 0);
 
-report += `\n*-> Célula*\n`;
-activeSections.forEach(sec => report += `${sec} Célula: ${attendance[sec].cel}\n`);
-report += `Total Célula: ${totalCel}\n`;
-
-report += `\n*-> Red*\n`;
-activeSections.forEach(sec => report += `${sec} Red: ${attendance[sec].red}\n`);
-report += `Total Red: ${totalRed}\n`;
-
-if (totalNew > 0) {
-    report += `\n*-> Nuevos*\n`;
-    activeSections.forEach(sec => {
-        if (attendance[sec].new > 0) report += `${sec} Nuevos: ${attendance[sec].new}\n`;
-    });
-    report += `Total Nuevos: ${totalNew}\n`;
-}
+report += `Total en Célula: ${totalCel}\n`;
+if (totalRed   > 0) report += `Total en Red: ${totalRed}\n`;
+if (totalCulto > 0) report += `Total en Culto: ${totalCulto}\n`;
+if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
 
         copyToClipboard(report);
         alert('¡Reporte consolidado copiado!');
