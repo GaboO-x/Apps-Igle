@@ -339,30 +339,58 @@ function extractEfectivoFromBlock(text) {
     return extractDirectValue(text, /Efectivo:\s*₡?([\d\s.,]+)/i);
 }
 
+function extractAttendanceSummaryValue(text, regex) {
+    const parts = text.split(/RESUMEN ASISTENCIA ACUMULADO/i);
+    if (parts.length >= 2) {
+        const summaryText = parts[1];
+        const match = summaryText.match(regex);
+        return match ? (parseInt(match[1]) || 0) : 0;
+    }
+    const match = text.match(regex);
+    return match ? (parseInt(match[1]) || 0) : 0;
+}
+// ── TK/RJ extractors ─────────────────────────────────────────────────────
 function extractRJCelula(text) {
-    const m = text.match(/RJ C[eé]lula:\s*(\d+)/i);
-    return m ? parseInt(m[1]) : 0;
+    return extractAttendanceSummaryValue(text, /RJ C[eé]lula:\s*(\d+)/i);
 }
 function extractTakersCelula(text) {
-    const m = text.match(/Takers C[eé]lula:\s*(\d+)/i) || text.match(/MAKERS C[eé]lula:\s*(\d+)/i);
-    return m ? parseInt(m[1]) : 0;
+    const m1 = extractAttendanceSummaryValue(text, /Takers C[eé]lula:\s*(\d+)/i);
+    if (m1) return m1;
+    return extractAttendanceSummaryValue(text, /Total C[eé]lula:\s*(\d+)/i);
 }
 function extractRJRed(text) {
-    const m = text.match(/RJ Red:\s*(\d+)/i);
-    return m ? parseInt(m[1]) : 0;
+    return extractAttendanceSummaryValue(text, /RJ Red:\s*(\d+)/i);
 }
 function extractTakersRed(text) {
-    const m = text.match(/Takers Red:\s*(\d+)/i) || text.match(/MAKERS Red:\s*(\d+)/i);
-    return m ? parseInt(m[1]) : 0;
+    const m1 = extractAttendanceSummaryValue(text, /Takers Red:\s*(\d+)/i);
+    if (m1) return m1;
+    return extractAttendanceSummaryValue(text, /Total Red:\s*(\d+)/i);
 }
 function extractRJNuevos(text) {
-    const m = text.match(/Nuevos RJ:\s*(\d+)/i) || text.match(/NUEVOS.*?RJ:\s*(\d+)/i);
-    return m ? parseInt(m[1]) : 0;
+    const m1 = extractAttendanceSummaryValue(text, /RJ Nuevos:\s*(\d+)/i);
+    if (m1) return m1;
+    return extractAttendanceSummaryValue(text, /Nuevos RJ:\s*(\d+)/i);
 }
 function extractTakersNuevos(text) {
-    const m = text.match(/Nuevos Takers:\s*(\d+)/i) || text.match(/NUEVOS.*?Takers:\s*(\d+)/i)
-        || text.match(/Nuevos MAKERS:\s*(\d+)/i) || text.match(/NUEVOS.*?MAKERS:\s*(\d+)/i);
-    return m ? parseInt(m[1]) : 0;
+    const m1 = extractAttendanceSummaryValue(text, /Takers Nuevos:\s*(\d+)/i);
+    if (m1) return m1;
+    const m2 = extractAttendanceSummaryValue(text, /Nuevos Takers:\s*(\d+)/i);
+    if (m2) return m2;
+    return extractAttendanceSummaryValue(text, /Total Nuevos:\s*(\d+)/i);
+}
+// ── MAKERS extractors ─────────────────────────────────────────────────────
+function extractMakersCelula(text) {
+    const m1 = extractAttendanceSummaryValue(text, /Total en C[eé]lula:\s*(\d+)/i);
+    if (m1) return m1;
+    return extractAttendanceSummaryValue(text, /Makers C[eé]lula:\s*(\d+)/i);
+}
+function extractMakersCulto(text) {
+    const m1 = extractAttendanceSummaryValue(text, /Total en Culto:\s*(\d+)/i);
+    if (m1) return m1;
+    return extractAttendanceSummaryValue(text, /Makers Culto:\s*(\d+)/i);
+}
+function extractMakersNuevos(text) {
+    return extractAttendanceSummaryValue(text, /Total Nuevos:\s*(\d+)/i);
 }
 
 // Extrae semana del texto: "Semana 26 (del 21 de junio al 27 de junio 2026)"
@@ -412,7 +440,11 @@ function extractLeadersFromBlock(text) {
 
 function calculateAll() {
     const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde'];
-    let grandTotals = { s: 0, e: 0, rjC: 0, tkC: 0, rjR: 0, tkR: 0, rjN: 0, tkN: 0 };
+    let grandTotals = {
+        tkS: 0, tkE: 0, mkS: 0, mkE: 0,
+        tkCelula: 0, tkRed: 0, tkNuevos: 0,
+        mkCelula: 0, mkCulto: 0, mkNuevos: 0
+    };
     let fullDetailBody = "";
     let unitsActive = 0;
 
@@ -422,81 +454,86 @@ function calculateAll() {
         const tkVal = document.getElementById(`txt-${tkUnit.id}`).value;
         const mkVal = document.getElementById(`txt-${mkUnit.id}`).value;
 
-        if ((!tkVal || !tkVal.trim()) && (!mkVal || !mkVal.trim())) return;
+        const hasTK = tkVal && tkVal.trim();
+        const hasMK = mkVal && mkVal.trim() && makersGlobalEnabled;
+
+        if (!hasTK && !hasMK) return;
         unitsActive++;
 
-        const colorLabel = color.toUpperCase();
+        const colorLabel = color.charAt(0).toUpperCase() + color.slice(1);
 
-        let s = 0, e = 0, rjC = 0, tkC = 0, rjR = 0, tkR = 0, rjN = 0, tkN = 0;
+        // ── TK/RJ block ───────────────────────────────────────────────
+        if (hasTK) {
+            const tkS = extractSinpeFromBlock(tkVal);
+            const tkE = extractEfectivoFromBlock(tkVal);
+            const tkCelula = extractRJCelula(tkVal) + extractTakersCelula(tkVal);
+            const tkRed = extractRJRed(tkVal) + extractTakersRed(tkVal);
+            const tkNuevos = extractRJNuevos(tkVal) + extractTakersNuevos(tkVal);
 
-        if (tkVal && tkVal.trim()) {
-            s += extractSinpeFromBlock(tkVal);
-            e += extractEfectivoFromBlock(tkVal);
-            rjC += extractRJCelula(tkVal);
-            tkC += extractTakersCelula(tkVal);
-            rjR += extractRJRed(tkVal);
-            tkR += extractTakersRed(tkVal);
-            rjN += extractRJNuevos(tkVal);
-            tkN += extractTakersNuevos(tkVal);
+            grandTotals.tkS += tkS;
+            grandTotals.tkE += tkE;
+            grandTotals.tkCelula += tkCelula;
+            grandTotals.tkRed += tkRed;
+            grandTotals.tkNuevos += tkNuevos;
+
+            fullDetailBody +=
+                `*❣️UNIDAD ${colorLabel.toUpperCase()} — TAKERS/RJ❣️*\n` +
+                `*---📊 RESUMEN OFRENDAS ACUMULADO---*\n` +
+                `Sinpes: ₡${tkS.toLocaleString('es-CR')}\n` +
+                `Efectivo: ₡${tkE.toLocaleString('es-CR')}\n` +
+                `Total: ₡${(tkS + tkE).toLocaleString('es-CR')}\n\n` +
+                `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n` +
+                `Total Célula: ${tkCelula}\n` +
+                `Total Red: ${tkRed}\n` +
+                `Total Nuevos: ${tkNuevos}\n\n`;
         }
-        if (mkVal && mkVal.trim() && makersGlobalEnabled) {
-            s += extractSinpeFromBlock(mkVal);
-            e += extractEfectivoFromBlock(mkVal);
-            rjC += extractRJCelula(mkVal);
-            tkC += extractTakersCelula(mkVal);
-            rjR += extractRJRed(mkVal);
-            tkR += extractTakersRed(mkVal);
-            rjN += extractRJNuevos(mkVal);
-            tkN += extractTakersNuevos(mkVal);
+
+        // ── MAKERS block ──────────────────────────────────────────────
+        if (hasMK) {
+            const mkS = extractSinpeFromBlock(mkVal);
+            const mkE = extractEfectivoFromBlock(mkVal);
+            const mkCelula = extractMakersCelula(mkVal);
+            const mkCulto = extractMakersCulto(mkVal);
+            const mkNuevos = extractMakersNuevos(mkVal);
+
+            grandTotals.mkS += mkS;
+            grandTotals.mkE += mkE;
+            grandTotals.mkCelula += mkCelula;
+            grandTotals.mkCulto += mkCulto;
+            grandTotals.mkNuevos += mkNuevos;
+
+            fullDetailBody +=
+                `*❣️UNIDAD ${colorLabel.toUpperCase()} — MAKERS❣️*\n` +
+                `*---📊 RESUMEN OFRENDAS ACUMULADO---*\n` +
+                `Sinpes: ₡${mkS.toLocaleString('es-CR')}\n` +
+                `Efectivo: ₡${mkE.toLocaleString('es-CR')}\n` +
+                `Total: ₡${(mkS + mkE).toLocaleString('es-CR')}\n\n` +
+                `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n` +
+                `Total Célula: ${mkCelula}\n` +
+                `Total Culto: ${mkCulto}\n` +
+                `Total Nuevos: ${mkNuevos}\n\n`;
         }
 
-        grandTotals.s += s; grandTotals.e += e;
-        grandTotals.rjC += rjC; grandTotals.tkC += tkC;
-        grandTotals.rjR += rjR; grandTotals.tkR += tkR;
-        grandTotals.rjN += rjN; grandTotals.tkN += tkN;
-
-        fullDetailBody +=
-            `*❣️UNIDAD ${colorLabel}❣️*\n` +
-            `📊 RESUMEN OFRENDAS ACUMULADO\n` +
-            `Sinpes: ₡${s.toLocaleString('es-CR')}\n` +
-            `Efectivo: ₡${e.toLocaleString('es-CR')}\n` +
-            `Total: ₡${(s + e).toLocaleString('es-CR')}\n\n` +
-            `---👥 RESUMEN ASISTENCIA ACUMULADO---\n` +
-            `-> Célula\n` +
-            `RJ Célula: ${rjC}\n` +
-            `Takers Célula: ${tkC}\n` +
-            `Total Célula: ${rjC + tkC}\n\n` +
-            `-> Red\n` +
-            `RJ Red: ${rjR}\n` +
-            `Takers Red: ${tkR}\n` +
-            `Total Red: ${rjR + tkR}\n\n` +
-            `-> Nuevos\n` +
-            `RJ Nuevos: ${rjN}\n` +
-            `Takers Nuevos: ${tkN}\n` +
-            `Total Nuevos: ${rjN + tkN}\n` +
-            `==============================\n\n`;
+        fullDetailBody += `==============================\n\n`;
     });
 
     if (unitsActive > 0) {
+        const totalS = grandTotals.tkS + grandTotals.mkS;
+        const totalE = grandTotals.tkE + grandTotals.mkE;
+        const totalCelula = grandTotals.tkCelula + grandTotals.mkCelula;
+        const totalRedCulto = grandTotals.tkRed + grandTotals.mkCulto;
+
         const finalSumatory =
-            `*🚀 SUMATORIA GENERAL DE RED*\n\n` +
+            `*🚀 SUMATORIA GENERAL DE ASISTENCIA MANA*\n\n` +
             `💰 *OFRENDAS TOTALES*\n` +
-            `Sinpes: ₡${grandTotals.s.toLocaleString('es-CR')}\n` +
-            `Efectivo: ₡${grandTotals.e.toLocaleString('es-CR')}\n` +
-            `Total: ₡${(grandTotals.s + grandTotals.e).toLocaleString('es-CR')}\n\n` +
+            `Sinpes: ₡${totalS.toLocaleString('es-CR')}\n` +
+            `Efectivo: ₡${totalE.toLocaleString('es-CR')}\n` +
+            `Total: ₡${(totalS + totalE).toLocaleString('es-CR')}\n\n` +
             `👥 *ASISTENCIA TOTAL*\n` +
-            `-> Célula\n` +
-            `RJ Célula: ${grandTotals.rjC}\n` +
-            `Takers Célula: ${grandTotals.tkC}\n` +
-            `Total Célula: ${grandTotals.rjC + grandTotals.tkC}\n\n` +
-            `-> Red\n` +
-            `RJ Red: ${grandTotals.rjR}\n` +
-            `Takers Red: ${grandTotals.tkR}\n` +
-            `Total Red: ${grandTotals.rjR + grandTotals.tkR}\n\n` +
-            `-> Nuevos\n` +
-            `RJ Nuevos: ${grandTotals.rjN}\n` +
-            `Takers Nuevos: ${grandTotals.tkN}\n` +
-            `Total Nuevos: ${grandTotals.rjN + grandTotals.tkN}`;
+            `Total Célula: ${totalCelula}\n` +
+            `Total Jovenes a Red: ${grandTotals.tkRed}\n` +
+            `Total Makers a Culto: ${grandTotals.mkCulto}\n` +
+            `Total Red + Culto: ${totalRedCulto}`;
 
         window.finalReportStr = fullDetailBody + finalSumatory;
         document.getElementById('status-msg').innerText = "✅ Reporte actualizado y listo";
