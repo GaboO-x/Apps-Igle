@@ -70,9 +70,9 @@
         }
 
         .leader-title {
-            width: 100%; margin-bottom: 10px; border: none;
+            width: 100%; margin-bottom: 10px;
             border-bottom: 1px solid #ccc; font-weight: bold; color: var(--accent);
-            outline: none; padding: 5px 0; font-size: 0.9em; text-transform: uppercase;
+            padding: 5px 0; font-size: 0.9em; text-transform: uppercase;
         }
 
         .report-block textarea {
@@ -262,15 +262,15 @@
         Roja:     ['Anyel', 'Joel', 'Josue R', 'Waldin'],
         Azul:     ['Alex y Yuli', 'Sharon y Abraham'],
         Verde:    ['Will y Dani', 'Greivin'],
-        Naranja:  ['Andres Matus', 'Carolina', 'Josué S', 'Stephen y Valery'],
-        Amarilla: ['Pablo A', 'Sheily', 'Yehilin'],
+        Naranja:  ['Andres Matus', 'Josué S', 'Stephen y Valery'],
+        Amarilla: ['Pablo A', 'Yehilin'],
     };
 
     const plantillaTakers = {
         Roja:     ['EQUIPO Gabriel, Raquel', 'Cynthia', 'Jean', 'Tony R'],
         Azul:     ['EQUIPO Alonso, Amanda', 'Evelyn', 'Jorge, Melany', 'Tony G', 'Valery B'],
         Verde:    ['EQUIPO Byron, Ariel', 'Gaudy', 'Iveth', 'Jose, Eva', 'Maiky y Giovanna', 'Sarai Armas'],
-        Naranja:  ['EQUIPO Angie, Bayron', 'Brayan y Kelly', 'Dago y Maira', 'Jonathan y Priscilla', 'Kenneth'],
+        Naranja:  ['EQUIPO Angie, Bayron', 'Brayan y Kelly', 'Dago y Maira', 'Jonathan y Priscilla', 'Keneth'],
         Amarilla: ['EQUIPO Aaron, Heyling', 'Abigail', 'Hazel', 'Laura'],
     };
 
@@ -368,7 +368,7 @@
         div.className = 'report-block';
         div.dataset.group = groupId;
         div.innerHTML = `
-            <input type="text" class="leader-title" placeholder="LÍDER" value="${title.replace(/"/g, '&quot;')}" oninput="saveData()">
+            <div class="leader-title">${title || 'LÍDER'}</div>
             <textarea placeholder="Pegue el reporte aquí..." oninput="onReportPasted(this)">${text}</textarea>
         `;
         body.appendChild(div);
@@ -444,12 +444,9 @@
             const extractedName = extractLeaderFromReport(rawText);
             if (!extractedName) { saveData(); return; }
 
-            const currentName = titleInput.value.trim();
+            const currentName = titleInput.textContent.trim();
 
-            if (!currentName) {
-                titleInput.value = extractedName;
-                titleInput.classList.remove('mismatch');
-            } else {
+            if (currentName) {
                 const normCurrent   = normalizeForCompare(currentName);
                 const normExtracted = normalizeForCompare(extractedName);
 
@@ -458,7 +455,6 @@
                     alert(`⚠️ La información del reporte del LÍDER "${extractedName}" no pertenece a este Líder ("${currentName}"). El reporte fue descartado.`);
                     textarea.value = '';
                 } else {
-                    titleInput.value = extractedName;
                     titleInput.classList.remove('mismatch');
                 }
             }
@@ -567,7 +563,7 @@
             const body = document.getElementById(`group-body-${gid}`);
             if (!body) return;
             body.querySelectorAll('.report-block').forEach(block => {
-                const name = block.querySelector('.leader-title')?.value.trim();
+                const name = block.querySelector('.leader-title')?.textContent.trim();
                 const text = block.querySelector('textarea')?.value.trim();
                 if (name && !text) missing.push(name);
             });
@@ -587,8 +583,8 @@
 
         const blocks = Array.from(body.querySelectorAll('.report-block'));
         blocks.sort((a, b) => {
-            const nameA = (a.querySelector('.leader-title')?.value || '').trim().toUpperCase();
-            const nameB = (b.querySelector('.leader-title')?.value || '').trim().toUpperCase();
+            const nameA = (a.querySelector('.leader-title')?.textContent || '').trim().toUpperCase();
+            const nameB = (b.querySelector('.leader-title')?.textContent || '').trim().toUpperCase();
             return nameA.localeCompare(nameB, 'es');
         });
 
@@ -635,7 +631,7 @@
             body.querySelectorAll('.report-block').forEach(block => {
                 blocks.push({
                     group: gid,
-                    title: block.querySelector('.leader-title')?.value || '',
+                    title: block.querySelector('.leader-title')?.textContent || '',
                     text:  block.querySelector('textarea')?.value || ''
                 });
             });
@@ -667,7 +663,6 @@
     function copyConsolidated() {
         if (!supervisorOk(copyConsolidated)) return;
         if (!missingReportsOk()) return;
-        sortAllGroups();
 
         const { sinpeTotal, efectivoTotal, attendance } = processAll();
         const colorOpt = document.getElementById('color-selector');
@@ -697,22 +692,30 @@
             report += `*══════ ${GROUP_LABELS[gid]} ══════*\n\n`;
 
             blocksInGroup.forEach(block => {
-                const leaderTitle = block.querySelector('.leader-title').value || 'LÍDER';
+                const leaderTitle = block.querySelector('.leader-title').textContent || 'LÍDER';
                 const rawText     = block.querySelector('textarea').value.trim();
                 if (!rawText) return;
 
-                const lines = rawText.split('\n').filter(line => {
+                const MONEY_KEYS = ['SINPE:', 'EFECTIVO:', 'TOTAL:'];
+                const isMoneyLine = l => {
+                    const stripped = l.toUpperCase().replace(/\*/g, '').trimStart();
+                    return MONEY_KEYS.some(k => stripped.startsWith(k));
+                };
+                const allLines = rawText.split('\n').filter(line => {
                     const l = line.toUpperCase();
                     return !l.includes('SEMANA') &&
                            !l.includes('LÍDER') &&
                            !l.includes('LIDER') &&
                            !l.includes('--- OFRENDAS ---');
                 });
+                const moneyLines = allLines.filter(l => isMoneyLine(l));
+                const attendanceLines = allLines.filter(l => !isMoneyLine(l));
 
                 report += `🔥🚨🔥🚨🔥🚨🔥\n\n`;
                 report += `🔥 *LÍDER: ${leaderTitle.toUpperCase()}* 🔥\n\n`;
-                report += `--- OFRENDAS ---\n`;
-                report += lines.join('\n').trim() + '\n\n';
+                if (attendanceLines.length) report += attendanceLines.join('\n').trim() + '\n';
+                report += `\n--- OFRENDAS ---\n`;
+                report += moneyLines.join('\n').trim() + '\n\n';
             });
         });
 
@@ -723,15 +726,31 @@
         report += `*Total: ₡${(sinpeTotal + efectivoTotal).toLocaleString('es-CR')}*\n\n`;
 
         report += `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n`;
-        ATT_SECTIONS.forEach(sec => {
-            const d = attendance[sec];
-            if (d.cel === 0 && d.red === 0 && d.new === 0) return;
-            report += `\n*-> ${sec}*\n`;
-            report += `${sec} Célula: ${d.cel}\n`;
-            report += `${sec} Red: ${d.red}\n`;
-            report += `Total ${sec}: ${d.cel + d.red}\n`;
-            if (d.new > 0) report += `Nuevos ${sec}: ${d.new}\n`;
-        });
+
+const activeSections = ATT_SECTIONS.filter(sec => {
+    const d = attendance[sec];
+    return d.cel > 0 || d.red > 0 || d.new > 0;
+});
+
+const totalCel = activeSections.reduce((s, sec) => s + attendance[sec].cel, 0);
+const totalRed = activeSections.reduce((s, sec) => s + attendance[sec].red, 0);
+const totalNew = activeSections.reduce((s, sec) => s + attendance[sec].new, 0);
+
+report += `\n*-> Célula*\n`;
+activeSections.forEach(sec => report += `${sec} Célula: ${attendance[sec].cel}\n`);
+report += `Total Célula: ${totalCel}\n`;
+
+report += `\n*-> Red*\n`;
+activeSections.forEach(sec => report += `${sec} Red: ${attendance[sec].red}\n`);
+report += `Total Red: ${totalRed}\n`;
+
+if (totalNew > 0) {
+    report += `\n*-> Nuevos*\n`;
+    activeSections.forEach(sec => {
+        if (attendance[sec].new > 0) report += `${sec} Nuevos: ${attendance[sec].new}\n`;
+    });
+    report += `Total Nuevos: ${totalNew}\n`;
+}
 
         copyToClipboard(report);
         alert('¡Reporte consolidado copiado!');
@@ -741,7 +760,6 @@
     function copyOnlyMoney() {
         if (!supervisorOk(copyOnlyMoney)) return;
         if (!missingReportsOk()) return;
-        sortAllGroups();
 
         const { sinpeTotal, efectivoTotal } = processAll();
         const colorOpt = document.getElementById('color-selector');
@@ -767,7 +785,7 @@
             report += `*══════ ${GROUP_LABELS[gid]} ══════*\n\n`;
 
             blocksInGroup.forEach(block => {
-                const leaderName = block.querySelector('.leader-title').value || 'LÍDER';
+                const leaderName = block.querySelector('.leader-title').textContent || 'LÍDER';
                 const val        = block.querySelector('textarea').value;
                 if (!val.trim()) return;
 
