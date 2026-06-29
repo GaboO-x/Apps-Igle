@@ -461,6 +461,7 @@ function calculateAll() {
         unitsActive++;
 
         const colorLabel = color.charAt(0).toUpperCase() + color.slice(1);
+        const colorCircle = { roja: '🔴', azul: '🔵', amarilla: '🟡', naranja: '🟠', verde: '🟢' }[color] || '⚪';
 
         // ── TK/RJ block ───────────────────────────────────────────────
         if (hasTK) {
@@ -477,7 +478,7 @@ function calculateAll() {
             grandTotals.tkNuevos += tkNuevos;
 
             fullDetailBody +=
-                `*❣️UNIDAD ${colorLabel.toUpperCase()} — TAKERS/RJ❣️*\n` +
+                `*${colorCircle}UNIDAD ${colorLabel.toUpperCase()} — TAKERS/RJ${colorCircle}*\n` +
                 `*---📊 RESUMEN OFRENDAS ACUMULADO---*\n` +
                 `Sinpes: ₡${tkS.toLocaleString('es-CR')}\n` +
                 `Efectivo: ₡${tkE.toLocaleString('es-CR')}\n` +
@@ -503,7 +504,7 @@ function calculateAll() {
             grandTotals.mkNuevos += mkNuevos;
 
             fullDetailBody +=
-                `*❣️UNIDAD ${colorLabel.toUpperCase()} — MAKERS❣️*\n` +
+                `*${colorCircle}UNIDAD ${colorLabel.toUpperCase()} — MAKERS${colorCircle}*\n` +
                 `*---📊 RESUMEN OFRENDAS ACUMULADO---*\n` +
                 `Sinpes: ₡${mkS.toLocaleString('es-CR')}\n` +
                 `Efectivo: ₡${mkE.toLocaleString('es-CR')}\n` +
