@@ -158,6 +158,7 @@
 
     <div class="config-section">
         <select id="color-selector" class="color-select-styled" onchange="applyColor(); onUnitChange();">
+            <option value="purple_equipos">🟣 Equipos</option>
             <option value="red_rj">🔴 Unidad Roja RJ/TAKERS</option>
             <option value="red_makers">🔴 Unidad Roja MAKERS</option>
             <option value="blue_rj">🔵 Unidad Azul RJ/TAKERS</option>
@@ -195,7 +196,7 @@
 <script>
     // ── Sistema de Semanas ──────────────────────────────────────────────────
     // Semana 1: 28 dic 2025 → 3 ene 2026
-    const WEEK1_START = new Date(2025, 11, 28); // meses en JS: 0=enero, 11=diciembre
+    const WEEK1_START = new Date(2025, 11, 29); // lunes 29 dic 2025 — semana inicia el lunes
 
     const MONTH_NAMES_ES = ['enero','febrero','marzo','abril','mayo','junio',
                             'julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -282,6 +283,10 @@
         Amarilla: ['Pr Carlos', 'Alex V', 'Dany y Sandra', 'Guillermo y Antonieta', 'Joyce'],
     };
 
+    const plantillaEquipos = {
+        Purple: ['Pra Rita Takers','Pra Rita Makers'],   // Agregar nombres de líderes aquí según sea necesario
+    };
+
     // ── Paletas ─────────────────────────────────────────────────────────────
     const COLOR_PALETTES = {
         red_rj:        { accent: '#dc3545', dark: '#b02a37', bg: '#fff5f5', bdr: '#feb2b2' },
@@ -294,6 +299,7 @@
         orange_makers: { accent: '#dd6b20', dark: '#c05621', bg: '#fff8f0', bdr: '#fbd38d' },
         green_rj:      { accent: '#276749', dark: '#1c4532', bg: '#f0fff4', bdr: '#9ae6b4' },
         green_makers:  { accent: '#276749', dark: '#1c4532', bg: '#f0fff4', bdr: '#9ae6b4' },
+        purple_equipos: { accent: '#6b21a8', dark: '#4c1d7a', bg: '#faf5ff', bdr: '#d8b4fe' },
     };
 
     function applyColor() {
@@ -310,12 +316,18 @@
         return document.getElementById('color-selector').value.endsWith('_rj');
     }
 
+    function isEquipos() {
+        return document.getElementById('color-selector').value === 'purple_equipos';
+    }
+
     // ── Render de grupos ────────────────────────────────────────────────────
     function renderGroups(data) {
         const container = document.getElementById('reports-container');
         container.innerHTML = '';
 
-        if (isRjTakers()) {
+        if (isEquipos()) {
+            container.appendChild(buildGroup('equipos', 'EQUIPOS', data ? data.equipos : []));
+        } else if (isRjTakers()) {
             container.appendChild(buildGroup('takers', 'TAKERS', data ? data.takers : []));
             container.appendChild(buildGroup('rj',     'RJ',     data ? data.rj     : []));
         } else {
@@ -341,11 +353,11 @@
 
         // Siempre cargar nombres desde plantilla del código fuente
         const colorVal  = document.getElementById('color-selector').value;
-        const colorMap  = { red: 'Roja', blue: 'Azul', green: 'Verde', orange: 'Naranja', yellow: 'Amarilla' };
+        const colorMap  = { red: 'Roja', blue: 'Azul', green: 'Verde', orange: 'Naranja', yellow: 'Amarilla', purple: 'Purple' };
         const colorKey  = colorVal.split('_')[0];
         const unidad    = colorMap[colorKey] || null;
 
-        const plantilla = groupId === 'rj' ? plantillaRJ : groupId === 'takers' ? plantillaTakers : plantillaMakers;
+        const plantilla = groupId === 'rj' ? plantillaRJ : groupId === 'takers' ? plantillaTakers : groupId === 'equipos' ? plantillaEquipos : plantillaMakers;
         const nombres   = (unidad && plantilla[unidad]) ? plantilla[unidad] : [];
 
         if (nombres.length > 0) {
@@ -401,9 +413,10 @@
 
     // Mapeo de groupId → secciones válidas que pertenecen a ese grupo
     const GROUP_VALID_SECTIONS = {
-        rj:     ['RJ'],
-        takers: ['TAKERS'],
-        makers: ['MAKERS'],
+        rj:      ['RJ'],
+        takers:  ['TAKERS'],
+        makers:  ['MAKERS'],
+        equipos: ['EQUIPOS'],
     };
 
     // ── Lógica al pegar reporte ─────────────────────────────────────────────
@@ -501,14 +514,15 @@
         // Partir de los datos ya guardados para no perder grupos no visibles
         const existing = JSON.parse(localStorage.getItem('consolidadorData_v2') || '{}');
         const data = {
-            rj:     existing.rj     || [],
-            takers: existing.takers || [],
-            makers: existing.makers || [],
+            rj:      existing.rj      || [],
+            takers:  existing.takers  || [],
+            makers:  existing.makers  || [],
+            equipos: existing.equipos || [],
         };
 
         // Solo sobreescribir los grupos que están actualmente en el DOM
         // Los títulos (líderes) NO se guardan; siempre vienen del código fuente
-        ['rj', 'takers', 'makers'].forEach(gid => {
+        ['rj', 'takers', 'makers', 'equipos'].forEach(gid => {
             const body = document.getElementById(`group-body-${gid}`);
             if (!body) return; // grupo no visible → conservar datos existentes
             data[gid] = [];
@@ -559,7 +573,7 @@
     // ── Validar líderes con nombre pero sin reporte ─────────────────────────
     function missingReportsOk() {
         const missing = [];
-        ['rj', 'takers', 'makers'].forEach(gid => {
+        ['rj', 'takers', 'makers', 'equipos'].forEach(gid => {
             const body = document.getElementById(`group-body-${gid}`);
             if (!body) return;
             body.querySelectorAll('.report-block').forEach(block => {
@@ -592,7 +606,7 @@
     }
 
     function sortAllGroups() {
-        ['rj', 'takers', 'makers'].forEach(sortGroupAlpha);
+        ['rj', 'takers', 'makers', 'equipos'].forEach(sortGroupAlpha);
         saveData();
     }
 
@@ -627,7 +641,7 @@
 
     function getAllBlocks() {
         const blocks = [];
-        ['rj', 'takers', 'makers'].forEach(gid => {
+        ['rj', 'takers', 'makers', 'equipos'].forEach(gid => {
             const body = document.getElementById(`group-body-${gid}`);
             if (!body) return;
             body.querySelectorAll('.report-block').forEach(block => {
@@ -682,8 +696,8 @@
         report    += `*SUPERVISOR:* ${leader.toUpperCase()}\n\n`;
         report    += `==============================\n\n`;
 
-        const GROUP_LABELS = { rj: 'RJ', takers: 'TAKERS', makers: 'MAKERS' };
-        const activeGroups = isRjTakers() ? ['takers', 'rj'] : ['makers'];
+        const GROUP_LABELS = { rj: 'RJ', takers: 'TAKERS', makers: 'MAKERS', equipos: 'EQUIPOS' };
+        const activeGroups = isEquipos() ? ['equipos'] : isRjTakers() ? ['takers', 'rj'] : ['makers'];
 
         activeGroups.forEach(gid => {
             const body = document.getElementById(`group-body-${gid}`);
@@ -765,8 +779,8 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
 
         let report = `${weekHeaderM}\n${unitName.toUpperCase()}\n* REPORTE DE OFRENDAS *\n\n`;
 
-        const GROUP_LABELS = { rj: 'RJ', takers: 'TAKERS', makers: 'MAKERS' };
-        const activeGroups = isRjTakers() ? ['takers', 'rj'] : ['makers'];
+        const GROUP_LABELS = { rj: 'RJ', takers: 'TAKERS', makers: 'MAKERS', equipos: 'EQUIPOS' };
+        const activeGroups = isEquipos() ? ['equipos'] : isRjTakers() ? ['takers', 'rj'] : ['makers'];
 
         activeGroups.forEach(gid => {
             const body = document.getElementById(`group-body-${gid}`);
