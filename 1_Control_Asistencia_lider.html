@@ -96,6 +96,7 @@
         <!-- Unidad (color) -->
         <div class="section-select-wrapper">
             <select id="color-selector" class="color-select-styled" onchange="applyColor(true)">
+                <option value="purple">🟣 Equipos</option>
                 <option value="red">🔴 Unidad Roja</option>
                 <option value="blue">🔵 Unidad Azul</option>
                 <option value="yellow">🟡 Unidad Amarilla</option>
@@ -113,7 +114,7 @@
             </select>
         </div>
 
-        <select class="leader-name" id="leader-name" onchange="saveData()"></select>
+        <select class="leader-name" id="leader-name" onchange="onLeaderChange(true)"></select>
     </div>
 
     <div class="offering-section">
@@ -163,7 +164,8 @@
         blue:   { accent: '#1d6fa4', dark: '#155780', bg: '#eff8ff', bdr: '#93c5e8' },
         yellow: { accent: '#b7860b', dark: '#8a6408', bg: '#fffdf0', bdr: '#f5d97a' },
         orange: { accent: '#d9600a', dark: '#b04c07', bg: '#fff7f0', bdr: '#f8c49a' },
-        green:  { accent: '#1a7a3c', dark: '#145e2d', bg: '#f0fff5', bdr: '#6fcf97' }
+        green:  { accent: '#1a7a3c', dark: '#145e2d', bg: '#f0fff5', bdr: '#6fcf97' },
+        purple: { accent: '#7c3aed', dark: '#5b21b6', bg: '#faf5ff', bdr: '#c4b5fd' }
     };
 
     function applyColor(save = false) {
@@ -174,7 +176,53 @@
         root.setProperty('--accent-dark', theme.dark);
         root.setProperty('--accent-bg',   theme.bg);
         root.setProperty('--accent-bdr',  theme.bdr);
-        if (save) updateLeaderDropdown();
+
+        // Ajustar secciones disponibles según unidad
+        const sectionSel = document.getElementById('section-selector');
+        const isEquipos  = key === 'purple';
+
+        // Guardar opción actual
+        const prevSection = sectionSel.value;
+
+        // Reconstruir opciones
+        sectionSel.innerHTML = '';
+        if (!isEquipos) {
+            [['rj','RJ (Menores)'],['takers','Takers (Mayores)'],['makers','Makers']].forEach(([v,t]) => {
+                const o = document.createElement('option'); o.value = v; o.text = t;
+                if (v === prevSection) o.selected = true;
+                sectionSel.appendChild(o);
+            });
+        } else {
+            [['takers','Takers'],['makers','Makers']].forEach(([v,t]) => {
+                const o = document.createElement('option'); o.value = v; o.text = t;
+                if (v === prevSection) o.selected = true;
+                sectionSel.appendChild(o);
+            });
+            // Si venía de 'rj', forzar a 'takers'
+            if (!['takers','makers'].includes(sectionSel.value)) {
+                sectionSel.value = 'takers';
+            }
+        }
+
+        if (save) {
+            // Forzar re-renderizado de sección si cambió
+            const newSection = sectionSel.value;
+            if (newSection !== currentSection) {
+                saveCurrentSectionToMemory();
+                currentSection = newSection;
+                const sec = SECTIONS[currentSection];
+                document.getElementById('active-section-label').innerText = sec.label;
+                document.getElementById('active-visit-label').innerText   = sec.visitLabel;
+                const col2 = currentSection === 'makers' ? 'Culto' : 'Red';
+                document.getElementById('th-cel-main').innerText  = 'Célula';
+                document.getElementById('th-red-main').innerText  = col2;
+                document.getElementById('th-cel-visit').innerText = 'Célula';
+                document.getElementById('th-red-visit').innerText = col2;
+                document.getElementById('lbl-cel').innerText = 'Total Célula:';
+                document.getElementById('lbl-red').innerText = `Total ${col2}:`;
+            }
+            updateLeaderDropdown();
+        }
     }
 
     // ── Secciones ──────────────────────────────────────────────────────────
@@ -184,6 +232,28 @@
         makers: { label: 'MAKERS', visitLabel: 'VISITAS MAKERS', copyLabel: 'MAKERS', copyVisitLabel: 'VISITAS MAKERS' }
     };
 
+    // sectionData es POR LÍDER: allLeaderData[leaderKey][section] = { main:[], visit:[] }
+    // leaderKey = "color__liderNombre"
+    let allLeaderData = {};
+
+    function getLeaderKey() {
+        const color  = document.getElementById('color-selector').value;
+        const leader = document.getElementById('leader-name').value;
+        return leader ? `${color}__${leader}` : null;
+    }
+
+    function getSectionDataForLeader(leaderKey) {
+        if (!allLeaderData[leaderKey]) {
+            allLeaderData[leaderKey] = {
+                rj:     { main: [], visit: [] },
+                takers: { main: [], visit: [] },
+                makers: { main: [], visit: [] }
+            };
+        }
+        return allLeaderData[leaderKey];
+    }
+
+    // sectionData apunta siempre al líder activo
     let sectionData = {
         rj:     { main: [], visit: [] },
         takers: { main: [], visit: [] },
@@ -191,24 +261,32 @@
     };
 
     let currentSection = 'rj';
+    let currentLeaderKey = null;
 
     // ── Semana ─────────────────────────────────────────────────────────────
     function getWeekNumber(date) {
         const d = new Date(date);
-        d.setDate(d.getDate() - d.getDay());
-        const firstSunday = new Date(d.getFullYear(), 0, 1);
-        firstSunday.setDate(firstSunday.getDate() - firstSunday.getDay());
-        return Math.floor((d - firstSunday) / (7 * 24 * 60 * 60 * 1000)) + 1;
+        // Mover al lunes de esa semana
+        const day = d.getDay(); // 0=dom, 1=lun ... 6=sab
+        const diffToMonday = (day === 0) ? -6 : 1 - day;
+        d.setDate(d.getDate() + diffToMonday);
+        const firstMonday = new Date(d.getFullYear(), 0, 1);
+        const fdow = firstMonday.getDay();
+        const diffFM = (fdow === 0) ? -6 : 1 - fdow;
+        firstMonday.setDate(firstMonday.getDate() + diffFM);
+        return Math.floor((d - firstMonday) / (7 * 24 * 60 * 60 * 1000)) + 1;
     }
 
     function getWeekDates(weekNum, year) {
-        const firstSunday = new Date(year, 0, 1);
-        firstSunday.setDate(firstSunday.getDate() - firstSunday.getDay());
-        const sunday = new Date(firstSunday);
-        sunday.setDate(firstSunday.getDate() + (weekNum - 1) * 7);
-        const saturday = new Date(sunday);
-        saturday.setDate(sunday.getDate() + 6);
-        return { sunday, saturday };
+        const firstMonday = new Date(year, 0, 1);
+        const fdow = firstMonday.getDay();
+        const diffFM = (fdow === 0) ? -6 : 1 - fdow;
+        firstMonday.setDate(firstMonday.getDate() + diffFM);
+        const monday = new Date(firstMonday);
+        monday.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        return { sunday: monday, saturday: sunday }; // reutiliza las mismas variables para no cambiar el resto del código
     }
 
     function setupWeekSelector() {
@@ -228,7 +306,7 @@
         const { sunday, saturday } = getWeekDates(week, 2026);
         const fmt = d => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
         document.getElementById('week-dates-display').innerText =
-            `del ${fmt(sunday)} al ${fmt(saturday)} 2026`;
+            `lun ${fmt(sunday)} — dom ${fmt(saturday)} 2026`;
     }
 
     function getHeaderStrings() {
@@ -255,15 +333,31 @@
         document.getElementById('lbl-cel').innerText = 'Total Célula:';
         document.getElementById('lbl-red').innerText = `Total ${col2}:`;
 
+        // Actualizar dropdown de líderes para la nueva sección
+        const color = document.getElementById('color-selector').value;
+        const currentLeaderVal = document.getElementById('leader-name').value;
+        updateLeaderDropdownSilent(color, currentSection, currentLeaderVal);
+
+        // Recargar datos del líder activo para la nueva sección
+        if (currentLeaderKey && allLeaderData[currentLeaderKey]) {
+            sectionData = allLeaderData[currentLeaderKey];
+        } else {
+            sectionData = getSectionDataForLeader(currentLeaderKey || '__none__');
+        }
+
         renderSection('main-body',  sectionData[currentSection].main,  false);
         renderSection('visit-body', sectionData[currentSection].visit, true);
         updateCounts();
-        updateLeaderDropdown();
+        saveData();
     }
 
     function saveCurrentSectionToMemory() {
         sectionData[currentSection].main  = getSectionData('main-body', false);
         sectionData[currentSection].visit = getSectionData('visit-body', true);
+        // Persistir en allLeaderData si hay líder activo
+        if (currentLeaderKey) {
+            allLeaderData[currentLeaderKey] = JSON.parse(JSON.stringify(sectionData));
+        }
     }
 
     // ── Filas ──────────────────────────────────────────────────────────────
@@ -338,88 +432,117 @@
         }));
     }
 
-    // ── Nombres persistentes ───────────────────────────────────────────────
-    function saveNames() {
-        const names = {};
-        ['rj','takers','makers'].forEach(sec => {
-            names[sec] = { main: [], visit: [] };
-            if (sec === currentSection) {
-                names[sec].main  = Array.from(document.querySelectorAll('#main-body .in-n')).map(i => i.value);
-                names[sec].visit = Array.from(document.querySelectorAll('#visit-body .in-n')).map(i => i.value);
-            } else {
-                names[sec].main  = (sectionData[sec].main  || []).map(r => r.name || "");
-                names[sec].visit = (sectionData[sec].visit || []).map(r => r.name || "");
-            }
-        });
-        localStorage.setItem('nombresData_v1', JSON.stringify(names));
-    }
-
-    function loadNames() {
-        const saved = localStorage.getItem('nombresData_v1');
-        if (!saved) return;
-        const names = JSON.parse(saved);
-        ['rj','takers','makers'].forEach(sec => {
-            if (!names[sec]) return;
-            ['main','visit'].forEach(tbl => {
-                const nameList = names[sec][tbl] || [];
-                if (!sectionData[sec][tbl]) sectionData[sec][tbl] = [];
-                while (sectionData[sec][tbl].length < nameList.length) {
-                    sectionData[sec][tbl].push({ name: "", cel: false, red: false, new: false });
-                }
-                nameList.forEach((n, i) => { sectionData[sec][tbl][i].name = n; });
-            });
-        });
-    }
-
     function saveData() {
         // Siempre leer sección activa del DOM antes de guardar
         sectionData[currentSection].main  = getSectionData('main-body', false);
         sectionData[currentSection].visit = getSectionData('visit-body', true);
+        if (currentLeaderKey) {
+            allLeaderData[currentLeaderKey] = JSON.parse(JSON.stringify(sectionData));
+        }
         const data = {
-            leader:   document.getElementById('leader-name').value,
-            week:     document.getElementById('week-selector').value,
-            color:    document.getElementById('color-selector').value,
+            leader:        document.getElementById('leader-name').value,
+            week:          document.getElementById('week-selector').value,
+            color:         document.getElementById('color-selector').value,
+            section:       currentSection,
             offering: {
                 sinpe:    document.getElementById('off-sinpe')?.value || "",
                 efectivo: document.getElementById('off-efectivo')?.value || ""
             },
-            sections: sectionData
+            allLeaderData: allLeaderData
         };
-        localStorage.setItem('asistenciaData_2026_v4', JSON.stringify(data));
+        localStorage.setItem('asistenciaData_2026_v5', JSON.stringify(data));
     }
 
     function loadData() {
-        let savedLeader = null;
-        const saved = localStorage.getItem('asistenciaData_2026_v4');
+        let savedLeader  = null;
+        let savedColor   = null;
+        let savedSection = 'rj';
+
+        const saved = localStorage.getItem('asistenciaData_2026_v5');
         if (saved) {
             const data = JSON.parse(saved);
-            savedLeader = data.leader || null;
+            savedLeader  = data.leader  || null;
+            savedColor   = data.color   || null;
+            savedSection = data.section || 'rj';
+
             if (data.week)  document.getElementById('week-selector').value  = data.week;
-            if (data.color) document.getElementById('color-selector').value = data.color;
+            if (savedColor) document.getElementById('color-selector').value = savedColor;
             if (data.offering) {
-                document.getElementById('off-sinpe').value    = data.offering.sinpe || "";
+                document.getElementById('off-sinpe').value    = data.offering.sinpe    || "";
                 document.getElementById('off-efectivo').value = data.offering.efectivo || "";
             }
             calculateOffering();
-            if (data.sections) sectionData = data.sections;
+
+            if (data.allLeaderData) {
+                allLeaderData = data.allLeaderData;
+            }
         }
-        applyColor();
-        renderSection('main-body',  sectionData[currentSection].main,  false);
-        renderSection('visit-body', sectionData[currentSection].visit, true);
+
+        applyColor();   // reconstruye dropdown de secciones según color restaurado
         updateWeekDates();
+
+        // Restaurar sección (después de que applyColor reconstruyó las opciones)
+        // Validar que la sección guardada existe en las opciones actuales
+        const sectionSel  = document.getElementById('section-selector');
+        const validOptions = Array.from(sectionSel.options).map(o => o.value);
+        currentSection = validOptions.includes(savedSection) ? savedSection : sectionSel.options[0].value;
+        sectionSel.value = currentSection;
+
+        // Actualizar labels de sección
+        const sec2 = SECTIONS[currentSection];
+        document.getElementById('active-section-label').innerText = sec2.label;
+        document.getElementById('active-visit-label').innerText   = sec2.visitLabel;
+        const col2ld = currentSection === 'makers' ? 'Culto' : 'Red';
+        document.getElementById('th-cel-main').innerText  = 'Célula';
+        document.getElementById('th-red-main').innerText  = col2ld;
+        document.getElementById('th-cel-visit').innerText = 'Célula';
+        document.getElementById('th-red-visit').innerText = col2ld;
+        document.getElementById('lbl-cel').innerText = 'Total Célula:';
+        document.getElementById('lbl-red').innerText = `Total ${col2ld}:`;
+        const sec = SECTIONS[currentSection];
+        document.getElementById('active-section-label').innerText = sec.label;
+        document.getElementById('active-visit-label').innerText   = sec.visitLabel;
+
+        // Restaurar líder (dropdown primero, luego cambiar datos)
+        updateLeaderDropdownSilent(savedColor || 'red', savedSection, savedLeader);
+
+        // Activar líder guardado
+        currentLeaderKey = null; // forzar switch
+        onLeaderChange(false);
+
         updateCounts();
-        updateLeaderDropdown(savedLeader);
+    }
+
+    // Rellena el dropdown sin disparar onLeaderChange
+    function updateLeaderDropdownSilent(color, section, leaderValue) {
+        const select = document.getElementById('leader-name');
+        const names  = (LIDERES[color] && LIDERES[color][section]) ? LIDERES[color][section] : [];
+        select.innerHTML = '<option value="">— Seleccionar Líder —</option>';
+        names.forEach(n => {
+            const opt = document.createElement('option');
+            opt.value = n; opt.text = n;
+            if (n === leaderValue) opt.selected = true;
+            select.appendChild(opt);
+        });
+        // Para Equipos, auto-seleccionar Pra Rita
+        if (color === 'purple' && names.length === 1) {
+            select.value = names[0];
+        }
     }
 
     // ── Borrar ─────────────────────────────────────────────────────────────
     function borrarApp() {
         if (confirm("¿Borrar ofrendas y asistencia? Los nombres se conservan.")) {
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            ['rj','takers','makers'].forEach(sec => {
-                ['main','visit'].forEach(tbl => {
-                    (sectionData[sec][tbl] || []).forEach(r => { r.cel = false; r.red = false; r.new = false; });
+            // Limpiar solo los datos del líder activo
+            if (currentLeaderKey && allLeaderData[currentLeaderKey]) {
+                ['rj','takers','makers'].forEach(sec => {
+                    ['main','visit'].forEach(tbl => {
+                        (allLeaderData[currentLeaderKey][sec][tbl] || []).forEach(r => { r.cel = false; r.red = false; r.new = false; });
+                    });
                 });
-            });
+                sectionData = allLeaderData[currentLeaderKey];
+            }
             document.getElementById('off-sinpe').value    = "";
             document.getElementById('off-efectivo').value = "";
             calculateOffering();
@@ -494,7 +617,8 @@
         const main  = sectionData[currentSection].main;
         const visit = sectionData[currentSection].visit;
 
-        const secName = SECTIONS[currentSection].label;
+        const isEquipos = document.getElementById('color-selector').value === 'purple';
+        const secName = isEquipos ? 'EQUIPOS' : SECTIONS[currentSection].label;
         let text = `*${weekLabel}* (${dateStr})\n*LÍDER (${secName}): ${leader ? leader.toUpperCase() : ''}*\n\n`;
 
         const mainRows  = formatRows(main, false);
@@ -533,7 +657,8 @@
         const efectivo = document.getElementById('off-efectivo').value;
         if (!sinpe && !efectivo) { alert('No hay datos de ofrenda para copiar.'); return; }
         const total = (parseFloat(sinpe)||0) + (parseFloat(efectivo)||0);
-        const secNameOf = SECTIONS[currentSection].label;
+        const isEquiposOf = document.getElementById('color-selector').value === 'purple';
+        const secNameOf = isEquiposOf ? 'EQUIPOS' : SECTIONS[currentSection].label;
         let text = `*${weekLabel}* (${dateStr})\n*LÍDER (${secNameOf}): ${leader ? leader.toUpperCase() : ''}*\n\n`;
         text += `*--- OFRENDAS ---*\n`;
         if (sinpe)    text += `Sinpe: ₡${sinpe}\n`;
@@ -577,6 +702,10 @@
             rj:     ['Pablo A', 'Yehilin'],
             takers: ['EQUIPO Aaron y Heyling', 'Abigail', 'Hazel', 'Laura'],
             makers: ['Pr Carlos', 'Alex V', 'Dany y Sandra', 'Guillermo y Antonieta', 'Joyce']
+        },
+        purple: {
+            takers: ['Pra Rita Takers'],
+            makers: ['Pra Rita Makers']
         }
     };
 
@@ -594,7 +723,42 @@
             if (n === prev) opt.selected = true;
             select.appendChild(opt);
         });
-        saveData();
+
+        // Para Equipos, auto-seleccionar Pra Rita
+        if (color === 'purple' && names.length === 1) {
+            select.value = names[0];
+        }
+
+        onLeaderChange(false);
+    }
+
+    function onLeaderChange(doSave = true) {
+        // Guardar datos actuales en el líder anterior antes de cambiar
+        if (currentLeaderKey) {
+            sectionData[currentSection].main  = getSectionData('main-body', false);
+            sectionData[currentSection].visit = getSectionData('visit-body', true);
+            allLeaderData[currentLeaderKey] = JSON.parse(JSON.stringify(sectionData));
+        }
+
+        // Cambiar al nuevo líder
+        const newKey = getLeaderKey();
+        currentLeaderKey = newKey;
+
+        if (newKey) {
+            sectionData = getSectionDataForLeader(newKey);
+        } else {
+            sectionData = {
+                rj:     { main: [], visit: [] },
+                takers: { main: [], visit: [] },
+                makers: { main: [], visit: [] }
+            };
+        }
+
+        renderSection('main-body',  sectionData[currentSection].main,  false);
+        renderSection('visit-body', sectionData[currentSection].visit, true);
+        updateCounts();
+
+        if (doSave) saveData();
     }
 
     window.onload = () => { setupWeekSelector(); loadData(); };
