@@ -12,6 +12,7 @@
             --amarilla: #ffc107;
             --naranja: #fd7e14;
             --verde: #28a745;
+            --morada: #7b2fbe;
         }
 
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; color: #333; padding-bottom: 30px; }
@@ -30,6 +31,7 @@
         .title-amarilla { background: var(--amarilla); color: #333; }
         .title-naranja { background: var(--naranja); }
         .title-verde { background: var(--verde); }
+        .title-morada { background: var(--morada); }
 
         .unit-section { margin-bottom: 12px; border: 1px solid #dee2e6; border-radius: 10px; overflow: hidden; }
         .unit-header { padding: 10px 12px; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px; font-size: 0.9em; }
@@ -38,6 +40,7 @@
         .u-amarilla .unit-header { background: var(--amarilla); color: #333; }
         .u-naranja .unit-header { background: var(--naranja); }
         .u-verde .unit-header { background: var(--verde); }
+        .u-morada .unit-header { background: var(--morada); }
 
         textarea {
             width: 100%; height: 130px;
@@ -52,6 +55,7 @@
         .u-amarilla textarea:focus { border-color: var(--amarilla); }
         .u-naranja textarea:focus { border-color: var(--naranja); }
         .u-verde textarea:focus { border-color: var(--verde); }
+        .u-morada textarea:focus { border-color: var(--morada); }
 
         .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
         .btn-main { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95em; }
@@ -98,9 +102,11 @@ const units = [
     { id: 'NARA_MK',  label: 'UNIDAD NARANJA — MAKERS',   color: 'u-naranja',  group: 'naranja',  tipo: 'MK' },
     { id: 'VERD_TK',  label: 'UNIDAD VERDE — TAKERS/RJ',  color: 'u-verde',    group: 'verde',    tipo: 'TK' },
     { id: 'VERD_MK',  label: 'UNIDAD VERDE — MAKERS',     color: 'u-verde',    group: 'verde',    tipo: 'MK' },
+    { id: 'MORA_TK',  label: 'EQUIPOS (TAKERS + MAKERS)', color: 'u-morada',  group: 'morada',   tipo: 'TK' },
 ];
 
 const colorGroups = [
+    { key: 'morada',   label: 'UNIDAD EQUIPOS',   titleClass: 'title-morada' },
     { key: 'roja',     label: 'UNIDAD ROJA',     titleClass: 'title-roja' },
     { key: 'azul',     label: 'UNIDAD AZUL',     titleClass: 'title-azul' },
     { key: 'amarilla', label: 'UNIDAD AMARILLA', titleClass: 'title-amarilla' },
@@ -114,7 +120,7 @@ function saveAll() {
     const data = {};
     units.forEach(u => {
         const el = document.getElementById(`txt-${u.id}`);
-        data[u.id] = el ? el.value : '';
+        if (el) data[u.id] = el.value;
     });
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
 }
@@ -142,7 +148,7 @@ function resetData() {
 }
 
 // ── WEEK DROPDOWN ────────────────────────────────────────────────────────
-const BASE_WEEK = new Date(2025, 11, 28); // Semana 1 = 28 dic 2025
+const BASE_WEEK = new Date(2025, 11, 29); // Semana 1 = 29 dic 2025 (lunes)
 
 function getWeekInfo(weekNum) {
     const start = new Date(BASE_WEEK);
@@ -158,7 +164,10 @@ function getWeekInfo(weekNum) {
 
 function getCurrentWeekNum() {
     const today = new Date();
+    // Normalizar a medianoche para evitar problemas de hora
+    today.setHours(0,0,0,0);
     const base = new Date(BASE_WEEK);
+    base.setHours(0,0,0,0);
     const diff = Math.floor((today - base) / (7 * 24 * 60 * 60 * 1000));
     return Math.max(1, diff + 1);
 }
@@ -196,6 +205,7 @@ function getSelectedDateStr() {
 // ── UNIT VALIDATION ON PASTE ─────────────────────────────────────────────
 // Expected line 2 per unit id
 const UNIT_EXPECTED_LINE2 = {
+    'MORA_TK':  '🟣 EQUIPOS',  // acepta bloque mixto TK+MK
     'ROJA_TK':  '🔴 UNIDAD ROJA RJ/TAKERS',
     'ROJA_MK':  '🔴 UNIDAD ROJA MAKERS',
     'AZUL_TK':  '🔵 UNIDAD AZUL RJ/TAKERS',
@@ -283,18 +293,27 @@ colorGroups.forEach(group => {
     let html = `<div class="color-group">
         <div class="color-group-title ${group.titleClass}">🔹 ${group.label}</div>`;
 
-    html += `
+    if (group.key === 'morada') {
+        // EQUIPOS: un solo textarea que acepta TK + MK mezclados
+        html += `
+        <div class="unit-section ${tkUnit.color}">
+            <div class="unit-header">${tkUnit.label}</div>
+            <textarea id="txt-${tkUnit.id}" placeholder="Pegar reporte EQUIPOS aquí (contiene TAKERS y MAKERS)..." oninput="calculateAll()" style="height:160px;"></textarea>
+        </div>`;
+    } else {
+        html += `
         <div class="unit-section ${tkUnit.color}">
             <div class="unit-header">${tkUnit.label}</div>
             <textarea id="txt-${tkUnit.id}" placeholder="Pegar reporte aquí..." oninput="calculateAll()"></textarea>
         </div>`;
 
-    html += `<div id="mk-section-${group.key}">
+        html += `<div id="mk-section-${group.key}">
         <div class="unit-section ${mkUnit.color}">
             <div class="unit-header">${mkUnit.label}</div>
             <textarea id="txt-${mkUnit.id}" placeholder="Pegar reporte aquí..." oninput="calculateAll()"></textarea>
         </div>
     </div>`;
+    }
 
     html += `</div>`;
     container.innerHTML += html;
@@ -306,6 +325,23 @@ units.forEach(u => attachPasteValidation(u.id));
 setupWeekSelector();
 loadAll();
 calculateAll();
+
+// ── EQUIPOS: extrae sub-bloque TK o MK de un texto mixto ────────────────
+function extractEquiposSubBlock(text, tipo) {
+    // Detecta sección TAKERS por "--- TAKERS ---" y MAKERS por "--- MAKERS ---"
+    // Cada sección termina donde comienza la siguiente o en RESUMEN OFRENDAS ACUMULADO
+    if (tipo === 'TK') {
+        // Desde inicio del texto hasta el bloque MAKERS (o fin si no hay)
+        const mkIdx = text.search(/LÍDER:.*MAKERS|---\s*MAKERS\s*---/i);
+        return mkIdx > 0 ? text.substring(0, mkIdx) : text;
+    } else {
+        // Desde el bloque MAKERS hasta RESUMEN OFRENDAS ACUMULADO (o fin)
+        const mkIdx = text.search(/LÍDER:.*MAKERS|---\s*MAKERS\s*---/i);
+        if (mkIdx < 0) return '';
+        const acumIdx = text.search(/RESUMEN OFRENDAS ACUMULADO/i);
+        return acumIdx > mkIdx ? text.substring(mkIdx, acumIdx) : text.substring(mkIdx);
+    }
+}
 
 // ── PARSERS ──────────────────────────────────────────────────────────────
 
@@ -439,7 +475,7 @@ function extractLeadersFromBlock(text) {
 // ── CALCULATE ALL (reporte de texto) ────────────────────────────────────
 
 function calculateAll() {
-    const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde'];
+    const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde', 'morada'];
     let grandTotals = {
         tkS: 0, tkE: 0, mkS: 0, mkE: 0,
         tkCelula: 0, tkRed: 0, tkNuevos: 0,
@@ -450,9 +486,19 @@ function calculateAll() {
 
     colorOrder.forEach(color => {
         const tkUnit = units.find(u => u.group === color && u.tipo === 'TK');
-        const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
-        const tkVal = document.getElementById(`txt-${tkUnit.id}`).value;
-        const mkVal = document.getElementById(`txt-${mkUnit.id}`).value;
+        const tkEl = document.getElementById(`txt-${tkUnit.id}`);
+        const tkRaw = tkEl ? tkEl.value : '';
+
+        let tkVal, mkVal;
+        if (color === 'morada') {
+            tkVal = tkRaw ? extractEquiposSubBlock(tkRaw, 'TK') : '';
+            mkVal = tkRaw ? extractEquiposSubBlock(tkRaw, 'MK') : '';
+        } else {
+            const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
+            const mkEl = document.getElementById(`txt-${mkUnit.id}`);
+            tkVal = tkRaw;
+            mkVal = mkEl ? mkEl.value : '';
+        }
 
         const hasTK = tkVal && tkVal.trim();
         const hasMK = mkVal && mkVal.trim() && makersGlobalEnabled;
@@ -460,8 +506,9 @@ function calculateAll() {
         if (!hasTK && !hasMK) return;
         unitsActive++;
 
-        const colorLabel = color.charAt(0).toUpperCase() + color.slice(1);
-        const colorCircle = { roja: '🔴', azul: '🔵', amarilla: '🟡', naranja: '🟠', verde: '🟢' }[color] || '⚪';
+        const colorLabelMap = { roja: 'Roja', azul: 'Azul', amarilla: 'Amarilla', naranja: 'Naranja', verde: 'Verde', morada: 'Equipos' };
+        const colorLabel = colorLabelMap[color] || (color.charAt(0).toUpperCase() + color.slice(1));
+        const colorCircle = { roja: '🔴', azul: '🔵', amarilla: '🟡', naranja: '🟠', verde: '🟢', morada: '🟣' }[color] || '⚪';
 
         // ── TK/RJ block ───────────────────────────────────────────────
         if (hasTK) {
@@ -609,11 +656,11 @@ function generateExcel() {
     // Colores por unidad (hex sin #)
     const unitColors = {
         roja: 'DC3545', azul: '007BFF', amarilla: 'FFC107',
-        naranja: 'FD7E14', verde: '28A745'
+        naranja: 'FD7E14', verde: '28A745', morada: '7B2FBE'
     };
     const unitNames = {
         roja: 'Roja', azul: 'Azul', amarilla: 'Amarilla',
-        naranja: 'Naranja', verde: 'Verde'
+        naranja: 'Naranja', verde: 'Verde', morada: 'Equipos'
     };
 
     // ── Pestaña: Sumarización SINPE ──────────────────────────────────────
@@ -621,13 +668,21 @@ function generateExcel() {
         ['UNIDAD', weekDate]
     ];
 
-    const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde'];
+    const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde', 'morada'];
 
     colorOrder.forEach(color => {
         const tkUnit = units.find(u => u.group === color && u.tipo === 'TK');
-        const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
-        const tkVal = document.getElementById(`txt-${tkUnit.id}`).value;
-        const mkVal = document.getElementById(`txt-${mkUnit.id}`).value;
+        const tkRaw = document.getElementById(`txt-${tkUnit.id}`).value;
+
+        let tkVal, mkVal;
+        if (color === 'morada') {
+            tkVal = tkRaw ? extractEquiposSubBlock(tkRaw, 'TK') : '';
+            mkVal = tkRaw ? extractEquiposSubBlock(tkRaw, 'MK') : '';
+        } else {
+            const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
+            tkVal = tkRaw;
+            mkVal = document.getElementById(`txt-${mkUnit.id}`).value;
+        }
 
         const tkSinpe = tkVal ? extractSinpeFromBlock(tkVal) : 0;
         const mkSinpe = (mkVal && makersGlobalEnabled) ? extractSinpeFromBlock(mkVal) : 0;
@@ -650,7 +705,7 @@ function generateExcel() {
     // Style each row
     let rowColors = {
         roja: 'FFEBEE', azul: 'E3F2FD', amarilla: 'FFFDE7',
-        naranja: 'FFF3E0', verde: 'E8F5E9'
+        naranja: 'FFF3E0', verde: 'E8F5E9', morada: 'F3E5F5'
     };
     const rowColorMap = [];
     colorOrder.forEach(c => { rowColorMap.push(c); if (makersGlobalEnabled) rowColorMap.push(c); });
@@ -671,9 +726,17 @@ function generateExcel() {
     // ── Pestañas por color ────────────────────────────────────────────────
     colorOrder.forEach(color => {
         const tkUnit = units.find(u => u.group === color && u.tipo === 'TK');
-        const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
-        const tkVal = document.getElementById(`txt-${tkUnit.id}`).value || '';
-        const mkVal = document.getElementById(`txt-${mkUnit.id}`).value || '';
+        const tkRaw = document.getElementById(`txt-${tkUnit.id}`).value || '';
+
+        let tkVal, mkVal;
+        if (color === 'morada') {
+            tkVal = tkRaw ? extractEquiposSubBlock(tkRaw, 'TK') : '';
+            mkVal = tkRaw ? extractEquiposSubBlock(tkRaw, 'MK') : '';
+        } else {
+            const mkUnit = units.find(u => u.group === color && u.tipo === 'MK');
+            tkVal = tkRaw;
+            mkVal = document.getElementById(`txt-${mkUnit.id}`).value || '';
+        }
 
         const sheetData = [['LÍDER', weekDate, 'TIPO']];
 
