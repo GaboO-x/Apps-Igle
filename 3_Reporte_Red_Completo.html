@@ -580,15 +580,15 @@ function calculateAll() {
                 `Efectivo: ₡${tkE.toLocaleString('es-CR')}\n` +
                 `Total: ₡${(tkS + tkE).toLocaleString('es-CR')}\n\n` +
                 `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n` +
-                `Total Célula Takers: ${celTakers}\n` +
-                `Total Célula RJ: ${celRJ}\n` +
-                `Total Célula: ${celTotal}\n\n` +
-                `Total Red Takers: ${redTakers} (${metaDiffStr(redTakers, META_PER_UNIT.takers)} de la meta de ${META_PER_UNIT.takers})\n` +
-                `Total Red RJ: ${redRJ} (${metaDiffStr(redRJ, META_PER_UNIT.rj)} de la meta de ${META_PER_UNIT.rj})\n` +
-                `Total Red: ${redTotal} (${metaDiffStr(redTotal, META_PER_UNIT.total)} de la meta de ${META_PER_UNIT.total})\n\n` +
-                `Total Nuevos RJ: ${nuevosRJ}\n` +
-                `Total Nuevos Takers: ${nuevosTakers}\n` +
-                `Total Nuevos: ${nuevosTotal}\n\n`;
+                `Célula Takers: ${celTakers}\n` +
+                `Célula RJ: ${celRJ}\n` +
+                `Célula: ${celTotal}\n\n` +
+                `Red Takers: ${redTakers} (${metaDiffStr(redTakers, META_PER_UNIT.takers)} meta:${META_PER_UNIT.takers})\n` +
+                `Red RJ: ${redRJ} (${metaDiffStr(redRJ, META_PER_UNIT.rj)} meta:${META_PER_UNIT.rj})\n` +
+                `Red: ${redTotal} (${metaDiffStr(redTotal, META_PER_UNIT.total)} meta:${META_PER_UNIT.total})\n\n` +
+                `Nuevos RJ: ${nuevosRJ}\n` +
+                `Nuevos Takers: ${nuevosTakers}\n` +
+                `Nuevos: ${nuevosTotal}\n\n`;
         }
 
         // ── MAKERS block ──────────────────────────────────────────────
@@ -635,9 +635,9 @@ function calculateAll() {
             `Total: ₡${(totalS + totalE).toLocaleString('es-CR')}\n\n` +
             `👥 *ASISTENCIA TOTAL*\n` +
             `Total Célula: ${totalCelula}\n` +
-            `Total Red Takers: ${grandTotals.redTakers} (${metaDiffStr(grandTotals.redTakers, META_GENERAL.takers)} de la meta de ${META_GENERAL.takers})\n` +
-            `Total Red RJ: ${grandTotals.redRJ} (${metaDiffStr(grandTotals.redRJ, META_GENERAL.rj)} de la meta de ${META_GENERAL.rj})\n` +
-            `Total Red: ${grandTotals.redTotal} (${metaDiffStr(grandTotals.redTotal, META_GENERAL.total)} de la meta de ${META_GENERAL.total})\n` +
+            `Total Red Takers: ${grandTotals.redTakers} (${metaDiffStr(grandTotals.redTakers, META_GENERAL.takers)} meta:${META_GENERAL.takers})\n` +
+            `Total Red RJ: ${grandTotals.redRJ} (${metaDiffStr(grandTotals.redRJ, META_GENERAL.rj)} meta:${META_GENERAL.rj})\n` +
+            `Total Red: ${grandTotals.redTotal} (${metaDiffStr(grandTotals.redTotal, META_GENERAL.total)} meta:${META_GENERAL.total})\n` +
             `Total Makers a Culto: ${grandTotals.mkCulto}\n\n` +
             `Total Red + Culto: ${totalRedCulto}\n` +
             `Total Nuevos: ${totalNuevos}`;
