@@ -271,6 +271,16 @@ function attachPasteValidation(unitId) {
 }
 
 
+// ── METAS FIJAS ────────────────────────────────────────────────────────────
+const META_PER_UNIT = { takers: 40, rj: 30, total: 70 };
+const META_GENERAL  = { takers: 200, rj: 150, total: 350 };
+
+function metaDiffStr(value, meta) {
+    const diff = value - meta;
+    const sign = diff >= 0 ? '+' : '-';
+    return `${sign}${Math.abs(diff)}`;
+}
+
 // ── MAKERS TOGGLE STATE ───────────────────────────────────────────────────
 let makersGlobalEnabled = true;
 
@@ -386,33 +396,61 @@ function extractAttendanceSummaryValue(text, regex) {
     return match ? (parseInt(match[1]) || 0) : 0;
 }
 // ── TK/RJ extractors ─────────────────────────────────────────────────────
-function extractRJCelula(text) {
-    return extractAttendanceSummaryValue(text, /RJ C[eé]lula:\s*(\d+)/i);
+// Suman los valores de CADA bloque de líder dentro de su sección
+// (══ TAKERS ══ / ══ RJ ══), en vez de leer un único total acumulado.
+
+function sumAllMatches(text, regex) {
+    const re = new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : regex.flags + 'g');
+    let total = 0, m;
+    while ((m = re.exec(text)) !== null) {
+        total += parseInt(m[1]) || 0;
+    }
+    return total;
 }
+
+// Divide el bloque TK completo en su sub-sección TAKERS y su sub-sección RJ
+function splitTakersRJSections(text) {
+    const takersMarkerIdx = text.search(/═+\s*TAKERS\s*═+/i);
+    const rjMarkerIdx = text.search(/═+\s*RJ\s*═+/i);
+    const acumIdx = text.search(/RESUMEN OFRENDAS ACUMULADO/i);
+
+    let takersSection = '', rjSection = '';
+
+    if (takersMarkerIdx >= 0) {
+        const end = (rjMarkerIdx > takersMarkerIdx) ? rjMarkerIdx
+                   : (acumIdx > takersMarkerIdx ? acumIdx : text.length);
+        takersSection = text.substring(takersMarkerIdx, end);
+    }
+    if (rjMarkerIdx >= 0) {
+        const end = (acumIdx > rjMarkerIdx) ? acumIdx : text.length;
+        rjSection = text.substring(rjMarkerIdx, end);
+    }
+    return { takersSection, rjSection };
+}
+
 function extractTakersCelula(text) {
-    const m1 = extractAttendanceSummaryValue(text, /Takers C[eé]lula:\s*(\d+)/i);
-    if (m1) return m1;
-    return extractAttendanceSummaryValue(text, /Total C[eé]lula:\s*(\d+)/i);
-}
-function extractRJRed(text) {
-    return extractAttendanceSummaryValue(text, /RJ Red:\s*(\d+)/i);
+    const { takersSection } = splitTakersRJSections(text);
+    return sumAllMatches(takersSection, /Total TAKERS C[eé]lula:\s*(\d+)/i);
 }
 function extractTakersRed(text) {
-    const m1 = extractAttendanceSummaryValue(text, /Takers Red:\s*(\d+)/i);
-    if (m1) return m1;
-    return extractAttendanceSummaryValue(text, /Total Red:\s*(\d+)/i);
-}
-function extractRJNuevos(text) {
-    const m1 = extractAttendanceSummaryValue(text, /RJ Nuevos:\s*(\d+)/i);
-    if (m1) return m1;
-    return extractAttendanceSummaryValue(text, /Nuevos RJ:\s*(\d+)/i);
+    const { takersSection } = splitTakersRJSections(text);
+    return sumAllMatches(takersSection, /Total TAKERS Red:\s*(\d+)/i);
 }
 function extractTakersNuevos(text) {
-    const m1 = extractAttendanceSummaryValue(text, /Takers Nuevos:\s*(\d+)/i);
-    if (m1) return m1;
-    const m2 = extractAttendanceSummaryValue(text, /Nuevos Takers:\s*(\d+)/i);
-    if (m2) return m2;
-    return extractAttendanceSummaryValue(text, /Total Nuevos:\s*(\d+)/i);
+    const { takersSection } = splitTakersRJSections(text);
+    return sumAllMatches(takersSection, /NUEVOS:\s*\*?\s*TAKERS:\s*(\d+)/i);
+}
+function extractRJCelula(text) {
+    const { rjSection } = splitTakersRJSections(text);
+    return sumAllMatches(rjSection, /Total RJ C[eé]lula:\s*(\d+)/i);
+}
+function extractRJRed(text) {
+    const { rjSection } = splitTakersRJSections(text);
+    return sumAllMatches(rjSection, /Total RJ Red:\s*(\d+)/i);
+}
+function extractRJNuevos(text) {
+    const { rjSection } = splitTakersRJSections(text);
+    return sumAllMatches(rjSection, /NUEVOS:\s*\*?\s*RJ:\s*(\d+)/i);
 }
 // ── MAKERS extractors ─────────────────────────────────────────────────────
 function extractMakersCelula(text) {
@@ -478,7 +516,7 @@ function calculateAll() {
     const colorOrder = ['roja', 'azul', 'amarilla', 'naranja', 'verde', 'morada'];
     let grandTotals = {
         tkS: 0, tkE: 0, mkS: 0, mkE: 0,
-        tkCelula: 0, tkRed: 0, tkNuevos: 0,
+        celTotal: 0, redTakers: 0, redRJ: 0, redTotal: 0, nuevosTotal: 0,
         mkCelula: 0, mkCulto: 0, mkNuevos: 0
     };
     let fullDetailBody = "";
@@ -514,15 +552,26 @@ function calculateAll() {
         if (hasTK) {
             const tkS = extractSinpeFromBlock(tkVal);
             const tkE = extractEfectivoFromBlock(tkVal);
-            const tkCelula = extractRJCelula(tkVal) + extractTakersCelula(tkVal);
-            const tkRed = extractRJRed(tkVal) + extractTakersRed(tkVal);
-            const tkNuevos = extractRJNuevos(tkVal) + extractTakersNuevos(tkVal);
+
+            const celTakers = extractTakersCelula(tkVal);
+            const celRJ = extractRJCelula(tkVal);
+            const celTotal = celTakers + celRJ;
+
+            const redTakers = extractTakersRed(tkVal);
+            const redRJ = extractRJRed(tkVal);
+            const redTotal = redTakers + redRJ;
+
+            const nuevosTakers = extractTakersNuevos(tkVal);
+            const nuevosRJ = extractRJNuevos(tkVal);
+            const nuevosTotal = nuevosTakers + nuevosRJ;
 
             grandTotals.tkS += tkS;
             grandTotals.tkE += tkE;
-            grandTotals.tkCelula += tkCelula;
-            grandTotals.tkRed += tkRed;
-            grandTotals.tkNuevos += tkNuevos;
+            grandTotals.celTotal += celTotal;
+            grandTotals.redTakers += redTakers;
+            grandTotals.redRJ += redRJ;
+            grandTotals.redTotal += redTotal;
+            grandTotals.nuevosTotal += nuevosTotal;
 
             fullDetailBody +=
                 `*${colorCircle}UNIDAD ${colorLabel.toUpperCase()} — TAKERS/RJ${colorCircle}*\n` +
@@ -531,9 +580,15 @@ function calculateAll() {
                 `Efectivo: ₡${tkE.toLocaleString('es-CR')}\n` +
                 `Total: ₡${(tkS + tkE).toLocaleString('es-CR')}\n\n` +
                 `*---👥 RESUMEN ASISTENCIA ACUMULADO---*\n` +
-                `Total Célula: ${tkCelula}\n` +
-                `Total Red: ${tkRed}\n` +
-                `Total Nuevos: ${tkNuevos}\n\n`;
+                `Total Célula Takers: ${celTakers}\n` +
+                `Total Célula RJ: ${celRJ}\n` +
+                `Total Célula: ${celTotal}\n\n` +
+                `Total Red Takers: ${redTakers} (${metaDiffStr(redTakers, META_PER_UNIT.takers)} de la meta de ${META_PER_UNIT.takers})\n` +
+                `Total Red RJ: ${redRJ} (${metaDiffStr(redRJ, META_PER_UNIT.rj)} de la meta de ${META_PER_UNIT.rj})\n` +
+                `Total Red: ${redTotal} (${metaDiffStr(redTotal, META_PER_UNIT.total)} de la meta de ${META_PER_UNIT.total})\n\n` +
+                `Total Nuevos RJ: ${nuevosRJ}\n` +
+                `Total Nuevos Takers: ${nuevosTakers}\n` +
+                `Total Nuevos: ${nuevosTotal}\n\n`;
         }
 
         // ── MAKERS block ──────────────────────────────────────────────
@@ -568,8 +623,9 @@ function calculateAll() {
     if (unitsActive > 0) {
         const totalS = grandTotals.tkS + grandTotals.mkS;
         const totalE = grandTotals.tkE + grandTotals.mkE;
-        const totalCelula = grandTotals.tkCelula + grandTotals.mkCelula;
-        const totalRedCulto = grandTotals.tkRed + grandTotals.mkCulto;
+        const totalCelula = grandTotals.celTotal + grandTotals.mkCelula;
+        const totalRedCulto = grandTotals.redTotal + grandTotals.mkCulto;
+        const totalNuevos = grandTotals.nuevosTotal + grandTotals.mkNuevos;
 
         const finalSumatory =
             `*🚀 SUMATORIA GENERAL DE ASISTENCIA MANA*\n\n` +
@@ -579,9 +635,12 @@ function calculateAll() {
             `Total: ₡${(totalS + totalE).toLocaleString('es-CR')}\n\n` +
             `👥 *ASISTENCIA TOTAL*\n` +
             `Total Célula: ${totalCelula}\n` +
-            `Total Jovenes a Red: ${grandTotals.tkRed}\n` +
-            `Total Makers a Culto: ${grandTotals.mkCulto}\n` +
-            `Total Red + Culto: ${totalRedCulto}`;
+            `Total Red Takers: ${grandTotals.redTakers} (${metaDiffStr(grandTotals.redTakers, META_GENERAL.takers)} de la meta de ${META_GENERAL.takers})\n` +
+            `Total Red RJ: ${grandTotals.redRJ} (${metaDiffStr(grandTotals.redRJ, META_GENERAL.rj)} de la meta de ${META_GENERAL.rj})\n` +
+            `Total Red: ${grandTotals.redTotal} (${metaDiffStr(grandTotals.redTotal, META_GENERAL.total)} de la meta de ${META_GENERAL.total})\n` +
+            `Total Makers a Culto: ${grandTotals.mkCulto}\n\n` +
+            `Total Red + Culto: ${totalRedCulto}\n` +
+            `Total Nuevos: ${totalNuevos}`;
 
         window.finalReportStr = fullDetailBody + finalSumatory;
         document.getElementById('status-msg').innerText = "✅ Reporte actualizado y listo";
