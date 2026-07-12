@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consolidador General de Red</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --roja: #dc3545;
@@ -86,7 +87,27 @@
     <div class="action-bar">
         <button class="btn-main btn-blue" onclick="copyFinalReport()">📋 COPIAR REPORTE</button>
         <button class="btn-main btn-green" onclick="generateExcel()">📊 REPORTE OFRENDAS</button>
+        <button class="btn-main" style="background:#6c757d;" onclick="toggleCharts()">📈 VER GRÁFICAS</button>
         <button class="btn-main btn-red" onclick="resetData()">🗑 RESETEAR</button>
+    </div>
+
+    <div id="charts-container" style="display:none; margin-top:20px;">
+        <div style="margin-bottom:28px;">
+            <h3 style="text-align:center; font-size:0.95em; color:#444;">💰 Ofrendas por Unidad</h3>
+            <canvas id="chart-ofrendas" height="220"></canvas>
+        </div>
+        <div style="margin-bottom:28px;">
+            <h3 style="text-align:center; font-size:0.95em; color:#444;">👥 Asistencia Célula por Unidad</h3>
+            <canvas id="chart-celula" height="220"></canvas>
+        </div>
+        <div style="margin-bottom:28px;">
+            <h3 style="text-align:center; font-size:0.95em; color:#444;">🚀 Asistencia Red vs Meta por Unidad</h3>
+            <canvas id="chart-red" height="220"></canvas>
+        </div>
+        <div style="margin-bottom:10px;">
+            <h3 style="text-align:center; font-size:0.95em; color:#444;">🆕 Nuevos por Unidad</h3>
+            <canvas id="chart-nuevos" height="220"></canvas>
+        </div>
     </div>
 </div>
 
@@ -521,6 +542,7 @@ function calculateAll() {
     };
     let fullDetailBody = "";
     let unitsActive = 0;
+    let perUnitData = [];
 
     colorOrder.forEach(color => {
         const tkUnit = units.find(u => u.group === color && u.tipo === 'TK');
@@ -548,6 +570,14 @@ function calculateAll() {
         const colorLabel = colorLabelMap[color] || (color.charAt(0).toUpperCase() + color.slice(1));
         const colorCircle = { roja: '🔴', azul: '🔵', amarilla: '🟡', naranja: '🟠', verde: '🟢', morada: '🟣' }[color] || '⚪';
 
+        let unitData = {
+            label: colorLabel,
+            ofrendas: 0,
+            celTakers: 0, celRJ: 0, celTotal: 0,
+            redTakers: 0, redRJ: 0, redTotal: 0,
+            nuevosTakers: 0, nuevosRJ: 0, nuevosTotal: 0
+        };
+
         // ── TK/RJ block ───────────────────────────────────────────────
         if (hasTK) {
             const tkS = extractSinpeFromBlock(tkVal);
@@ -572,6 +602,17 @@ function calculateAll() {
             grandTotals.redRJ += redRJ;
             grandTotals.redTotal += redTotal;
             grandTotals.nuevosTotal += nuevosTotal;
+
+            unitData.ofrendas += (tkS + tkE);
+            unitData.celTakers += celTakers;
+            unitData.celRJ += celRJ;
+            unitData.celTotal += celTotal;
+            unitData.redTakers += redTakers;
+            unitData.redRJ += redRJ;
+            unitData.redTotal += redTotal;
+            unitData.nuevosTakers += nuevosTakers;
+            unitData.nuevosRJ += nuevosRJ;
+            unitData.nuevosTotal += nuevosTotal;
 
             fullDetailBody +=
                 `*${colorCircle}UNIDAD ${colorLabel.toUpperCase()} — TAKERS/RJ${colorCircle}*\n` +
@@ -605,6 +646,9 @@ function calculateAll() {
             grandTotals.mkCulto += mkCulto;
             grandTotals.mkNuevos += mkNuevos;
 
+            unitData.ofrendas += (mkS + mkE);
+            unitData.nuevosTotal += mkNuevos;
+
             fullDetailBody +=
                 `*${colorCircle}UNIDAD ${colorLabel.toUpperCase()} — MAKERS${colorCircle}*\n` +
                 `*---📊 RESUMEN OFRENDAS ACUMULADO---*\n` +
@@ -616,6 +660,8 @@ function calculateAll() {
                 `Total Culto: ${mkCulto}\n` +
                 `Total Nuevos: ${mkNuevos}\n\n`;
         }
+
+        perUnitData.push(unitData);
 
         fullDetailBody += `==============================\n\n`;
     });
@@ -648,7 +694,107 @@ function calculateAll() {
         window.finalReportStr = "";
         document.getElementById('status-msg').innerText = "";
     }
+    renderCharts(perUnitData);
     saveAll();
+}
+
+// ── GRÁFICAS ─────────────────────────────────────────────────────────────
+let chartInstances = {};
+
+function toggleCharts() {
+    const el = document.getElementById('charts-container');
+    const btn = document.querySelectorAll('.action-bar button')[2];
+    const showing = el.style.display !== 'none';
+    el.style.display = showing ? 'none' : 'block';
+    if (btn) btn.innerText = showing ? '📈 VER GRÁFICAS' : '📉 OCULTAR GRÁFICAS';
+    if (!showing && window.lastPerUnitData) {
+        // Recién visible: forzar re-render para que Chart.js tome el tamaño real del canvas
+        setTimeout(() => renderCharts(window.lastPerUnitData), 0);
+    }
+}
+
+function buildChart(id, config) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    if (chartInstances[id]) chartInstances[id].destroy();
+    chartInstances[id] = new Chart(ctx, config);
+}
+
+function renderCharts(perUnitData) {
+    window.lastPerUnitData = perUnitData;
+    if (document.getElementById('charts-container').style.display === 'none') return;
+    const labels = perUnitData.map(u => u.label);
+    const baseOptions = {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+        scales: { y: { beginAtZero: true } }
+    };
+
+    // Ofrendas por unidad
+    buildChart('chart-ofrendas', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Ofrendas (₡)',
+                data: perUnitData.map(u => u.ofrendas),
+                backgroundColor: '#28a745'
+            }]
+        },
+        options: baseOptions
+    });
+
+    // Célula por unidad
+    buildChart('chart-celula', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Célula Takers', data: perUnitData.map(u => u.celTakers), backgroundColor: '#007bff' },
+                { label: 'Célula RJ', data: perUnitData.map(u => u.celRJ), backgroundColor: '#fd7e14' },
+                { label: 'Célula Total', data: perUnitData.map(u => u.celTotal), backgroundColor: '#6c757d' }
+            ]
+        },
+        options: baseOptions
+    });
+
+    // Red vs Meta por unidad
+    buildChart('chart-red', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Red Takers', data: perUnitData.map(u => u.redTakers), backgroundColor: '#007bff' },
+                { label: 'Red RJ', data: perUnitData.map(u => u.redRJ), backgroundColor: '#fd7e14' },
+                { label: 'Red Total', data: perUnitData.map(u => u.redTotal), backgroundColor: '#6c757d' },
+                {
+                    label: `Meta Total (${META_PER_UNIT.total})`,
+                    data: perUnitData.map(() => META_PER_UNIT.total),
+                    type: 'line',
+                    borderColor: '#dc3545',
+                    borderDash: [6, 4],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: baseOptions
+    });
+
+    // Nuevos por unidad
+    buildChart('chart-nuevos', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Nuevos Takers', data: perUnitData.map(u => u.nuevosTakers), backgroundColor: '#28a745' },
+                { label: 'Nuevos RJ', data: perUnitData.map(u => u.nuevosRJ), backgroundColor: '#7b2fbe' },
+                { label: 'Nuevos Total', data: perUnitData.map(u => u.nuevosTotal), backgroundColor: '#6c757d' }
+            ]
+        },
+        options: baseOptions
+    });
 }
 
 // ── COPY REPORT ──────────────────────────────────────────────────────────
