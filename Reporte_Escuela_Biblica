@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Semanal</title>
+<style>
+    :root{
+        --accent:#dc3545; --accent-dark:#b02a37; --accent-bg:#fff5f5; --accent-bdr:#feb2b2;
+        --btn-green:#25d366; --btn-blue:#3b82f6; --warn:#e74c3c;
+    }
+    body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;padding:15px;color:#333;}
+    .container{max-width:600px;margin:auto;background:#fff;padding:20px;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,.1);}
+    h1{text-align:center;font-size:1.2em;margin:0 0 15px;color:var(--accent-dark);}
+    .date-row{display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:18px;}
+    .date-row input[type=date]{padding:8px;border:1px solid #ddd;border-radius:8px;font-size:1em;}
+
+    .section-title{background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px 10px 0 0;font-weight:bold;margin-top:20px;font-size:.95em;}
+    .card{border:1px solid #eee;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;background:#fff;}
+
+    .row{display:grid;grid-template-columns:28px 1fr 70px 110px;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #f2f2f2;}
+    .row:last-child{border-bottom:none;}
+    .row .emoji{font-size:1.2em;text-align:center;}
+    .row .label{font-size:.85em;font-weight:600;color:#444;}
+    .row input{padding:6px;border:1px solid #ddd;border-radius:6px;font-size:.9em;width:100%;box-sizing:border-box;text-align:right;}
+    .row .calc{font-size:.9em;font-weight:bold;color:var(--accent-dark);text-align:right;}
+    .row .empty{visibility:hidden;}
+
+    .subheader{padding:8px 10px 2px;font-size:.78em;color:#888;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid #f2f2f2;}
+
+    .total-row{display:grid;grid-template-columns:28px 1fr 70px 110px;gap:8px;padding:10px;background:var(--accent-bg);font-weight:bold;color:var(--accent-dark);border-top:2px dashed var(--accent-bdr);}
+    .total-row span{text-align:right;}
+    .total-row .lbl{text-align:left;}
+
+    .warn-msg{padding:6px 10px;font-size:.78em;color:var(--warn);background:#fff0f0;text-align:right;}
+
+    .vueltos-row .label{font-weight:bold;color:var(--accent-dark);}
+
+    .action-bar{display:flex;gap:8px;justify-content:center;margin-top:25px;flex-wrap:wrap;}
+    .btn-main{padding:11px 16px;border:none;border-radius:8px;cursor:pointer;font-weight:bold;color:#fff;font-size:.9em;}
+    .btn-green{background:var(--btn-green);}
+    .btn-red-action{background:#e74c3c;}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Reporte Semanal — Asistencia y Meriendas</h1>
+    <div class="date-row">
+        <label for="report-date" style="font-size:.85em;color:#666;">Fecha:</label>
+        <input type="date" id="report-date" oninput="saveData()">
+    </div>
+
+    <div class="section-title">Asistencia por edades</div>
+    <div class="card" id="cat-body"></div>
+    <div class="total-row">
+        <span></span><span class="lbl">Total de niños</span>
+        <span id="total-ninos">0</span><span id="total-monto">₡0</span>
+    </div>
+
+    <div class="section-title">🥪 Meriendas</div>
+    <div class="card">
+        <div class="row">
+            <span class="emoji">✨</span><span class="label">Habían Jugos</span>
+            <input type="number" min="0" id="jugos-habia" placeholder="0" oninput="calcAll()">
+            <span class="calc empty"></span>
+        </div>
+        <div class="row">
+            <span class="emoji">✨</span><span class="label">Habían Galletas</span>
+            <input type="number" min="0" id="galletas-habia" placeholder="0" oninput="calcAll()">
+            <span class="calc empty"></span>
+        </div>
+
+        <div class="subheader">Se vendieron (₡400 c/u)</div>
+        <div class="row">
+            <span class="emoji"></span><span class="label">Jugos</span>
+            <input type="number" min="0" id="jugos-vend" placeholder="0" oninput="calcAll()">
+            <span class="calc" id="jugos-vend-monto">= ₡0</span>
+        </div>
+        <div class="row">
+            <span class="emoji"></span><span class="label">Galletas</span>
+            <input type="number" min="0" id="galletas-vend" placeholder="0" oninput="calcAll()">
+            <span class="calc" id="galletas-vend-monto">= ₡0</span>
+        </div>
+
+        <div class="row">
+            <span class="emoji">✨</span><span class="label">Quedan jugos</span>
+            <span class="calc" id="jugos-quedan">0</span><span class="calc empty"></span>
+        </div>
+        <div class="row">
+            <span class="emoji">✨</span><span class="label">Quedan galletas</span>
+            <span class="calc" id="galletas-quedan">0</span><span class="calc empty"></span>
+        </div>
+
+        <div class="subheader">Pagos</div>
+        <div class="row">
+            <span class="emoji"></span><span class="label">Efectivo</span>
+            <span class="calc empty"></span>
+            <input type="number" min="0" id="efectivo" placeholder="₡0" oninput="calcAll()">
+        </div>
+        <div class="row">
+            <span class="emoji"></span><span class="label">Sinpe</span>
+            <span class="calc empty"></span>
+            <input type="number" min="0" id="sinpe" placeholder="₡0" oninput="calcAll()">
+        </div>
+        <div class="total-row">
+            <span></span><span class="lbl">Total Ventas</span>
+            <span></span><span id="total-ventas">₡0</span>
+        </div>
+        <div class="warn-msg" id="ventas-warning" style="display:none;"></div>
+
+        <div class="row vueltos-row">
+            <span class="emoji">✅</span><span class="label">Quedan para vueltos</span>
+            <span class="calc empty"></span>
+            <input type="number" min="0" id="vueltos" placeholder="₡0" oninput="saveData()">
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <button class="btn-main btn-green" onclick="copyReport()">📋 Copiar Reporte</button>
+        <button class="btn-main btn-red-action" onclick="borrarApp()">🗑️ Borrar</button>
+    </div>
+</div>
+
+<script>
+const CATEGORIES = [
+    {key:'takers', emoji:'🔵', label:'Takers (12 a 14)'},
+    {key:'junior', emoji:'🟠', label:'Junior (10 a 11)'},
+    {key:'primII', emoji:'🟣', label:'Primarios II (8 a 9)'},
+    {key:'primI',  emoji:'🟢', label:'Primarios I (6 a 7)'},
+    {key:'princ',  emoji:'🔴', label:'Principiantes (4 a 3)'},
+    {key:'parv',   emoji:'🟡', label:'Párvulos (2 a 3)'},
+    {key:'mat',    emoji:'🍼', label:'Materno (1 a 2)'}
+];
+const PRECIO_ITEM = 400;
+
+function buildCatRows(){
+    const body = document.getElementById('cat-body');
+    body.innerHTML = CATEGORIES.map(c => `
+        <div class="row">
+            <span class="emoji">${c.emoji}</span>
+            <span class="label">${c.label}</span>
+            <input type="number" min="0" id="cnt-${c.key}" placeholder="0" oninput="calcAll()">
+            <input type="number" min="0" id="amt-${c.key}" placeholder="₡0" oninput="calcAll()">
+        </div>
+    `).join('');
+}
+
+function fmt(n){ return (n||0).toLocaleString('en-US'); }
+function num(id){ return parseFloat(document.getElementById(id).value) || 0; }
+
+function calcAll(){
+    let totalNinos = 0, totalMonto = 0;
+    CATEGORIES.forEach(c => {
+        totalNinos += num(`cnt-${c.key}`);
+        totalMonto += num(`amt-${c.key}`);
+    });
+    document.getElementById('total-ninos').textContent = fmt(totalNinos);
+    document.getElementById('total-monto').textContent = `₡${fmt(totalMonto)}`;
+
+    const jugosHabia = num('jugos-habia'), galletasHabia = num('galletas-habia');
+    const jugosVend = num('jugos-vend'), galletasVend = num('galletas-vend');
+    const jugosVendMonto = jugosVend * PRECIO_ITEM;
+    const galletasVendMonto = galletasVend * PRECIO_ITEM;
+
+    document.getElementById('jugos-vend-monto').textContent = `= ₡${fmt(jugosVendMonto)}`;
+    document.getElementById('galletas-vend-monto').textContent = `= ₡${fmt(galletasVendMonto)}`;
+    document.getElementById('jugos-quedan').textContent = fmt(jugosHabia - jugosVend);
+    document.getElementById('galletas-quedan').textContent = fmt(galletasHabia - galletasVend);
+
+    const totalVentasCalc = jugosVendMonto + galletasVendMonto;
+    document.getElementById('total-ventas').textContent = `₡${fmt(totalVentasCalc)}`;
+
+    const efectivo = num('efectivo'), sinpe = num('sinpe');
+    const totalIngresado = efectivo + sinpe;
+    const warnEl = document.getElementById('ventas-warning');
+    if (totalIngresado !== totalVentasCalc && (efectivo > 0 || sinpe > 0)) {
+        const diff = totalIngresado - totalVentasCalc;
+        warnEl.style.display = 'block';
+        warnEl.textContent = diff > 0
+            ? `⚠️ Efectivo+Sinpe supera el Total Ventas por ₡${fmt(diff)}`
+            : `⚠️ Efectivo+Sinpe está por debajo del Total Ventas por ₡${fmt(Math.abs(diff))}`;
+    } else {
+        warnEl.style.display = 'none';
+    }
+
+    saveData();
+}
+
+function checkVentasPopup(){
+    const jugosVend = num('jugos-vend'), galletasVend = num('galletas-vend');
+    const totalVentasCalc = (jugosVend * PRECIO_ITEM) + (galletasVend * PRECIO_ITEM);
+    const efectivo = num('efectivo'), sinpe = num('sinpe');
+    const totalIngresado = efectivo + sinpe;
+
+    if ((efectivo > 0 || sinpe > 0) && totalIngresado !== totalVentasCalc) {
+        const diff = totalIngresado - totalVentasCalc;
+        const msg = diff > 0
+            ? `⚠️ Revisar monto: Efectivo+Sinpe (₡${fmt(totalIngresado)}) supera el Total Ventas calculado (₡${fmt(totalVentasCalc)}) por ₡${fmt(diff)}.`
+            : `⚠️ Revisar monto: Efectivo+Sinpe (₡${fmt(totalIngresado)}) está por debajo del Total Ventas calculado (₡${fmt(totalVentasCalc)}). Faltan ₡${fmt(Math.abs(diff))}.`;
+        alert(`${msg} Corrige el monto antes de copiar el reporte.`);
+        return false;
+    }
+    return true;
+}
+
+function copyReport(){
+    if (!checkVentasPopup()) return;
+
+    const dateVal = document.getElementById('report-date').value;
+    const dateStr = dateVal ? dateVal.split('-').reverse().join('/').slice(0,8) : '';
+
+    const jugosHabia = num('jugos-habia'), galletasHabia = num('galletas-habia');
+    const jugosVend = num('jugos-vend'), galletasVend = num('galletas-vend');
+    const jugosVendMonto = jugosVend * PRECIO_ITEM;
+    const galletasVendMonto = galletasVend * PRECIO_ITEM;
+    const totalVentasCalc = jugosVendMonto + galletasVendMonto;
+    const efectivo = num('efectivo'), sinpe = num('sinpe');
+    const vueltos = num('vueltos');
+
+    let totalNinos = 0, totalMonto = 0;
+    let catLines = '';
+    CATEGORIES.forEach(c => {
+        const cnt = num(`cnt-${c.key}`);
+        const amt = num(`amt-${c.key}`);
+        totalNinos += cnt; totalMonto += amt;
+        catLines += `${c.emoji} ${c.label} =  ${cnt}  //  *₡ ${fmt(amt)} *\n`;
+    });
+
+    let text = `Reporte ${dateStr}  \n\n`;
+    text += catLines;
+    text += `*Total de niños *  ${fmt(totalNinos)}  //  *₡ ${fmt(totalMonto)} *\n\n`;
+    text += `**\n\n`;
+    text += `Meriendas\n`;
+    text += `✨Habían ${jugosHabia} Jugos \n`;
+    text += `✨Habían  ${galletasHabia} Galletas\n`;
+    text += `  \n`;
+    text += `Se vendieron \n`;
+    text += `${jugosVend} Jugos = ₡${fmt(jugosVendMonto)} (₡400 c/u) \n`;
+    text += `${galletasVend} Galletas = ₡${fmt(galletasVendMonto)} (₡400 c/u)\n\n`;
+        text += `Efectivo ₡${fmt(efectivo)}\n`;
+    text += `Sinpe ₡${fmt(sinpe)}\n`;
+    text += `*Total Ventas ¢${fmt(totalVentasCalc)}* (Efectivo+Sinpe)\n\n`;
+    text += `✨Quedan ${jugosHabia - jugosVend} jugos\n`;
+    text += `✨Quedan ${galletasHabia - galletasVend} galletas\n\n`;
+    text += `Quedan para vueltos:\n`;
+    text += `✅ ₡${fmt(vueltos)}`;
+
+    copyText(text, '¡Reporte copiado!');
+}
+
+function copyText(text, msg){
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); alert(msg);
+}
+
+function borrarApp(){
+    if(!confirm('¿Borrar todos los datos del reporte?')) return;
+    localStorage.removeItem('reporteMeriendasData');
+    document.querySelectorAll('input[type=number]').forEach(i => i.value = '');
+    document.getElementById('report-date').valueAsDate = new Date();
+    calcAll();
+}
+
+function saveData(){
+    const data = { date: document.getElementById('report-date').value };
+    CATEGORIES.forEach(c => {
+        data[`cnt-${c.key}`] = document.getElementById(`cnt-${c.key}`).value;
+        data[`amt-${c.key}`] = document.getElementById(`amt-${c.key}`).value;
+    });
+    ['jugos-habia','galletas-habia','jugos-vend','galletas-vend','efectivo','sinpe','vueltos'].forEach(id => {
+        data[id] = document.getElementById(id).value;
+    });
+    localStorage.setItem('reporteMeriendasData', JSON.stringify(data));
+}
+
+function loadData(){
+    const raw = localStorage.getItem('reporteMeriendasData');
+    document.getElementById('report-date').valueAsDate = new Date();
+    if(!raw) { calcAll(); return; }
+    try{
+        const data = JSON.parse(raw);
+        if(data.date) document.getElementById('report-date').value = data.date;
+        CATEGORIES.forEach(c => {
+            if(data[`cnt-${c.key}`]) document.getElementById(`cnt-${c.key}`).value = data[`cnt-${c.key}`];
+            if(data[`amt-${c.key}`]) document.getElementById(`amt-${c.key}`).value = data[`amt-${c.key}`];
+        });
+        ['jugos-habia','galletas-habia','jugos-vend','galletas-vend','efectivo','sinpe','vueltos'].forEach(id => {
+            if(data[id]) document.getElementById(id).value = data[id];
+        });
+    }catch(e){}
+    calcAll();
+}
+
+window.onload = () => { buildCatRows(); loadData(); };
+</script>
+</body>
+</html>
