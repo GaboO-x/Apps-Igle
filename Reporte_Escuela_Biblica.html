@@ -235,13 +235,13 @@ function copyReport(){
     text += `✨Habían  ${galletasHabia} Galletas\n`;
     text += `  \n`;
     text += `Se vendieron \n`;
-    text += `${jugosVend} Jugos = ₡${fmt(jugosVendMonto)} (₡400 c/u) \n`;
+    text += ` ${jugosVend} Jugos = ₡${fmt(jugosVendMonto)} (₡400 c/u) \n`;
     text += `${galletasVend} Galletas = ₡${fmt(galletasVendMonto)} (₡400 c/u)\n\n`;
-        text += `Efectivo ₡${fmt(efectivo)}\n`;
+    text += `✨Quedan ${jugosHabia - jugosVend} jugos (Resta de habian y se vendieron)\n`;
+    text += `✨Quedan ${galletasHabia - galletasVend} galletas (Resta de habian y se vendieron)\n\n`;
+    text += `Efectivo ₡${fmt(efectivo)}\n`;
     text += `Sinpe ₡${fmt(sinpe)}\n`;
     text += `*Total Ventas ¢${fmt(totalVentasCalc)}* (Efectivo+Sinpe)\n\n`;
-    text += `✨Quedan ${jugosHabia - jugosVend} jugos\n`;
-    text += `✨Quedan ${galletasHabia - galletasVend} galletas\n\n`;
     text += `Quedan para vueltos:\n`;
     text += `✅ ₡${fmt(vueltos)}`;
 
@@ -281,7 +281,7 @@ function loadData(){
     if(!raw) { calcAll(); return; }
     try{
         const data = JSON.parse(raw);
-        if(data.date) document.getElementById('report-date').value = data.date;
+        if(data.date) { /* fecha guardada ignorada: siempre se usa la de hoy */ }
         CATEGORIES.forEach(c => {
             if(data[`cnt-${c.key}`]) document.getElementById(`cnt-${c.key}`).value = data[`cnt-${c.key}`];
             if(data[`amt-${c.key}`]) document.getElementById(`amt-${c.key}`).value = data[`amt-${c.key}`];
