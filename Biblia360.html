@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Biblia360</title>
+<title>Biblia360 — Pentateuco (Tabla de estudio)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
   :root{
     --ink: #1B1F2E;
@@ -66,8 +68,406 @@
     margin-top: 10px;
   }
 
-  .table-wrap{
+  .view-toggle{
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 14px 24px 0;
+    flex-shrink: 0;
+  }
+
+  .view-toggle button{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--ink-line);
+    border-radius: 3px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .view-toggle button:hover{
+    color: var(--text);
+    border-color: var(--gold-dim);
+  }
+
+  .view-toggle button.active{
+    color: var(--gold);
+    border-color: var(--gold);
+    background: rgba(201, 162, 75, 0.08);
+  }
+
+  .map-wrap{
     max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px 24px 24px;
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: none;
+    gap: 24px;
+  }
+
+  .map-wrap.active{
+    display: flex;
+  }
+
+  .table-wrap.hidden{
+    display: none;
+  }
+
+  #leaflet-map{
+    flex: 1 1 60%;
+    min-width: 320px;
+    min-height: 420px;
+    background: var(--ink-soft);
+    border: 1px solid var(--ink-line);
+    border-radius: 6px;
+  }
+
+  .geo-marker-icon{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 9.5px;
+    color: var(--ink);
+    background: var(--gold);
+    border: 1.5px solid var(--gold);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(201, 162, 75, 0.15);
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
+  .geo-marker-icon.uncertain{
+    color: var(--gold);
+    background: var(--ink-soft);
+    border-style: dashed;
+  }
+
+  .geo-marker-icon.selected{
+    box-shadow: 0 0 0 5px rgba(201, 162, 75, 0.35);
+  }
+
+  /* Tema oscuro para los controles y popups de Leaflet */
+  .leaflet-popup-content-wrapper{
+    background: var(--ink-soft);
+    color: var(--text);
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+  }
+
+  .leaflet-popup-tip{
+    background: var(--ink-soft);
+  }
+
+  .leaflet-popup-content{
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    margin: 10px 12px;
+  }
+
+  .leaflet-popup-content strong{
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+  }
+
+  .leaflet-container a.leaflet-popup-close-button{
+    color: var(--text-muted);
+  }
+
+  .leaflet-control-zoom a{
+    background: var(--ink-soft) !important;
+    color: var(--text) !important;
+    border-color: var(--ink-line) !important;
+  }
+
+  .leaflet-control-attribution{
+    background: rgba(27, 31, 46, 0.8) !important;
+    color: var(--text-muted) !important;
+  }
+
+  .leaflet-control-attribution a{
+    color: var(--text-muted) !important;
+  }
+
+  .leaflet-tooltip{
+    background: var(--ink-soft) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--gold-dim) !important;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    box-shadow: none !important;
+  }
+
+  .leaflet-tooltip-top:before{
+    border-top-color: var(--gold-dim) !important;
+  }
+
+  .route-endpoint-icon{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    line-height: 1;
+    background: var(--ink-soft);
+    border: 1.5px solid var(--gold);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(201, 162, 75, 0.15);
+  }
+
+  .geo-distance-label{
+    background: var(--ink-soft) !important;
+    color: var(--gold) !important;
+    border: 1px solid var(--gold-dim) !important;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    box-shadow: none !important;
+  }
+
+  .geo-panel{
+    flex: 1 1 34%;
+    min-width: 280px;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow-y: auto;
+  }
+
+  .geo-panel-section{
+    flex-shrink: 0;
+  }
+
+  .geo-panel-section-title{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .geo-chip-list{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .geo-chip{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text);
+    background: var(--ink-soft);
+    border: 1px solid var(--ink-line);
+    border-radius: 3px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .geo-chip:hover{
+    border-color: var(--gold-dim);
+  }
+
+  .geo-chip.active{
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201, 162, 75, 0.08);
+  }
+
+  .geo-route-chip{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .geo-route-swatch{
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .geo-panel-detail{
+    flex-shrink: 0;
+    padding-top: 4px;
+    border-top: 1px solid var(--ink-line);
+  }
+
+  .geo-route-distance{
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    background: rgba(201, 162, 75, 0.08);
+    border: 1px solid var(--gold-dim);
+    border-radius: 3px;
+    padding: 3px 9px;
+    margin: 6px 0 10px;
+  }
+
+  .geo-route-desc{
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+
+  .geo-waypoint-item{
+    display: flex;
+    gap: 10px;
+    padding: 7px 0;
+    border-top: 1px solid var(--ink-line);
+    font-size: 13px;
+  }
+
+  .geo-waypoint-item:first-child{
+    border-top: none;
+  }
+
+  .geo-waypoint-num{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    flex-shrink: 0;
+    width: 16px;
+  }
+
+  .geo-waypoint-note{
+    color: var(--text-muted);
+    font-size: 12px;
+    display: block;
+  }
+
+  .geo-clear-btn{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--ink-line);
+    border-radius: 3px;
+    padding: 4px 10px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+
+  .geo-clear-btn:hover{
+    color: var(--text);
+    border-color: var(--gold-dim);
+  }
+
+  .geo-panel-header{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+
+
+  .geo-panel-country{
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 14px;
+  }
+
+  .geo-panel h3{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+
+  .geo-book-item{
+    border-top: 1px solid var(--ink-line);
+    padding: 10px 0;
+  }
+
+  .geo-book-item:first-child{
+    border-top: none;
+  }
+
+  .geo-book-item .geo-book-title{
+    font-family: 'Fraunces', serif;
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
+  .geo-book-item .geo-book-meta{
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .geo-uncertain-tag{
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px dashed var(--gold-dim);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-left: 6px;
+  }
+
+  .geo-legend{
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  .geo-legend-dot{
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  .geo-legend-dot.solid{
+    background: var(--gold);
+  }
+
+  .geo-legend-dot.dashed{
+    background: transparent;
+    border: 1.5px dashed var(--gold);
+  }
+
+  .geo-unresolved{
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--ink-line);
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  .geo-unresolved strong{
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  @media (max-width: 900px){
+    .map-wrap.active{ flex-direction: column; }
+    .geo-panel{ max-width: none; }
+  }
+
+  .table-wrap{
+    max-width: 1600px;
     width: 100%;
     margin: 0 auto;
     padding: 0 24px 24px;
@@ -173,7 +573,7 @@
   }
 
   .col-connect{
-    min-width: 260px;
+    min-width: 240px;
     color: var(--text-muted);
     font-style: italic;
     font-size: 12.5px;
@@ -193,7 +593,49 @@
   }
 
   .col-theme{
-    min-width: 220px;
+    min-width: 200px;
+  }
+
+  .col-summary{
+    min-width: 140px;
+  }
+
+  .video-pill{
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    background: rgba(201, 162, 75, 0.08);
+    border: 1px solid var(--gold-dim);
+    border-radius: 3px;
+    padding: 4px 9px;
+    margin: 2px 4px 2px 0;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .video-pill:hover{
+    background: rgba(201, 162, 75, 0.18);
+    border-color: var(--gold);
+  }
+
+  .video-pending{
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .place-link{
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-decoration-color: var(--gold-dim);
+    text-underline-offset: 3px;
+    transition: color 0.15s ease;
+  }
+
+  .place-link:hover{
+    color: var(--gold);
   }
 
   .col-characters{
@@ -253,6 +695,11 @@
   <h1>Biblia360</h1>
 </header>
 
+<div class="view-toggle">
+  <button id="btn-view-table" class="active" onclick="setView('table')">Tabla</button>
+  <button id="btn-view-map" onclick="setView('map')">Mapa</button>
+</div>
+
 <p class="scroll-hint">← desliza para ver todas las columnas →</p>
 
 <div class="table-wrap">
@@ -265,11 +712,20 @@
         <th>Período bíblico</th>
         <th class="col-characters">Personajes principales</th>
         <th class="col-theme">Tema principal</th>
+        <th class="col-summary">Resumen</th>
         <th class="col-connect">Siguiente libro:</th>
       </tr>
     </thead>
     <tbody id="table-body"></tbody>
   </table>
+</div>
+
+<div class="map-wrap" id="map-wrap">
+  <div id="leaflet-map"></div>
+  <div class="geo-panel" id="geo-panel">
+    <div id="geo-panel-lists"></div>
+    <div class="geo-panel-detail" id="geo-panel-detail"></div>
+  </div>
 </div>
 
 <script>
@@ -864,12 +1320,144 @@ const blocks = [
   }
 ];
 
+
+// ============ MAPA GEOGRÁFICO ============
+
+// Regiones macro. Coordenadas reales aproximadas (lat/lng), agrupadas para
+// evitar amontonar puntos que a esta escala quedarían superpuestos
+// (ej. Belén, Ramá y Jerusalén están a pocos km entre sí).
+const geoRegions = {
+  egipto:            { label: "Egipto (incl. Sinaí)", country: "Egipto", lat: 29.9, lng: 32.9 },
+  jordania:          { label: "Jordania (Moab)", country: "Jordania", lat: 31.20, lng: 35.72 },
+  israel_palestina:  { label: "Israel / Palestina", country: "Israel / Palestina", lat: 31.80, lng: 35.20 },
+  babilonia:         { label: "Babilonia", country: "Irak", lat: 32.54, lng: 44.42 },
+  susa:              { label: "Persia (Susa)", country: "Irán", lat: 32.19, lng: 48.25 },
+  antioquia:         { label: "Antioquía", country: "Turquía", lat: 36.20, lng: 36.16 },
+  efeso:             { label: "Éfeso", country: "Turquía", lat: 37.94, lng: 27.34 },
+  corinto:           { label: "Corinto", country: "Grecia", lat: 37.91, lng: 22.88 },
+  macedonia:         { label: "Macedonia", country: "Grecia", lat: 40.64, lng: 22.94 },
+  patmos:            { label: "Patmos", country: "Grecia", lat: 37.30, lng: 26.55 },
+  roma:              { label: "Roma", country: "Italia", lat: 41.90, lng: 12.50 },
+};
+
+// Radio aproximado (en metros) de la "zona" que representa cada región al
+// seleccionarla. Es una referencia visual, no un límite histórico o
+// político preciso — por eso se aclara en el panel.
+const regionRadius = {
+  egipto: 220000,
+  jordania: 90000,
+  israel_palestina: 110000,
+  babilonia: 150000,
+  susa: 150000,
+  antioquia: 80000,
+  efeso: 70000,
+  corinto: 70000,
+  macedonia: 150000,
+  patmos: 40000,
+  roma: 100000,
+};
+
+// Libro -> región. "uncertain: true" refleja que el dato original usa
+// "posiblemente" / "o [otro lugar]". Jeremías y Daniel tuvieron una segunda
+// etapa geográfica real (Egipto y Persia respectivamente) — eso ahora vive
+// en sus propios "Recorridos", no acá.
+const bookGeo = {
+  "Génesis": { region: "egipto" },
+  "Éxodo": { region: "egipto" },
+  "Levítico": { region: "egipto" },
+  "Números": { region: "jordania" },
+  "Deuteronomio": { region: "jordania" },
+  "Josué": { region: "israel_palestina" },
+  "Jueces": { region: "israel_palestina", uncertain: true },
+  "Rut": { region: "israel_palestina" },
+  "1 Samuel": { region: "israel_palestina" },
+  "2 Samuel": { region: "israel_palestina" },
+  "1 Reyes": { region: "babilonia", uncertain: true },
+  "2 Reyes": { region: "babilonia", uncertain: true },
+  "1 Crónicas": { region: "israel_palestina" },
+  "2 Crónicas": { region: "israel_palestina" },
+  "Esdras": { region: "israel_palestina", uncertain: true },
+  "Nehemías": { region: "israel_palestina" },
+  "Ester": { region: "susa" },
+  "Job": { region: null },
+  "Salmos": { region: "israel_palestina" },
+  "Proverbios": { region: "israel_palestina" },
+  "Eclesiastés": { region: "israel_palestina" },
+  "Cantares": { region: "israel_palestina" },
+  "Isaías": { region: "israel_palestina" },
+  "Jeremías": { region: "israel_palestina" },
+  "Lamentaciones": { region: "israel_palestina" },
+  "Ezequiel": { region: "babilonia" },
+  "Daniel": { region: "babilonia" },
+  "Oseas": { region: "israel_palestina" },
+  "Joel": { region: "israel_palestina" },
+  "Amós": { region: "israel_palestina" },
+  "Abdías": { region: "israel_palestina" },
+  "Jonás": { region: "israel_palestina" },
+  "Miqueas": { region: "israel_palestina" },
+  "Nahúm": { region: "israel_palestina" },
+  "Habacuc": { region: "israel_palestina" },
+  "Sofonías": { region: "israel_palestina" },
+  "Hageo": { region: "israel_palestina" },
+  "Zacarías": { region: "israel_palestina" },
+  "Malaquías": { region: "israel_palestina" },
+  "Mateo": { region: "antioquia", uncertain: true },
+  "Marcos": { region: "roma", uncertain: true },
+  "Lucas": { region: "israel_palestina", uncertain: true },
+  "Juan": { region: "efeso", uncertain: true },
+  "Hechos": { region: "roma", uncertain: true },
+  "Romanos": { region: "corinto" },
+  "1 Corintios": { region: "efeso" },
+  "2 Corintios": { region: "macedonia" },
+  "Gálatas": { region: "antioquia", uncertain: true },
+  "Efesios": { region: "roma" },
+  "Filipenses": { region: "roma" },
+  "Colosenses": { region: "roma" },
+  "1 Tesalonicenses": { region: "corinto" },
+  "2 Tesalonicenses": { region: "corinto" },
+  "1 Timoteo": { region: "macedonia", uncertain: true },
+  "2 Timoteo": { region: "roma" },
+  "Tito": { region: "macedonia", uncertain: true },
+  "Filemón": { region: "roma" },
+  "Hebreos": { region: null },
+  "Santiago": { region: "israel_palestina" },
+  "1 Pedro": { region: "roma" },
+  "2 Pedro": { region: "roma" },
+  "1 Juan": { region: "efeso", uncertain: true },
+  "2 Juan": { region: "efeso", uncertain: true },
+  "3 Juan": { region: "efeso", uncertain: true },
+  "Judas": { region: "israel_palestina", uncertain: true },
+  "Apocalipsis": { region: "patmos" },
+};
+
+// ============ VIDEOS DE RESUMEN (YouTube) ============
+// Para agregar un video, pegá la URL dentro del arreglo del libro.
+// Un solo video:  "Génesis": ["https://youtu.be/XXXXXXXXXXX"]
+// Dos partes:     "Génesis": ["https://youtu.be/PARTE1", "https://youtu.be/PARTE2"]
+// Si el arreglo queda vacío [], la columna muestra un guion "—".
+const bookVideos = {
+  "Génesis": ["https://www.youtube.com/watch?v=HQMKA6w5ZZM", "https://www.youtube.com/watch?v=MC8BqGu9B8A"], "Éxodo": ["https://www.youtube.com/watch?v=y9pED55wMM4", "https://www.youtube.com/watch?v=U2lUpubEMDI"], "Levítico": ["https://www.youtube.com/watch?v=vKT8eo3hAMw"], "Números": ["https://www.youtube.com/watch?v=dtfbSxNecMk"], "Deuteronomio": ["https://www.youtube.com/watch?v=qfMplfJoYA0"],
+  "Josué": ["https://www.youtube.com/watch?v=49ggVrdBN_Y"], "Jueces": ["https://www.youtube.com/watch?v=bCwaJz4L2nU"], "Rut": ["https://www.youtube.com/watch?v=f984fG4-xlE"], "1 Samuel": ["https://www.youtube.com/watch?v=34biq4ivs5I"], "2 Samuel": ["https://www.youtube.com/watch?v=BEvicPpjQBE"],
+  "1 Reyes": ["https://www.youtube.com/watch?v=8V-TefJJc0g"], "2 Reyes": ["https://www.youtube.com/watch?v=8V-TefJJc0g"], "1 Crónicas": ["https://www.youtube.com/watch?v=lMj--4fDpvc"], "2 Crónicas": ["https://www.youtube.com/watch?v=lMj--4fDpvc"], "Esdras": ["https://www.youtube.com/watch?v=OGdiLZ92nQs"],
+  "Nehemías": ["https://www.youtube.com/watch?v=OGdiLZ92nQs"], "Ester": ["https://www.youtube.com/watch?v=0NzTOuBKAcI"], "Job": ["https://www.youtube.com/watch?v=A3ifTHYTmMQ"], "Salmos": ["https://www.youtube.com/watch?v=8yieTfiw_Ew"], "Proverbios": ["https://www.youtube.com/watch?v=pNjt_NfIam8"],
+  "Eclesiastés": ["https://www.youtube.com/watch?v=X4Brf1Z8N4E"], "Cantares": ["https://www.youtube.com/watch?v=JeTxGCZH99o"], "Isaías": ["https://www.youtube.com/watch?v=9lWr9EZchWg", "https://www.youtube.com/watch?v=s-K5s7YpUC8"], "Jeremías": ["https://www.youtube.com/watch?v=_Nf4IcDuyTc&list"], "Lamentaciones": ["https://www.youtube.com/watch?v=CWgafyPYpAU"],
+  "Ezequiel": ["https://www.youtube.com/watch?v=_XqV69VU3o0&list", "https://www.youtube.com/watch?v=5_PVGlLfuk8&list"], "Daniel": ["https://www.youtube.com/watch?v=yBO4FjCebrI"], "Oseas": ["https://www.youtube.com/watch?v=f81QQCnEOT4"], "Joel": ["https://www.youtube.com/watch?v=lcUo6mIBx1E"], "Amós": ["https://www.youtube.com/watch?v=_6VyB2nOH8w"],
+  "Abdías": ["https://www.youtube.com/watch?v=aEe3f0vEmVw"], "Jonás": ["https://www.youtube.com/watch?v=oozILMuVVio"], "Miqueas": ["https://www.youtube.com/watch?v=uivwBR1_tLs"], "Nahúm": ["https://www.youtube.com/watch?v=bDGI0kq3vaE"], "Habacuc": ["https://www.youtube.com/watch?v=AJT_ipZplS4"],
+  "Sofonías": ["https://www.youtube.com/watch?v=I9KvC0w1plE"], "Hageo": ["https://www.youtube.com/watch?v=kPOORNkv4AA"], "Zacarías": ["https://www.youtube.com/watch?v=pYh4r4bNruQ"], "Malaquías": ["https://www.youtube.com/watch?v=8ZMSBFH-8QM"], "Mateo": ["https://www.youtube.com/watch?v=3jUPGTb80ms", "https://www.youtube.com/watch?v=EobkNEf-ySA"],
+  "Marcos": ["https://www.youtube.com/watch?v=gsXLQkppzUc"], "Lucas": ["https://www.youtube.com/watch?v=bPzhlL9zKmg", "https://www.youtube.com/watch?v=CxiSs-SHTuI"], "Juan": ["https://www.youtube.com/watch?v=OU16-2Sg_CQ", "https://www.youtube.com/watch?v=NUW1Frg8DA0"], "Hechos": ["https://www.youtube.com/watch?v=5h7Q0EK-m8I", "https://www.youtube.com/watch?v=ZKaaHQUdVCY"], "Romanos": ["https://www.youtube.com/watch?v=0tco1rQGC1o", "https://www.youtube.com/watch?v=ZqScL0dHLsM"],
+  "1 Corintios": ["https://www.youtube.com/watch?v=6f0kym4bUmE"], "2 Corintios": ["https://www.youtube.com/watch?v=jV7dTkYFym4"], "Gálatas": ["https://www.youtube.com/watch?v=kMJLgLOWb3I"], "Efesios": ["https://www.youtube.com/watch?v=yJgym5MGzM4"], "Filipenses": ["https://www.youtube.com/watch?v=gks8CQX5mwQ"],
+  "Colosenses": ["https://www.youtube.com/watch?v=AG4jqCUapng"], "1 Tesalonicenses": ["https://www.youtube.com/watch?v=_7N4vdUUK2w"], "2 Tesalonicenses": ["https://www.youtube.com/watch?v=YXBzJlvH6l4"], "1 Timoteo": ["https://www.youtube.com/watch?v=K5xCbQcSsOE"], "2 Timoteo": ["https://www.youtube.com/watch?v=lvNqjbjTytE"],
+  "Tito": ["https://www.youtube.com/watch?v=SuJmsIu_1-M"], "Filemón": ["https://www.youtube.com/watch?v=wNySA_IEHbM"], "Hebreos": ["https://www.youtube.com/watch?v=VqVAOqyoKCs"], "Santiago": ["https://www.youtube.com/watch?v=yDqK_U-ipfc"], "1 Pedro": ["https://www.youtube.com/watch?v=NXRkCxeO-C4"],
+  "2 Pedro": ["https://www.youtube.com/watch?v=0RJLecW7F08"], "1 Juan": ["https://www.youtube.com/watch?v=wQtMnuBzb4c"], "2 Juan": ["https://www.youtube.com/watch?v=wQtMnuBzb4c"], "3 Juan": ["https://www.youtube.com/watch?v=wQtMnuBzb4c"], "Judas": ["https://www.youtube.com/watch?v=vhPyNSJiRZ8"],
+  "Apocalipsis": ["https://www.youtube.com/watch?v=PgV57gK-Xow", "https://www.youtube.com/watch?v=DMXA-GERRzY"],
+};
+
 const tbody = document.getElementById('table-body');
 
 blocks.forEach(block => {
   const blockRow = document.createElement('tr');
   blockRow.className = 'block-row';
-  blockRow.innerHTML = `<td colspan="7"><div class="block-label">Bloque ${block.id} <span>· ${block.name}</span></div></td>`;
+  blockRow.innerHTML = `<td colspan="8"><div class="block-label">Bloque ${block.id} <span>· ${block.name}</span></div></td>`;
   tbody.appendChild(blockRow);
 
   block.books.forEach(book => {
@@ -881,16 +1469,555 @@ blocks.forEach(block => {
         <div class="book-tag">"${book.summary.tag}"</div>
         <div class="book-date">${book.writing.date}</div>
       </td>
-      <td>${book.writing.place}</td>
+      <td>${renderPlaceCell(book)}</td>
       <td>${book.writing.countryToday}</td>
       <td>${book.history.period}</td>
       <td class="col-characters">${book.mainCharacters.join(', ')}</td>
       <td class="col-theme">${book.theme}</td>
+      <td class="col-summary">${renderVideoCell(book)}</td>
       <td class="col-connect"><strong>Siguiente libro:</strong>${book.history.transitionNote}</td>
     `;
     tbody.appendChild(tr);
   });
 });
+
+function renderPlaceCell(book){
+  const geo = bookGeo[book.title];
+  if(geo && geo.region){
+    return `<span class="place-link" data-book-title="${book.title}" onclick="goToBookLocation(this.dataset.bookTitle)">${book.writing.place}</span>`;
+  }
+  return book.writing.place;
+}
+
+function renderVideoCell(book){
+  const videos = bookVideos[book.title] || [];
+  if(videos.length === 0){
+    return '<span class="video-pending">—</span>';
+  }
+  return videos.map((url, i) => `
+    <a class="video-pill" href="${url}" target="_blank" rel="noopener noreferrer">
+      ▶ ${videos.length > 1 ? 'Parte ' + (i + 1) : 'Resumen'}
+    </a>
+  `).join('');
+}
+
+
+// ============ RECORRIDOS HISTÓRICOS ============
+// Coordenadas aproximadas de sitios tradicionales. Donde la ubicación
+// exacta es discutida (ej. el cruce del Mar Rojo, el Sinaí bíblico),
+// se usa el sitio de identificación más aceptada, marcado en la nota.
+const routes = {
+  exodo: {
+    label: "Éxodo de Egipto",
+    color: "#c9a24b",
+    description: "La salida de Israel de Egipto hasta las llanuras de Moab, frente a la Tierra Prometida (Génesis–Deuteronomio).",
+    waypoints: [
+      { name: "Ramesés, Egipto", lat: 30.80, lng: 31.99, note: "Punto de partida (Éx 12:37)" },
+      { name: "Sucot", lat: 30.57, lng: 32.27 },
+      { name: "Cruce del Mar Rojo", lat: 29.97, lng: 32.60, note: "Ubicación exacta debatida" },
+      { name: "Monte Sinaí", lat: 28.5392, lng: 33.9734, note: "Identificación tradicional (Jebel Musa)" },
+      { name: "Cades-barnea", lat: 30.6870, lng: 34.4854 },
+      { name: "Monte Nebo, Moab", lat: 31.7688, lng: 35.7256, note: "Moisés ve la Tierra Prometida (Dt 34)" },
+    ],
+  },
+  jesus: {
+    label: "Recorrido de Jesús",
+    color: "#7ea8c9",
+    description: "Lugares clave del nacimiento y ministerio de Jesús, de forma simplificada (no es un itinerario cronológico exhaustivo).",
+    waypoints: [
+      { name: "Belén", lat: 31.7054, lng: 35.2024, note: "Nacimiento" },
+      { name: "Nazaret", lat: 32.6996, lng: 35.2967, note: "Infancia y juventud" },
+      { name: "Río Jordán", lat: 31.8372, lng: 35.5494, note: "Bautismo por Juan" },
+      { name: "Capernaúm", lat: 32.8807, lng: 35.5753, note: "Base del ministerio en Galilea" },
+      { name: "Jerusalén", lat: 31.7683, lng: 35.2137, note: "Semana final, crucifixión y resurrección" },
+    ],
+  },
+  pablo1: {
+    label: "1er viaje misionero de Pablo",
+    color: "#a888c9",
+    description: "Hechos 13–14. Pablo y Bernabé recorren Chipre y el centro de Asia Menor.",
+    waypoints: [
+      { name: "Antioquía de Siria", lat: 36.2021, lng: 36.1604, note: "Punto de partida" },
+      { name: "Salamina, Chipre", lat: 35.1856, lng: 33.9031 },
+      { name: "Pafos, Chipre", lat: 34.7571, lng: 32.4097 },
+      { name: "Perge", lat: 36.9614, lng: 30.8494 },
+      { name: "Antioquía de Pisidia", lat: 38.3081, lng: 31.1897 },
+      { name: "Iconio", lat: 37.8747, lng: 32.4932 },
+      { name: "Listra", lat: 37.5786, lng: 32.4664 },
+      { name: "Derbe", lat: 37.3494, lng: 33.2481 },
+      { name: "Antioquía de Siria", lat: 36.2021, lng: 36.1604, note: "Regreso" },
+    ],
+  },
+  pablo2: {
+    label: "2do viaje misionero de Pablo",
+    color: "#c98878",
+    description: "Hechos 15:36–18:22. Pablo cruza a Macedonia y Grecia; se escriben 1-2 Tesalonicenses.",
+    waypoints: [
+      { name: "Antioquía de Siria", lat: 36.2021, lng: 36.1604, note: "Punto de partida" },
+      { name: "Listra (revisita)", lat: 37.5786, lng: 32.4664 },
+      { name: "Troas", lat: 39.7580, lng: 26.1520 },
+      { name: "Filipos", lat: 41.0138, lng: 24.2875 },
+      { name: "Tesalónica", lat: 40.6401, lng: 22.9444 },
+      { name: "Berea", lat: 40.5231, lng: 22.2044 },
+      { name: "Atenas", lat: 37.9838, lng: 23.7275 },
+      { name: "Corinto", lat: 37.9061, lng: 22.8781, note: "18 meses de ministerio" },
+      { name: "Éfeso", lat: 37.9375, lng: 27.3407, note: "Visita breve" },
+      { name: "Antioquía de Siria", lat: 36.2021, lng: 36.1604, note: "Regreso" },
+    ],
+  },
+  pablo3: {
+    label: "3er viaje misionero de Pablo",
+    color: "#88c9a0",
+    description: "Hechos 18:23–21:17. Pablo pasa ~3 años en Éfeso; se escriben 1-2 Corintios, Romanos.",
+    waypoints: [
+      { name: "Antioquía de Siria", lat: 36.2021, lng: 36.1604, note: "Punto de partida" },
+      { name: "Éfeso", lat: 37.9375, lng: 27.3407, note: "~3 años de ministerio" },
+      { name: "Macedonia (Filipos)", lat: 41.0138, lng: 24.2875 },
+      { name: "Corinto (revisita)", lat: 37.9061, lng: 22.8781, note: "3 meses, escribe Romanos" },
+      { name: "Troas", lat: 39.7580, lng: 26.1520 },
+      { name: "Mileto", lat: 37.5312, lng: 27.2833 },
+      { name: "Tiro", lat: 33.2704, lng: 35.2038 },
+      { name: "Cesarea", lat: 32.50, lng: 34.90 },
+      { name: "Jerusalén", lat: 31.7683, lng: 35.2137, note: "Arresto" },
+    ],
+  },
+  pablo_roma: {
+    label: "Viaje de Pablo a Roma",
+    color: "#c9c088",
+    description: "Hechos 27–28. Como preso, Pablo naufraga camino a Roma para ser juzgado ante el César.",
+    waypoints: [
+      { name: "Cesarea", lat: 32.50, lng: 34.90, note: "Punto de partida, como preso" },
+      { name: "Sidón", lat: 33.5606, lng: 35.3758 },
+      { name: "Mira", lat: 36.2603, lng: 29.9847 },
+      { name: "Creta (Buenos Puertos)", lat: 34.9853, lng: 25.0864 },
+      { name: "Malta", lat: 35.9375, lng: 14.3754, note: "Naufragio" },
+      { name: "Siracusa, Sicilia", lat: 37.0755, lng: 15.2866 },
+      { name: "Puteoli", lat: 40.8236, lng: 14.1197 },
+      { name: "Roma", lat: 41.9028, lng: 12.4964, note: "Juicio ante el César" },
+    ],
+  },
+  abraham: {
+    label: "Viaje de Abraham",
+    color: "#c96b6b",
+    description: "Génesis 11–13. El llamado de Dios a Abraham, de Ur de los Caldeos hasta Canaán.",
+    waypoints: [
+      { name: "Ur de los Caldeos", lat: 30.9625, lng: 46.1039, note: "Punto de partida" },
+      { name: "Harán", lat: 36.8622, lng: 39.0281, note: "Muere Taré, padre de Abraham" },
+      { name: "Siquem, Canaán", lat: 32.2137, lng: 35.2810, note: "Primera promesa de la tierra" },
+      { name: "Betel", lat: 31.9306, lng: 35.2178 },
+      { name: "Hebrón", lat: 31.5326, lng: 35.0998, note: "Se establece finalmente" },
+    ],
+  },
+  exilio: {
+    label: "Exilio a Babilonia",
+    color: "#8892c9",
+    description: "2 Reyes 25. La deportación de Judá tras la caída de Jerusalén en 586 a.C.",
+    waypoints: [
+      { name: "Jerusalén", lat: 31.7683, lng: 35.2137, note: "Caída de la ciudad, 586 a.C." },
+      { name: "Ribla", lat: 34.4667, lng: 36.5333, note: "Campamento de Nabucodonosor" },
+      { name: "Babilonia", lat: 32.5364, lng: 44.4208, note: "Destino del exilio" },
+    ],
+  },
+  jeremias: {
+    label: "Jeremías, el profeta",
+    color: "#d9895a",
+    description: "Jeremías 1, 39–43. Del pueblo natal del profeta hasta su traslado forzado a Egipto tras la caída de Jerusalén.",
+    waypoints: [
+      { name: "Anatot", lat: 31.83, lng: 35.27, note: "Pueblo natal de Jeremías (Jer 1:1)" },
+      { name: "Jerusalén", lat: 31.7683, lng: 35.2137, note: "Décadas de ministerio profético" },
+      { name: "Mizpa", lat: 31.87, lng: 35.18, note: "Permanece en Judá bajo el gobernador Gedalías" },
+      { name: "Tahpanhes, Egipto", lat: 30.87, lng: 32.33, note: "Llevado a la fuerza por el remanente judío (Jer 43)" },
+    ],
+  },
+  daniel: {
+    label: "Daniel, en el exilio",
+    color: "#5fb8b0",
+    description: "Daniel 1, 8. De un joven deportado de Jerusalén a una carrera de décadas sirviendo en las cortes de Babilonia y Persia.",
+    waypoints: [
+      { name: "Jerusalén", lat: 31.7683, lng: 35.2137, note: "Deportado en 605 a.C., siendo joven" },
+      { name: "Babilonia", lat: 32.5364, lng: 44.4208, note: "Sirve en la corte de Nabucodonosor y sus sucesores" },
+      { name: "Susa", lat: 32.1943, lng: 48.2533, note: "Escenario de su visión final (Dn 8)" },
+    ],
+  },
+  david: {
+    label: "David huye de Saúl",
+    color: "#c96b9e",
+    description: "1 Samuel 19–27. Los años de David como fugitivo antes de convertirse en rey.",
+    waypoints: [
+      { name: "Belén", lat: 31.7054, lng: 35.2024, note: "Pueblo natal de David" },
+      { name: "Naiot, en Ramá", lat: 31.85, lng: 35.22, note: "Huye donde el profeta Samuel" },
+      { name: "Nob", lat: 31.78, lng: 35.23, note: "El sacerdote Ahimelec le da pan y la espada de Goliat" },
+      { name: "Gat, Filistea", lat: 31.70, lng: 34.84, note: "Se refugia entre los filisteos, finge locura" },
+      { name: "Cueva de Adulam", lat: 31.62, lng: 34.99 },
+      { name: "En-gadi", lat: 31.46, lng: 35.39, note: "Perdona la vida de Saúl en una cueva" },
+      { name: "Siclag", lat: 31.28, lng: 34.65, note: "Base final bajo protección filistea (ubicación exacta debatida)" },
+    ],
+  },
+  elias: {
+    label: "Elías, el profeta",
+    color: "#a3b83c",
+    description: "1 Reyes 17–19. Del anuncio de la sequía al encuentro con Dios en el monte Horeb.",
+    waypoints: [
+      { name: "Tisbé, en Galaad", lat: 32.35, lng: 35.75, note: "Origen del profeta (ubicación aproximada)" },
+      { name: "Arroyo de Querit", lat: 32.40, lng: 35.60, note: "Se esconde, alimentado por cuervos" },
+      { name: "Sarepta, cerca de Sidón", lat: 33.4667, lng: 35.2833, note: "La viuda y el aceite que no se agota" },
+      { name: "Monte Carmelo", lat: 32.7333, lng: 35.0500, note: "Duelo contra los profetas de Baal" },
+      { name: "Monte Horeb", lat: 28.5392, lng: 33.9734, note: "Huye de Jezabel; encuentro con Dios en el silbo apacible" },
+    ],
+  },
+  reyes_magos: {
+    label: "Los reyes magos",
+    color: "#c9a0e0",
+    description: "Mateo 2. Los sabios de Oriente que siguen una estrella hasta el niño Jesús.",
+    waypoints: [
+      { name: "Oriente", lat: 32.5364, lng: 44.4208, note: "Origen incierto; tradicionalmente Babilonia, Persia o Arabia" },
+      { name: "Jerusalén", lat: 31.7683, lng: 35.2137, note: "Consultan a Herodes" },
+      { name: "Belén", lat: 31.7054, lng: 35.2024, note: "Encuentran al niño y lo adoran" },
+    ],
+  },
+};
+
+// Construir listado de libros por región + lista de "sin ubicación"
+const allBooksFlat = blocks.flatMap(b => b.books.map(bk => ({ ...bk, blockName: b.name })));
+const booksByRegion = {};
+const unresolvedBooks = [];
+
+allBooksFlat.forEach(book => {
+  const geo = bookGeo[book.title];
+  if(!geo || !geo.region){
+    unresolvedBooks.push(book);
+    return;
+  }
+  if(!booksByRegion[geo.region]) booksByRegion[geo.region] = [];
+  booksByRegion[geo.region].push({ book, uncertain: !!geo.uncertain });
+});
+
+let selectedRegion = null;
+let selectedRoute = null;
+let leafletMap = null;
+const leafletMarkers = {};
+let routeLayer = null;
+let regionHighlightLayer = null;
+
+function renderMap(){
+  leafletMap = L.map('leaflet-map', {
+    center: [33, 30],
+    zoom: 4.4,
+    scrollWheelZoom: true,
+  });
+
+  // CartoDB Dark Matter: tiles gratuitos, sin API key, que combinan con el
+  // tema oscuro de la app (los tiles estándar de OSM son a color).
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(leafletMap);
+
+  Object.keys(geoRegions).forEach(key => {
+    if(!booksByRegion[key]) return;
+    const region = geoRegions[key];
+    const entries = booksByRegion[key];
+    const total = entries.length;
+    const allUncertain = entries.every(e => e.uncertain);
+    const size = 14 + Math.sqrt(total) * 3.2;
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="geo-marker-icon${allUncertain ? ' uncertain' : ''}" style="width:${size}px;height:${size}px">${total}</div>`,
+      iconSize: [size, size],
+    });
+
+    const marker = L.marker([region.lat, region.lng], { icon }).addTo(leafletMap);
+    marker.bindTooltip(region.label, { direction: 'top', offset: [0, -size/2] });
+    marker.on('click', () => selectRegion(key));
+    leafletMarkers[key] = marker;
+  });
+
+  routeLayer = L.layerGroup().addTo(leafletMap);
+  regionHighlightLayer = L.layerGroup().addTo(leafletMap);
+  renderPanelLists();
+}
+
+function goToRegion(key){
+  const region = geoRegions[key];
+  leafletMap.flyTo([region.lat, region.lng], 6, { duration: 0.6 });
+  selectRegion(key);
+}
+
+function goToBookLocation(bookTitle){
+  const geo = bookGeo[bookTitle];
+  if(!geo || !geo.region) return;
+
+  const wasMapReady = !!leafletMap;
+  setView('map');
+
+  // Si el mapa recién se está inicializando en este mismo clic, hay que
+  // esperar a que exista antes de centrar la vista.
+  if(wasMapReady){
+    goToRegion(geo.region);
+  } else {
+    setTimeout(() => goToRegion(geo.region), 200);
+  }
+}
+
+function selectRegion(key){
+  selectedRegion = key;
+  selectedRoute = null;
+  routeLayer.clearLayers();
+  regionHighlightLayer.clearLayers();
+
+  Object.keys(leafletMarkers).forEach(k => {
+    const marker = leafletMarkers[k];
+    marker.setOpacity(k === key ? 1 : 0);
+    const el = marker.getElement();
+    if(el){
+      const icon = el.querySelector('.geo-marker-icon');
+      if(icon) icon.classList.toggle('selected', k === key);
+    }
+  });
+
+  const region = geoRegions[key];
+  L.circle([region.lat, region.lng], {
+    radius: regionRadius[key] || 100000,
+    color: '#C9A24B',
+    weight: 1.5,
+    dashArray: '4,5',
+    fillColor: '#C9A24B',
+    fillOpacity: 0.08,
+  }).addTo(regionHighlightLayer);
+
+  renderPanelLists();
+  renderGeoPanel();
+}
+
+// Distancia aproximada en línea recta (no la ruta real caminada/navegada,
+// que sería más larga) entre dos coordenadas.
+function haversineKm(lat1, lng1, lat2, lng2){
+  const R = 6371;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function routeTotalKm(route){
+  let total = 0;
+  for(let i = 0; i < route.waypoints.length - 1; i++){
+    const a = route.waypoints[i], b = route.waypoints[i + 1];
+    total += haversineKm(a.lat, a.lng, b.lat, b.lng);
+  }
+  return total;
+}
+
+function showRoute(routeKey){
+  selectedRoute = routeKey;
+  selectedRegion = null;
+  regionHighlightLayer.clearLayers();
+  Object.keys(leafletMarkers).forEach(k => {
+    leafletMarkers[k].setOpacity(1);
+    const el = leafletMarkers[k].getElement();
+    if(el){
+      const icon = el.querySelector('.geo-marker-icon');
+      if(icon) icon.classList.remove('selected');
+    }
+  });
+
+  routeLayer.clearLayers();
+  const route = routes[routeKey];
+  const lastIdx = route.waypoints.length - 1;
+
+  // Un segmento de línea por tramo (en vez de una sola polilínea), para
+  // poder mostrar la distancia aproximada al pasar el mouse por cada tramo.
+  for(let i = 0; i < lastIdx; i++){
+    const a = route.waypoints[i], b = route.waypoints[i + 1];
+    const km = haversineKm(a.lat, a.lng, b.lat, b.lng);
+    const segment = L.polyline([[a.lat, a.lng], [b.lat, b.lng]], {
+      color: route.color,
+      weight: 2.5,
+      opacity: 0.85,
+      dashArray: '6,6',
+    }).addTo(routeLayer);
+    segment.bindTooltip(`~${Math.round(km).toLocaleString('es')} km`, { sticky: true, className: 'geo-distance-label' });
+  }
+
+  route.waypoints.forEach((w, i) => {
+    const isStart = i === 0;
+    const isEnd = i === lastIdx;
+
+    if(isStart || isEnd){
+      // Ícono fijo y pequeño (🚩/🏁) siempre visible para ubicar de un
+      // vistazo dónde empieza y termina; el nombre solo aparece al pasar
+      // el mouse, igual que el resto de las paradas.
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="route-endpoint-icon">${isStart ? '🚩' : '🏁'}</div>`,
+        iconSize: [22, 22],
+      });
+      const marker = L.marker([w.lat, w.lng], { icon }).addTo(routeLayer);
+      marker.bindTooltip(`${isStart ? 'Inicio' : 'Fin'}: ${w.name}`, { direction: 'top' });
+    } else {
+      const marker = L.circleMarker([w.lat, w.lng], {
+        radius: 5,
+        color: route.color,
+        weight: 2,
+        fillColor: route.color,
+        fillOpacity: 0.9,
+      }).addTo(routeLayer);
+      marker.bindTooltip(`${i + 1}. ${w.name}`, { direction: 'top' });
+    }
+  });
+
+  const bounds = L.latLngBounds(route.waypoints.map(w => [w.lat, w.lng]));
+  leafletMap.flyToBounds(bounds, { padding: [50, 50], duration: 0.6 });
+
+  renderPanelLists();
+  renderGeoPanel();
+}
+
+function clearRoute(){
+  selectedRoute = null;
+  routeLayer.clearLayers();
+  renderPanelLists();
+  renderGeoPanel();
+}
+
+function clearRegionSelection(){
+  selectedRegion = null;
+  regionHighlightLayer.clearLayers();
+  Object.keys(leafletMarkers).forEach(k => {
+    leafletMarkers[k].setOpacity(1);
+    const el = leafletMarkers[k].getElement();
+    if(el){
+      const icon = el.querySelector('.geo-marker-icon');
+      if(icon) icon.classList.remove('selected');
+    }
+  });
+  renderPanelLists();
+  renderGeoPanel();
+}
+
+function renderPanelLists(){
+  const container = document.getElementById('geo-panel-lists');
+  if(!container) return;
+
+  const placesHtml = Object.keys(geoRegions)
+    .filter(key => booksByRegion[key])
+    .map(key => `
+      <button class="geo-chip${selectedRegion === key ? ' active' : ''}" onclick="goToRegion('${key}')">
+        ${geoRegions[key].label}
+      </button>
+    `).join('');
+
+  const routesHtml = Object.keys(routes).map(key => `
+    <button class="geo-chip geo-route-chip${selectedRoute === key ? ' active' : ''}" onclick="showRoute('${key}')">
+      <span class="geo-route-swatch" style="background:${routes[key].color}"></span>
+      ${routes[key].label}
+    </button>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="geo-panel-section">
+      <div class="geo-panel-section-title">Lugares</div>
+      <div class="geo-chip-list">${placesHtml}</div>
+    </div>
+    <div class="geo-panel-section" style="margin-top:18px">
+      <div class="geo-panel-section-title">Recorridos</div>
+      <div class="geo-chip-list">${routesHtml}</div>
+    </div>
+  `;
+}
+
+function renderGeoPanel(){
+  const panel = document.getElementById('geo-panel-detail');
+
+  if(selectedRoute){
+    const route = routes[selectedRoute];
+    const totalKm = Math.round(routeTotalKm(route));
+    panel.innerHTML = `
+      <button class="geo-clear-btn" onclick="clearRoute()">✕ Ocultar recorrido</button>
+      <div class="geo-panel-header">Recorrido</div>
+      <h3>${route.label}</h3>
+      <div class="geo-route-distance">~${totalKm.toLocaleString('es')} km totales</div>
+      <div class="geo-route-desc">${route.description}</div>
+      ${route.waypoints.map((w, i) => `
+        <div class="geo-waypoint-item">
+          <div class="geo-waypoint-num">${i + 1}</div>
+          <div>
+            ${w.name}
+            ${w.note ? `<span class="geo-waypoint-note">${w.note}</span>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    `;
+    return;
+  }
+
+  if(!selectedRegion){
+    panel.innerHTML = `
+      <div class="geo-panel-header">Cómo leer el mapa</div>
+      <div class="geo-legend">
+        <div><span class="geo-legend-dot solid"></span>Ubicación razonablemente cierta</div>
+        <div><span class="geo-legend-dot dashed"></span>Ubicación debatida ("posiblemente...")</div>
+        <div style="margin-top:8px">El número indica cuántos libros se escribieron ahí. Tocá un punto, o un nombre de la lista, para ver el detalle.</div>
+      </div>
+      <div class="geo-unresolved">
+        <strong>Sin ubicación determinada:</strong> ${unresolvedBooks.map(b => b.title).join(', ')}. El texto bíblico no lo especifica, así que preferimos no inventar un dato que no existe.
+      </div>
+    `;
+    return;
+  }
+
+  const region = geoRegions[selectedRegion];
+  const entries = booksByRegion[selectedRegion];
+
+  panel.innerHTML = `
+    <button class="geo-clear-btn" onclick="clearRegionSelection()">✕ Ver todos los lugares</button>
+    <div class="geo-panel-header">${entries.length} libro${entries.length !== 1 ? 's' : ''} escrito${entries.length !== 1 ? 's' : ''} aquí</div>
+    <h3>${region.label}</h3>
+    <div class="geo-panel-country">${region.country}</div>
+    ${entries.map(e => `
+      <div class="geo-book-item">
+        <div class="geo-book-title">
+          ${String(e.book.order).padStart(2,'0')} · ${e.book.title}
+          ${e.uncertain ? '<span class="geo-uncertain-tag">Debatido</span>' : ''}
+        </div>
+        <div class="geo-book-meta">${e.book.writing.place} · ${e.book.blockName}</div>
+      </div>
+    `).join('')}
+    <div class="geo-unresolved" style="margin-top:14px">
+      El círculo del mapa marca una zona aproximada de referencia, no un límite histórico o político preciso.
+    </div>
+  `;
+}
+
+function setView(view){
+  const tableWrap = document.querySelector('.table-wrap');
+  const mapWrap = document.getElementById('map-wrap');
+  const scrollHint = document.querySelector('.scroll-hint');
+  const btnTable = document.getElementById('btn-view-table');
+  const btnMap = document.getElementById('btn-view-map');
+
+  if(view === 'map'){
+    tableWrap.classList.add('hidden');
+    mapWrap.classList.add('active');
+    scrollHint.style.display = 'none';
+    btnTable.classList.remove('active');
+    btnMap.classList.add('active');
+    if(!leafletMap) renderMap();
+    renderGeoPanel();
+    // El contenedor estaba oculto (display:none) al inicializar Leaflet,
+    // así que hay que forzar un recálculo de tamaño una vez visible.
+    setTimeout(() => leafletMap && leafletMap.invalidateSize(), 50);
+  } else {
+    tableWrap.classList.remove('hidden');
+    mapWrap.classList.remove('active');
+    scrollHint.style.display = '';
+    btnMap.classList.remove('active');
+    btnTable.classList.add('active');
+  }
+}
 
 </script>
 
