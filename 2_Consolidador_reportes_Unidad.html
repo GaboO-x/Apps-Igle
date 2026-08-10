@@ -71,33 +71,25 @@
 
         /* ── Grupos de sección ── */
         .section-group {
-            border: 2px solid var(--accent);
-            border-radius: 10px;
             margin-bottom: 18px;
-            overflow: hidden;
         }
         .section-group-header {
-            background: var(--accent);
-            color: white;
+            color: var(--accent);
             font-weight: bold;
             font-size: 0.95em;
-            padding: 8px 14px;
+            text-align: center;
             letter-spacing: 0.05em;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
         }
         .section-group-body {
-            padding: 12px;
-            background: var(--accent-bg);
+            padding: 0;
         }
 
         .report-block {
-            background: #fff;
-            border: 1px solid #ddd;
-            border-left: 5px solid var(--accent);
-            border-radius: 8px;
-            padding: 15px;
             margin-bottom: 12px;
             position: relative;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
         .leader-title-row {
@@ -170,7 +162,7 @@
             padding: 10px; font-family: 'Courier New', monospace; font-size: 0.78em;
             box-sizing: border-box; resize: vertical; background: #fafafa;
         }
-        #stat-status { text-align: center; color: #888; margin-top: 10px; font-size: 0.85em; min-height: 1.2em; }
+        #stat-status, #quarter-status { text-align: center; color: #888; margin-top: 10px; font-size: 0.85em; min-height: 1.2em; }
 
         /* ── Estadística Mensual: navegación de dashboards ── */
         .dashboard-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; justify-content: center; }
@@ -326,6 +318,9 @@
     <div class="sidebar-icon" data-page="page-estadistica" onclick="showPage('page-estadistica')" title="Estadística Mensual">
         <i class="fa-solid fa-chart-pie"></i>
     </div>
+    <div class="sidebar-icon" data-page="page-cuatrimestral" onclick="showPage('page-cuatrimestral')" title="Reporte Cuatrimestral">
+        <i class="fa-solid fa-calendar-days"></i>
+    </div>
 </div>
 
 <div id="page-consolidador" class="app-page active">
@@ -359,9 +354,9 @@
     <div id="reports-container"></div>
 
     <div class="action-bar">
-        <button class="btn-main btn-green"     onclick="copyConsolidated()">📋 Copiar Reporte</button>
-        <button class="btn-main btn-blue"      onclick="copyOnlyMoney()">💰 Copiar Ofrendas</button>
-        <button class="btn-main btn-gray"      onclick="clearTextareas()">🧹 Limpiar</button>
+        <button class="btn-main btn-green"     onclick="copyConsolidated()"><i class="fa-solid fa-copy"></i> Copiar Reporte</button>
+        <button class="btn-main btn-blue"      onclick="copyOnlyMoney()"><i class="fa-solid fa-sack-dollar"></i> Copiar Ofrendas</button>
+        <button class="btn-main btn-gray"      onclick="clearTextareas()"><i class="fa-solid fa-trash-can"></i> Limpiar</button>
     </div>
 </div>
 </div>
@@ -376,14 +371,16 @@
 
     <div class="action-bar" style="margin-top:15px;">
         <button class="btn-main btn-procesar" id="btn-procesar-semanas" onclick="procesarSemanas()"><i class="fa-solid fa-arrows-rotate"></i> Procesar Semanas</button>
+        <button class="btn-main btn-blue" onclick="copyMonthReport()"><i class="fa-solid fa-copy"></i> Copiar Mes</button>
+        <button class="btn-main btn-gray" onclick="limpiarMes()"><i class="fa-solid fa-trash-can"></i> Limpiar</button>
     </div>
     <div id="stat-status"></div>
 
     <div class="dashboard-nav">
-        <button class="dash-tab active" data-view="dv-celula"      onclick="showDashboardView('dv-celula')"><i class="fa-solid fa-virus"></i> Célula por Líder</button>
-        <button class="dash-tab"        data-view="dv-red"         onclick="showDashboardView('dv-red')"><i class="fa-solid fa-church"></i> Red/Culto por Líder</button>
-        <button class="dash-tab"        data-view="dv-meta-general" onclick="showDashboardView('dv-meta-general')"><i class="fa-solid fa-bullseye"></i> Meta General</button>
-        <button class="dash-tab"        data-view="dv-meta-lider"  onclick="showDashboardView('dv-meta-lider')"><i class="fa-solid fa-people-roof"></i> Meta por Líder</button>
+        <button class="dash-tab active" data-view-key="celula"      onclick="showScopeView('semanal','celula')"><i class="fa-solid fa-virus"></i> Célula por Líder</button>
+        <button class="dash-tab"        data-view-key="red"         onclick="showScopeView('semanal','red')"><i class="fa-solid fa-church"></i> Red/Culto por Líder</button>
+        <button class="dash-tab"        data-view-key="metaGeneral" onclick="showScopeView('semanal','metaGeneral')"><i class="fa-solid fa-bullseye"></i> Meta General</button>
+        <button class="dash-tab"        data-view-key="metaLider"   onclick="showScopeView('semanal','metaLider')"><i class="fa-solid fa-people-roof"></i> Meta por Líder</button>
     </div>
 
     <div id="dashboard-container">
@@ -412,7 +409,7 @@
         <div id="dv-meta-general" class="dashboard-view">
             <div class="meta-general-control">
                 <label for="meta-general-input">Meta Semanal General:</label>
-                <input type="number" id="meta-general-input" min="0" step="1" oninput="onMetaGeneralInputChange()">
+                <input type="number" id="meta-general-input" min="0" step="1" oninput="onMetaGeneralInputChange('semanal')">
             </div>
 
             <div class="meta-gauges-row">
@@ -447,6 +444,94 @@
             <div class="dash-chart-block">
                 <h4>Cumplimiento de Meta — Red/Culto</h4>
                 <div id="meta-lider-red-list" class="meta-lider-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<div id="page-cuatrimestral" class="app-page">
+<div class="container">
+    <div class="header">
+        <h2>Reporte Cuatrimestral</h2>
+    </div>
+
+    <div class="week-input-grid" id="month-input-grid"></div>
+
+    <div class="action-bar" style="margin-top:15px;">
+        <button class="btn-main btn-procesar" id="btn-procesar-cuatrimestre" onclick="procesarCuatrimestre()"><i class="fa-solid fa-arrows-rotate"></i> Procesar Cuatrimestre</button>
+        <button class="btn-main btn-gray" onclick="limpiarCuatrimestre()"><i class="fa-solid fa-trash-can"></i> Limpiar</button>
+    </div>
+    <div id="quarter-status"></div>
+
+    <div class="dashboard-nav">
+        <button class="dash-tab active" data-view-key="celula"      onclick="showScopeView('cuatrimestral','celula')"><i class="fa-solid fa-virus"></i> Célula por Líder</button>
+        <button class="dash-tab"        data-view-key="red"         onclick="showScopeView('cuatrimestral','red')"><i class="fa-solid fa-church"></i> Red/Culto por Líder</button>
+        <button class="dash-tab"        data-view-key="metaGeneral" onclick="showScopeView('cuatrimestral','metaGeneral')"><i class="fa-solid fa-bullseye"></i> Meta General</button>
+        <button class="dash-tab"        data-view-key="metaLider"   onclick="showScopeView('cuatrimestral','metaLider')"><i class="fa-solid fa-people-roof"></i> Meta por Líder</button>
+    </div>
+
+    <div id="quarter-dashboard-container">
+        <div id="qv-celula" class="dashboard-view active">
+            <div id="q-celula-table-wrap" class="dash-table-wrap"></div>
+            <div class="dash-chart-block">
+                <h4>Total de la Unidad por Mes (Célula)</h4>
+                <canvas id="chart-q-celula-bar" height="170"></canvas>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Tendencia por Líder (Célula)</h4>
+                <canvas id="chart-q-celula-trend" height="220"></canvas>
+            </div>
+        </div>
+        <div id="qv-red" class="dashboard-view">
+            <div id="q-red-table-wrap" class="dash-table-wrap"></div>
+            <div class="dash-chart-block">
+                <h4>Total de la Unidad por Mes (Red/Culto)</h4>
+                <canvas id="chart-q-red-bar" height="170"></canvas>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Tendencia por Líder (Red/Culto)</h4>
+                <canvas id="chart-q-red-trend" height="220"></canvas>
+            </div>
+        </div>
+        <div id="qv-meta-general" class="dashboard-view">
+            <div class="meta-general-control">
+                <label for="q-meta-general-input">Meta Mensual General:</label>
+                <input type="number" id="q-meta-general-input" min="0" step="1" oninput="onMetaGeneralInputChange('cuatrimestral')">
+            </div>
+
+            <div class="meta-gauges-row">
+                <div class="gauge-block">
+                    <h4>Meta Mensual – Célula</h4>
+                    <div id="q-gauge-celula-general" class="gauge-svg-wrap"></div>
+                    <div class="gauge-caption" id="q-gauge-celula-caption"></div>
+                </div>
+                <div class="gauge-block">
+                    <h4>Meta Mensual – Red/Culto</h4>
+                    <div id="q-gauge-red-general" class="gauge-svg-wrap"></div>
+                    <div class="gauge-caption" id="q-gauge-red-caption"></div>
+                </div>
+            </div>
+
+            <div class="summary-cards-row" id="q-meta-summary-cards"></div>
+
+            <div class="dash-chart-block">
+                <h4>Mensual Real vs Meta – Célula</h4>
+                <canvas id="chart-q-meta-bar-celula" height="170"></canvas>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Mensual Real vs Meta – Red/Culto</h4>
+                <canvas id="chart-q-meta-bar-red" height="170"></canvas>
+            </div>
+        </div>
+        <div id="qv-meta-lider" class="dashboard-view">
+            <div class="dash-chart-block">
+                <h4>Cumplimiento de Meta — Célula</h4>
+                <div id="q-meta-lider-celula-list" class="meta-lider-list"></div>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Cumplimiento de Meta — Red/Culto</h4>
+                <div id="q-meta-lider-red-list" class="meta-lider-list"></div>
             </div>
         </div>
     </div>
@@ -625,7 +710,7 @@
 
         const header = document.createElement('div');
         header.className = 'section-group-header';
-        header.textContent = `— ${label} —`;
+        header.textContent = label;
 
         const body = document.createElement('div');
         body.className = 'section-group-body';
@@ -800,13 +885,6 @@
         if (chip) chip.textContent = value;
         metaWheelTick();
         closeAllMetaWheels();
-    }
-
-    // Si la página de Estadística Mensual ya fue procesada/renderizada, la vuelve
-    // a dibujar con el META actualizado (sin esperar a que el usuario navegue o
-    // presione "Procesar Semanas" de nuevo).
-    function refreshEstadisticaIfNeeded() {
-        if (typeof renderCurrentDashboardView === 'function') renderCurrentDashboardView();
     }
 
     // Abre/cierra el popup del wheel; solo uno abierto a la vez
@@ -1324,7 +1402,8 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageId)?.classList.add('active');
         document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.toggle('active', i.dataset.page === pageId));
-        if (pageId === 'page-estadistica') renderCurrentDashboardView();
+        if (pageId === 'page-estadistica') renderScopeCurrentView('semanal');
+        else if (pageId === 'page-cuatrimestral') renderScopeCurrentView('cuatrimestral');
         closeSidebar();
     }
 
@@ -1341,41 +1420,111 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) closeSidebar();
     });
 
-    // ── Estadística Mensual: cajas de Semana 1-5 ─────────────────────────────
-    function buildWeekInputs() {
-        const grid = document.getElementById('week-input-grid');
+    // ── Dashboards por período (Estadística Mensual = semanas, Reporte Cuatrimestral = meses) ──
+    const DASH_SCOPES = {
+        semanal: {
+            pageId: 'page-estadistica',
+            periods: 5,
+            periodLabel: i => `S${i}`,
+            periodNoun: 'Semana',
+            rawKey: 'consolidadorEstadisticaSemanas_v1',
+            dataKey: 'consolidadorEstadisticaData_v1',
+            metaGeneralKey: 'consolidadorMetaGeneral_v1',
+            inputGridId: 'week-input-grid',
+            inputIdPrefix: 'stat-week-',
+            inputPlaceholder: i => `Pega aquí el 'Copiar Reporte' de la Semana ${i}...`,
+            statusElId: 'stat-status',
+            procesarBtnId: 'btn-procesar-semanas',
+            emptyMsg: 'Aún no hay datos procesados. Pega los reportes semanales y presiona "Procesar Semanas".',
+            metaGeneralLabel: 'Meta Semanal General',
+            metaGeneralUnit: 'promedio semanal',
+            barLabelSuffix: 'por Semana',
+            tableWrap:  { celula: 'celula-table-wrap',  red: 'red-table-wrap' },
+            barChart:   { celula: 'chart-celula-bar',   red: 'chart-red-bar' },
+            trendChart: { celula: 'chart-celula-trend', red: 'chart-red-trend' },
+            dashViews:  { celula: 'dv-celula', red: 'dv-red', metaGeneral: 'dv-meta-general', metaLider: 'dv-meta-lider' },
+            metaGeneralIds: {
+                input: 'meta-general-input',
+                gaugeCelula: 'gauge-celula-general', gaugeCelulaCaption: 'gauge-celula-caption',
+                gaugeRed: 'gauge-red-general', gaugeRedCaption: 'gauge-red-caption',
+                cards: 'meta-summary-cards',
+                barCelula: 'chart-meta-bar-celula', barRed: 'chart-meta-bar-red'
+            },
+            metaLiderIds: { celula: 'meta-lider-celula-list', red: 'meta-lider-red-list' }
+        },
+        cuatrimestral: {
+            pageId: 'page-cuatrimestral',
+            periods: 4,
+            periodLabel: i => `M${i}`,
+            periodNoun: 'Mes',
+            rawKey: 'consolidadorCuatrimestralMeses_v1',
+            dataKey: 'consolidadorCuatrimestralData_v1',
+            metaGeneralKey: 'consolidadorMetaGeneralCuatrimestral_v1',
+            inputGridId: 'month-input-grid',
+            inputIdPrefix: 'stat-month-',
+            inputPlaceholder: i => `Pega aquí lo generado por "Copiar Mes" — Mes ${i}...`,
+            statusElId: 'quarter-status',
+            procesarBtnId: 'btn-procesar-cuatrimestre',
+            emptyMsg: 'Aún no hay datos procesados. Pega lo generado por "Copiar Mes" y presiona "Procesar Cuatrimestre".',
+            metaGeneralLabel: 'Meta Mensual General',
+            metaGeneralUnit: 'promedio mensual',
+            barLabelSuffix: 'por Mes',
+            tableWrap:  { celula: 'q-celula-table-wrap',  red: 'q-red-table-wrap' },
+            barChart:   { celula: 'chart-q-celula-bar',   red: 'chart-q-red-bar' },
+            trendChart: { celula: 'chart-q-celula-trend', red: 'chart-q-red-trend' },
+            dashViews:  { celula: 'qv-celula', red: 'qv-red', metaGeneral: 'qv-meta-general', metaLider: 'qv-meta-lider' },
+            metaGeneralIds: {
+                input: 'q-meta-general-input',
+                gaugeCelula: 'q-gauge-celula-general', gaugeCelulaCaption: 'q-gauge-celula-caption',
+                gaugeRed: 'q-gauge-red-general', gaugeRedCaption: 'q-gauge-red-caption',
+                cards: 'q-meta-summary-cards',
+                barCelula: 'chart-q-meta-bar-celula', barRed: 'chart-q-meta-bar-red'
+            },
+            metaLiderIds: { celula: 'q-meta-lider-celula-list', red: 'q-meta-lider-red-list' }
+        }
+    };
+
+    function periodLabels(scope) {
+        return Array.from({ length: scope.periods }, (_, i) => scope.periodLabel(i + 1));
+    }
+
+    // ── Cajas de período (semana o mes) ──────────────────────────────────────
+    function buildScopeInputs(scope) {
+        const grid = document.getElementById(scope.inputGridId);
         if (!grid) return;
-        const saved = JSON.parse(localStorage.getItem('consolidadorEstadisticaSemanas_v1') || '[]');
+        const saved = JSON.parse(localStorage.getItem(scope.rawKey) || '[]');
         grid.innerHTML = '';
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= scope.periods; i++) {
             const wrap = document.createElement('div');
             wrap.className = 'week-input-block';
             wrap.innerHTML = `
-                <label>Semana ${i}</label>
-                <textarea id="stat-week-${i}" placeholder="Pega aquí el 'Copiar Reporte' de la Semana ${i}..."></textarea>
+                <label>${scope.periodNoun} ${i}</label>
+                <textarea id="${scope.inputIdPrefix}${i}" placeholder="${scope.inputPlaceholder(i)}"></textarea>
             `;
             grid.appendChild(wrap);
             wrap.querySelector('textarea').value = saved[i - 1] || '';
         }
         grid.querySelectorAll('textarea').forEach(ta => {
-            ta.addEventListener('input', saveEstadisticaRaw);
-            ta.addEventListener('input', markEstadisticaPendiente);
+            ta.addEventListener('input', () => saveScopeRaw(scope));
+            ta.addEventListener('input', () => markScopePendiente(scope));
         });
     }
 
-    // Marca el botón "Procesar Semanas" como pendiente (verde) apenas el usuario
-    // edita algún campo de semana después de haber procesado.
-    function markEstadisticaPendiente() {
-        document.getElementById('btn-procesar-semanas')?.classList.remove('btn-updated');
+    // Marca el botón "Procesar" como pendiente (verde) apenas el usuario edita
+    // algún campo después de haber procesado.
+    function markScopePendiente(scope) {
+        document.getElementById(scope.procesarBtnId)?.classList.remove('btn-updated');
     }
 
-    function saveEstadisticaRaw() {
+    function saveScopeRaw(scope) {
         const raw = [];
-        for (let i = 1; i <= 5; i++) raw.push(document.getElementById(`stat-week-${i}`)?.value || '');
-        localStorage.setItem('consolidadorEstadisticaSemanas_v1', JSON.stringify(raw));
+        for (let i = 1; i <= scope.periods; i++) raw.push(document.getElementById(`${scope.inputIdPrefix}${i}`)?.value || '');
+        localStorage.setItem(scope.rawKey, JSON.stringify(raw));
     }
 
-    // Parsea el texto generado por "Copiar Reporte" y devuelve { NOMBRE: { celula, red } }
+    // Parsea el texto generado por "Copiar Reporte" (semanal) o "Copiar Mes" (cuatrimestral)
+    // y devuelve { NOMBRE: { celula, red } }. Ambos formatos comparten el mismo patrón
+    // (🔥🚨🔥🚨🔥🚨🔥 ... LÍDER: ... Total <algo> Célula/Red: N), por lo que se reutiliza.
     function parseWeekReport(text) {
         const result = {};
         if (!text || !text.trim()) return result;
@@ -1394,34 +1543,102 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         return result;
     }
 
-    function procesarSemanas() {
-        saveEstadisticaRaw();
-        const semanas = [];
+    function procesarPeriodos(scope) {
+        saveScopeRaw(scope);
+        const periodsData = [];
         const resumen = [];
-        for (let i = 1; i <= 5; i++) {
-            const text = document.getElementById(`stat-week-${i}`)?.value || '';
+        for (let i = 1; i <= scope.periods; i++) {
+            const text = document.getElementById(`${scope.inputIdPrefix}${i}`)?.value || '';
             const parsed = parseWeekReport(text);
-            semanas.push(parsed);
+            periodsData.push(parsed);
             const count = Object.keys(parsed).length;
-            resumen.push(`S${i}: ${count} líder${count === 1 ? '' : 'es'}`);
+            resumen.push(`${scope.periodLabel(i)}: ${count} líder${count === 1 ? '' : 'es'}`);
         }
 
-        localStorage.setItem('consolidadorEstadisticaData_v1', JSON.stringify(semanas));
+        localStorage.setItem(scope.dataKey, JSON.stringify(periodsData));
 
-        const statusEl = document.getElementById('stat-status');
-        const totalDetectados = semanas.reduce((s, w) => s + Object.keys(w).length, 0);
-        if (totalDetectados === 0) {
-            statusEl.textContent = '⚠️ No se detectó ningún líder. Verifica que el texto pegado sea el generado por "Copiar Reporte".';
-            statusEl.style.color = '#e74c3c';
-        } else {
-            statusEl.textContent = `✅ Procesado: ${resumen.join(' · ')}`;
-            statusEl.style.color = '#2ecc71';
+        const statusEl = document.getElementById(scope.statusElId);
+        const totalDetectados = periodsData.reduce((s, p) => s + Object.keys(p).length, 0);
+        if (statusEl) {
+            if (totalDetectados === 0) {
+                statusEl.textContent = '⚠️ No se detectó ningún líder. Verifica que el texto pegado sea el correcto.';
+                statusEl.style.color = '#e74c3c';
+            } else {
+                statusEl.textContent = `✅ Procesado: ${resumen.join(' · ')}`;
+                statusEl.style.color = '#2ecc71';
+            }
         }
-        document.getElementById('btn-procesar-semanas')?.classList.toggle('btn-updated', totalDetectados > 0);
-        renderCurrentDashboardView();
+        document.getElementById(scope.procesarBtnId)?.classList.toggle('btn-updated', totalDetectados > 0);
+        renderScopeCurrentView(scope === DASH_SCOPES.semanal ? 'semanal' : 'cuatrimestral');
     }
 
-    // ── Estadística Mensual: render de dashboards (Célula / Red) ────────────
+    function procesarSemanas()      { procesarPeriodos(DASH_SCOPES.semanal); }
+    function procesarCuatrimestre() { procesarPeriodos(DASH_SCOPES.cuatrimestral); }
+
+    // ── Copiar Mes: consolida las semanas ya procesadas del mes en un texto
+    // que "Procesar Cuatrimestre" puede leer directamente (mismo formato de bloques). ──
+    function copyMonthReport() {
+        const scope = DASH_SCOPES.semanal;
+        const periodsData = getScopePeriodsData(scope);
+        const leaderSet = new Set();
+        periodsData.forEach(p => Object.keys(p).forEach(n => leaderSet.add(n)));
+        const leaderNames = Array.from(leaderSet);
+
+        if (!leaderNames.length) {
+            showAppAlert('Primero pega y procesa las semanas del mes con "Procesar Semanas".', 'Sin datos que copiar');
+            return;
+        }
+
+        const now = new Date();
+        const monthLabel = `${MONTH_NAMES_ES[now.getMonth()]} ${now.getFullYear()}`;
+
+        let report = `*MES: ${monthLabel.toUpperCase()}*\n\n`;
+        report    += `==============================\n\n`;
+
+        leaderNames.forEach(name => {
+            const totalCel = periodsData.reduce((s, w) => s + (w[name] ? (w[name].celula || 0) : 0), 0);
+            const totalRed = periodsData.reduce((s, w) => s + (w[name] ? (w[name].red || 0) : 0), 0);
+            report += `🔥🚨🔥🚨🔥🚨🔥\n\n`;
+            report += `🔥 *LÍDER: ${name.toUpperCase()}* 🔥\n\n`;
+            report += `Total Mensual Célula: ${totalCel}\n`;
+            report += `Total Mensual Red: ${totalRed}\n\n`;
+        });
+
+        copyToClipboard(report);
+        showAppAlert('¡Reporte del mes copiado! Pégalo en una casilla de "Reporte Cuatrimestral".');
+    }
+
+    // ── Limpiar mes: reinicia semanas pegadas + datos ya procesados (tabla/gráficos) ──
+    async function limpiarMes() {
+        const ok = await showAppConfirm('¿Reiniciar el mes? Se borrarán las semanas pegadas y los datos ya procesados (tablas y gráficos).', 'Confirmar limpieza');
+        if (!ok) return;
+        const scope = DASH_SCOPES.semanal;
+        localStorage.removeItem(scope.rawKey);
+        localStorage.removeItem(scope.dataKey);
+        buildScopeInputs(scope);
+        const statusEl = document.getElementById(scope.statusElId);
+        if (statusEl) { statusEl.textContent = ''; }
+        document.getElementById(scope.procesarBtnId)?.classList.remove('btn-updated');
+        renderScopeCurrentView('semanal');
+        showAppAlert('Listo: mes reiniciado.');
+    }
+
+    // ── Limpiar cuatrimestre: reinicia meses pegados + datos ya procesados ──────
+    async function limpiarCuatrimestre() {
+        const ok = await showAppConfirm('¿Reiniciar el cuatrimestre? Se borrarán los meses pegados y los datos ya procesados (tablas y gráficos).', 'Confirmar limpieza');
+        if (!ok) return;
+        const scope = DASH_SCOPES.cuatrimestral;
+        localStorage.removeItem(scope.rawKey);
+        localStorage.removeItem(scope.dataKey);
+        buildScopeInputs(scope);
+        const statusEl = document.getElementById(scope.statusElId);
+        if (statusEl) { statusEl.textContent = ''; }
+        document.getElementById(scope.procesarBtnId)?.classList.remove('btn-updated');
+        renderScopeCurrentView('cuatrimestral');
+        showAppAlert('Listo: cuatrimestre reiniciado.');
+    }
+
+    // ── Render de dashboards (Célula / Red) ──────────────────────────────────
     const _dashCharts = {};
     const LEADER_LINE_COLORS = ['#dc3545','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#e84393','#16a085','#8e44ad','#2980b9'];
 
@@ -1433,21 +1650,22 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#dc3545';
     }
 
-    function getEstadisticaSemanas() {
-        const semanas = JSON.parse(localStorage.getItem('consolidadorEstadisticaData_v1') || '[]');
-        while (semanas.length < 5) semanas.push({});
-        return semanas;
+    function getScopePeriodsData(scope) {
+        const data = JSON.parse(localStorage.getItem(scope.dataKey) || '[]');
+        while (data.length < scope.periods) data.push({});
+        return data;
     }
 
-    function buildAttendanceTable(leaderNames, semanas, metaData, metricKey) {
+    function buildAttendanceTable(scope, leaderNames, periodsData, metaData, metricKey) {
+        const labels = periodLabels(scope);
         let html = '<table class="dash-table"><thead><tr><th>Líder</th><th>Meta</th>';
-        for (let i = 1; i <= 5; i++) html += `<th>S${i}</th>`;
+        labels.forEach(lbl => html += `<th>${lbl}</th>`);
         html += '</tr></thead><tbody>';
         leaderNames.forEach(name => {
             const meta = metaData[name] !== undefined ? metaData[name] : 12;
             html += `<tr><td>${name}</td><td>${meta}</td>`;
-            for (let i = 0; i < 5; i++) {
-                const val = semanas[i][name] ? semanas[i][name][metricKey] : undefined;
+            for (let i = 0; i < scope.periods; i++) {
+                const val = periodsData[i][name] ? periodsData[i][name][metricKey] : undefined;
                 html += `<td>${val !== undefined ? val : '–'}</td>`;
             }
             html += '</tr>';
@@ -1456,19 +1674,25 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         return html;
     }
 
-    function renderAttendanceDashboard(metricKey, tableWrapId, barChartId, trendChartId) {
-        const semanas  = getEstadisticaSemanas();
+    function renderAttendanceDashboard(scopeKey, metricKey) {
+        const scope = DASH_SCOPES[scopeKey];
+        const periodsData = getScopePeriodsData(scope);
         const metaData = loadMetaData();
+        const labels = periodLabels(scope);
 
         const leaderSet = new Set();
-        semanas.forEach(week => Object.keys(week).forEach(n => leaderSet.add(n)));
+        periodsData.forEach(p => Object.keys(p).forEach(n => leaderSet.add(n)));
         const leaderNames = Array.from(leaderSet); // respeta el orden de aparición en el reporte
+
+        const tableWrapId  = scope.tableWrap[metricKey];
+        const barChartId   = scope.barChart[metricKey];
+        const trendChartId = scope.trendChart[metricKey];
 
         const wrap = document.getElementById(tableWrapId);
         if (wrap) {
             wrap.innerHTML = leaderNames.length
-                ? buildAttendanceTable(leaderNames, semanas, metaData, metricKey)
-                : '<p class="empty-page-msg">Aún no hay datos procesados. Pega los reportes semanales y presiona "Procesar Semanas".</p>';
+                ? buildAttendanceTable(scope, leaderNames, periodsData, metaData, metricKey)
+                : `<p class="empty-page-msg">${scope.emptyMsg}</p>`;
         }
 
         if (!leaderNames.length || typeof Chart === 'undefined') {
@@ -1484,9 +1708,9 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
 
         const accent = getUnitAccentColor();
 
-        // Barras: total de la unidad por semana
-        const weekTotals = semanas.map(week =>
-            Object.values(week).reduce((sum, l) => sum + (l[metricKey] || 0), 0)
+        // Barras: total de la unidad por período
+        const periodTotals = periodsData.map(p =>
+            Object.values(p).reduce((sum, l) => sum + (l[metricKey] || 0), 0)
         );
         destroyChart(barChartId);
         const barCtx = document.getElementById(barChartId)?.getContext('2d');
@@ -1494,8 +1718,8 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             _dashCharts[barChartId] = new Chart(barCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
-                    datasets: [{ label: 'Total Unidad', data: weekTotals, backgroundColor: accent, borderRadius: 4 }]
+                    labels,
+                    datasets: [{ label: 'Total Unidad', data: periodTotals, backgroundColor: accent, borderRadius: 4 }]
                 },
                 options: {
                     responsive: true,
@@ -1513,7 +1737,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
                 const color = LEADER_LINE_COLORS[idx % LEADER_LINE_COLORS.length];
                 return {
                     label: name,
-                    data: semanas.map(week => (week[name] ? (week[name][metricKey] ?? null) : null)),
+                    data: periodsData.map(p => (p[name] ? (p[name][metricKey] ?? null) : null)),
                     borderColor: color,
                     backgroundColor: color + '33',
                     borderWidth: 2,
@@ -1530,7 +1754,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
                 const meta  = metaData[name] !== undefined ? metaData[name] : 12;
                 return {
                     label: `Meta ${name}`,
-                    data: [meta, meta, meta, meta, meta],
+                    data: Array(scope.periods).fill(meta),
                     borderColor: color,
                     borderWidth: 2,
                     borderDash: [6, 4],
@@ -1546,7 +1770,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             const datasets = [...leaderDatasets, ...metaDatasets];
             _dashCharts[trendChartId] = new Chart(trendCtx, {
                 type: 'line',
-                data: { labels: ['S1', 'S2', 'S3', 'S4', 'S5'], datasets },
+                data: { labels, datasets },
                 options: {
                     responsive: true,
                     plugins: {
@@ -1590,22 +1814,23 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         }
     }
 
-    // ── Estadística Mensual: Meta General (gauges + tarjetas + barras vs meta) ──
-    function getMetaGeneral() {
-        const v = localStorage.getItem('consolidadorMetaGeneral_v1');
+    // ── Meta General (gauges + tarjetas + barras vs meta) ───────────────────
+    function getMetaGeneral(scope) {
+        const v = localStorage.getItem(scope.metaGeneralKey);
         return v !== null ? parseFloat(v) : 70;
     }
 
-    function saveMetaGeneral(v) {
-        localStorage.setItem('consolidadorMetaGeneral_v1', v);
+    function saveMetaGeneral(scope, v) {
+        localStorage.setItem(scope.metaGeneralKey, v);
     }
 
-    function onMetaGeneralInputChange() {
-        const input = document.getElementById('meta-general-input');
+    function onMetaGeneralInputChange(scopeKey) {
+        const scope = DASH_SCOPES[scopeKey];
+        const input = document.getElementById(scope.metaGeneralIds.input);
         let v = parseFloat(input.value);
         if (isNaN(v) || v < 0) v = 0;
-        saveMetaGeneral(v);
-        renderMetaGeneral();
+        saveMetaGeneral(scope, v);
+        renderMetaGeneral(scopeKey);
     }
 
     function buildGaugeSVG(pct, color) {
@@ -1621,50 +1846,60 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         </svg>`;
     }
 
-    function computeMetricSummary(semanas, metaSemanal, metricKey) {
-        const totals = semanas.map(week => Object.values(week).reduce((s, l) => s + (l[metricKey] || 0), 0));
-        const weeksWithData = semanas.filter(w => Object.keys(w).length > 0).length;
+    function computeMetricSummary(periodsData, metaObjetivo, metricKey) {
+        const totals = periodsData.map(p => Object.values(p).reduce((s, l) => s + (l[metricKey] || 0), 0));
+        const periodsWithData = periodsData.filter(p => Object.keys(p).length > 0).length;
         const sumTotals = totals.reduce((a, b) => a + b, 0);
-        const promedio = weeksWithData ? sumTotals / weeksWithData : 0;
-        const pct = metaSemanal ? (promedio / metaSemanal) * 100 : 0;
+        const promedio = periodsWithData ? sumTotals / periodsWithData : 0;
+        const pct = metaObjetivo ? (promedio / metaObjetivo) * 100 : 0;
         return { totals, promedio, pct };
     }
 
-    function renderMetaGeneral() {
-        const semanas  = getEstadisticaSemanas();
+    function renderMetaGeneral(scopeKey) {
+        const scope = DASH_SCOPES[scopeKey];
+        const periodsData = getScopePeriodsData(scope);
         const metaData = loadMetaData();
         const accent   = getUnitAccentColor();
+        const labels   = periodLabels(scope);
+        const ids      = scope.metaGeneralIds;
 
         const leaderSet = new Set();
-        semanas.forEach(w => Object.keys(w).forEach(n => leaderSet.add(n)));
+        periodsData.forEach(p => Object.keys(p).forEach(n => leaderSet.add(n)));
         const leaderNames = Array.from(leaderSet);
 
-        const metaSemanal = getMetaGeneral();
-        const input = document.getElementById('meta-general-input');
-        if (input && document.activeElement !== input) input.value = metaSemanal;
+        const metaObjetivo = getMetaGeneral(scope);
+        const input = document.getElementById(ids.input);
+        if (input && document.activeElement !== input) input.value = metaObjetivo;
 
-        const celula = computeMetricSummary(semanas, metaSemanal, 'celula');
-        const red    = computeMetricSummary(semanas, metaSemanal, 'red');
+        const celula = computeMetricSummary(periodsData, metaObjetivo, 'celula');
+        const red    = computeMetricSummary(periodsData, metaObjetivo, 'red');
 
         // Gauges
-        document.getElementById('gauge-celula-general').innerHTML = buildGaugeSVG(celula.pct, accent);
-        document.getElementById('gauge-celula-caption').textContent = `${celula.promedio.toFixed(1)} / ${metaSemanal} promedio semanal`;
-        document.getElementById('gauge-red-general').innerHTML = buildGaugeSVG(red.pct, accent);
-        document.getElementById('gauge-red-caption').textContent = `${red.promedio.toFixed(1)} / ${metaSemanal} promedio semanal`;
+        const gEl = document.getElementById(ids.gaugeCelula);
+        if (gEl) gEl.innerHTML = buildGaugeSVG(celula.pct, accent);
+        const gCap = document.getElementById(ids.gaugeCelulaCaption);
+        if (gCap) gCap.textContent = `${celula.promedio.toFixed(1)} / ${metaObjetivo} ${scope.metaGeneralUnit}`;
+        const gRed = document.getElementById(ids.gaugeRed);
+        if (gRed) gRed.innerHTML = buildGaugeSVG(red.pct, accent);
+        const gRedCap = document.getElementById(ids.gaugeRedCaption);
+        if (gRedCap) gRedCap.textContent = `${red.promedio.toFixed(1)} / ${metaObjetivo} ${scope.metaGeneralUnit}`;
 
         // Tarjetas resumen
         const cards = [
-            { value: metaSemanal, label: 'Meta Semanal General' },
-            { value: celula.promedio.toFixed(1), label: 'Promedio Semanal Célula' },
-            { value: red.promedio.toFixed(1), label: 'Promedio Semanal Red/Culto' }
+            { value: metaObjetivo, label: scope.metaGeneralLabel },
+            { value: celula.promedio.toFixed(1), label: `Promedio ${scope.metaGeneralUnit === 'promedio mensual' ? 'Mensual' : 'Semanal'} Célula` },
+            { value: red.promedio.toFixed(1), label: `Promedio ${scope.metaGeneralUnit === 'promedio mensual' ? 'Mensual' : 'Semanal'} Red/Culto` }
         ];
-        document.getElementById('meta-summary-cards').innerHTML = cards.map(c =>
-            `<div class="summary-card"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`
-        ).join('');
+        const cardsEl = document.getElementById(ids.cards);
+        if (cardsEl) {
+            cardsEl.innerHTML = cards.map(c =>
+                `<div class="summary-card"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`
+            ).join('');
+        }
 
         if (!leaderNames.length || typeof Chart === 'undefined') {
-            destroyChart('chart-meta-bar-celula');
-            destroyChart('chart-meta-bar-red');
+            destroyChart(ids.barCelula);
+            destroyChart(ids.barRed);
             return;
         }
 
@@ -1675,10 +1910,10 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             if (!ctx) return;
             _dashCharts[chartId] = new Chart(ctx, {
                 data: {
-                    labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
+                    labels,
                     datasets: [
                         { type: 'bar', label, data: totals, backgroundColor: accent, borderRadius: 4 },
-                        { type: 'line', label: 'Meta Semanal', data: Array(5).fill(metaSemanal), borderColor: '#333', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 }
+                        { type: 'line', label: 'Meta', data: Array(scope.periods).fill(metaObjetivo), borderColor: '#333', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 }
                     ]
                 },
                 options: {
@@ -1688,20 +1923,20 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
                 }
             });
         };
-        buildMetaBarChart('chart-meta-bar-celula', celula.totals, 'Real Célula');
-        buildMetaBarChart('chart-meta-bar-red', red.totals, 'Real Red/Culto');
+        buildMetaBarChart(ids.barCelula, celula.totals, 'Real Célula');
+        buildMetaBarChart(ids.barRed, red.totals, 'Real Red/Culto');
     }
 
-    // ── Estadística Mensual: Meta por Líder (barras horizontales) ───────────
-    function buildMetaLiderList(containerId, leaderNames, semanas, metaData, metricKey) {
+    // ── Meta por Líder (barras horizontales) ─────────────────────────────────
+    function buildMetaLiderList(scope, containerId, leaderNames, periodsData, metaData, metricKey) {
         const el = document.getElementById(containerId);
         if (!el) return;
         if (!leaderNames.length) {
-            el.innerHTML = '<p class="empty-page-msg">Aún no hay datos procesados. Pega los reportes semanales y presiona "Procesar Semanas".</p>';
+            el.innerHTML = `<p class="empty-page-msg">${scope.emptyMsg}</p>`;
             return;
         }
         const stats = leaderNames.map(name => {
-            const vals = semanas.filter(w => w[name] && w[name][metricKey] !== undefined).map(w => w[name][metricKey]);
+            const vals = periodsData.filter(p => p[name] && p[name][metricKey] !== undefined).map(p => p[name][metricKey]);
             const promedio = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
             const meta = metaData[name] !== undefined ? metaData[name] : 12;
             const pct = meta ? (promedio / meta) * 100 : 0;
@@ -1717,36 +1952,55 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         `).join('');
     }
 
-    function renderMetaLider() {
-        const semanas  = getEstadisticaSemanas();
+    function renderMetaLider(scopeKey) {
+        const scope = DASH_SCOPES[scopeKey];
+        const periodsData = getScopePeriodsData(scope);
         const metaData = loadMetaData();
 
         const leaderSet = new Set();
-        semanas.forEach(w => Object.keys(w).forEach(n => leaderSet.add(n)));
+        periodsData.forEach(p => Object.keys(p).forEach(n => leaderSet.add(n)));
         const leaderNames = Array.from(leaderSet);
 
-        buildMetaLiderList('meta-lider-celula-list', leaderNames, semanas, metaData, 'celula');
-        buildMetaLiderList('meta-lider-red-list', leaderNames, semanas, metaData, 'red');
+        buildMetaLiderList(scope, scope.metaLiderIds.celula, leaderNames, periodsData, metaData, 'celula');
+        buildMetaLiderList(scope, scope.metaLiderIds.red, leaderNames, periodsData, metaData, 'red');
     }
 
-    function renderCurrentDashboardView() {
-        const activeView = document.querySelector('#page-estadistica .dashboard-view.active')?.id;
-        if (activeView === 'dv-celula') renderAttendanceDashboard('celula', 'celula-table-wrap', 'chart-celula-bar', 'chart-celula-trend');
-        else if (activeView === 'dv-red') renderAttendanceDashboard('red', 'red-table-wrap', 'chart-red-bar', 'chart-red-trend');
-        else if (activeView === 'dv-meta-general') renderMetaGeneral();
-        else if (activeView === 'dv-meta-lider') renderMetaLider();
+    function renderScopeView(scopeKey, viewKey) {
+        if (viewKey === 'celula') renderAttendanceDashboard(scopeKey, 'celula');
+        else if (viewKey === 'red') renderAttendanceDashboard(scopeKey, 'red');
+        else if (viewKey === 'metaGeneral') renderMetaGeneral(scopeKey);
+        else if (viewKey === 'metaLider') renderMetaLider(scopeKey);
     }
 
-    // ── Estadística Mensual: navegación entre vistas de dashboard ───────────
-    function showDashboardView(viewId) {
-        document.querySelectorAll('.dashboard-view').forEach(v => v.classList.remove('active'));
-        document.getElementById(viewId)?.classList.add('active');
-        document.querySelectorAll('.dash-tab').forEach(t => t.classList.toggle('active', t.dataset.view === viewId));
-        renderCurrentDashboardView();
+    function renderScopeCurrentView(scopeKey) {
+        const scope = DASH_SCOPES[scopeKey];
+        const pageEl = document.getElementById(scope.pageId);
+        const activeViewEl = pageEl?.querySelector('.dashboard-view.active');
+        if (!activeViewEl) return;
+        const viewKey = Object.keys(scope.dashViews).find(k => scope.dashViews[k] === activeViewEl.id);
+        if (viewKey) renderScopeView(scopeKey, viewKey);
+    }
+
+    // Se llama al cambiar cualquier META de líder: refresca ambos dashboards
+    // (semanal y cuatrimestral) si ya están renderizados, sin esperar navegación.
+    function refreshEstadisticaIfNeeded() {
+        renderScopeCurrentView('semanal');
+        renderScopeCurrentView('cuatrimestral');
+    }
+
+    // ── Navegación entre vistas de dashboard (semanal o cuatrimestral) ──────
+    function showScopeView(scopeKey, viewKey) {
+        const scope = DASH_SCOPES[scopeKey];
+        const pageEl = document.getElementById(scope.pageId);
+        if (!pageEl) return;
+        pageEl.querySelectorAll('.dashboard-view').forEach(v => v.classList.remove('active'));
+        document.getElementById(scope.dashViews[viewKey])?.classList.add('active');
+        pageEl.querySelectorAll('.dash-tab').forEach(t => t.classList.toggle('active', t.dataset.viewKey === viewKey));
+        renderScopeView(scopeKey, viewKey);
     }
 
     // ── Init ────────────────────────────────────────────────────────────────
-    window.onload = () => { initWeekBar(); loadData(); buildWeekInputs(); };
+    window.onload = () => { initWeekBar(); loadData(); buildScopeInputs(DASH_SCOPES.semanal); buildScopeInputs(DASH_SCOPES.cuatrimestral); };
 </script>
 </body>
 </html>
