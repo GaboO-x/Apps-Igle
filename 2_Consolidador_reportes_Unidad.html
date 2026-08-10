@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consolidador de Reportes Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --accent:      #dc3545;
@@ -12,8 +14,27 @@
             --accent-bdr:  #feb2b2;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 15px 15px 15px 71px; color: #333; }
         .container { max-width: 650px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+
+        /* ── Menú lateral ── */
+        .sidebar {
+            position: fixed; left: 0; top: 0; bottom: 0; width: 56px;
+            background: white; box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+            display: flex; flex-direction: column; align-items: center;
+            padding-top: 18px; gap: 10px; z-index: 500;
+        }
+        .sidebar-icon {
+            width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+            border-radius: 10px; color: #999; font-size: 1.15em; cursor: pointer; transition: 0.2s;
+        }
+        .sidebar-icon:hover { background: #f0f2f5; color: var(--accent); }
+        .sidebar-icon.active { background: var(--accent); color: white; }
+
+        /* ── Páginas conmutables ── */
+        .app-page { display: none; }
+        .app-page.active { display: block; }
+        .empty-page-msg { text-align: center; color: #999; padding: 40px 10px; font-size: 0.95em; }
 
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
         .header h2 { margin: 0; color: var(--accent); }
@@ -69,17 +90,131 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        .leader-title {
-            width: 100%; margin-bottom: 10px;
-            border-bottom: 1px solid #ccc; font-weight: bold; color: var(--accent);
-            padding: 5px 0; font-size: 0.9em; text-transform: uppercase;
+        .leader-title-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            border-bottom: 1px solid #ccc; padding: 5px 0; margin-bottom: 10px;
         }
+        .leader-title {
+            font-weight: bold; color: var(--accent);
+            font-size: 0.9em; text-transform: uppercase;
+            flex: 1; min-width: 0; overflow-wrap: break-word;
+        }
+        .leader-title.mismatch { color: #e74c3c; text-decoration: underline wavy #e74c3c; }
+
+        /* ── META wheel picker (chip + popup) ── */
+        .meta-wrap { position: relative; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+        .meta-label { font-size: 0.68em; color: #888; font-weight: bold; letter-spacing: 0.03em; white-space: nowrap; }
+        .meta-chip {
+            min-width: 34px; height: 28px; padding: 0 8px;
+            border: 1.5px solid var(--accent); border-radius: 6px;
+            background: #fff; color: var(--accent); font-weight: bold; font-size: 0.85em;
+            cursor: pointer; font-family: inherit;
+        }
+        .meta-chip:hover { background: var(--accent-bg); }
+        .meta-wheel-popup {
+            display: none; position: absolute; top: calc(100% + 4px); right: 0; z-index: 50;
+            background: #fff; border-radius: 8px; padding: 4px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        }
+        .meta-wheel-popup.open { display: block; }
+        .meta-wheel {
+            position: relative;
+            width: 50px; height: 66px;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            border: 1.5px solid var(--accent);
+            border-radius: 6px;
+            background: #fff;
+            scrollbar-width: none;
+        }
+        .meta-wheel:focus { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
+        .meta-wheel::-webkit-scrollbar { display: none; }
+        .meta-wheel::before, .meta-wheel::after {
+            content: ''; position: absolute; left: 0; right: 0; height: 1px;
+            background: var(--accent-bdr); pointer-events: none;
+        }
+        .meta-wheel::before { top: 22px; }
+        .meta-wheel::after  { top: 44px; }
+        .meta-wheel-inner { padding: 22px 0; }
+        .meta-wheel-item {
+            height: 22px; line-height: 22px; text-align: center;
+            font-size: 0.8em; color: #bbb; scroll-snap-align: center; scroll-snap-stop: always;
+            user-select: none; transition: color 0.12s, font-size 0.12s;
+        }
+        .meta-wheel-item.selected { color: var(--accent); font-weight: bold; font-size: 0.95em; }
 
         .report-block textarea {
             width: 100%; height: 120px; border-radius: 5px; border: 1px solid #eee;
             padding: 10px; font-family: 'Courier New', monospace; font-size: 0.85em;
             box-sizing: border-box; resize: vertical; background: #fafafa;
         }
+
+        /* ── Estadística Mensual: cajas de semana ── */
+        .week-input-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+        .week-input-block label {
+            display: block; font-weight: bold; color: var(--accent);
+            margin-bottom: 4px; font-size: 0.85em; text-transform: uppercase;
+        }
+        .week-input-block textarea {
+            width: 100%; min-height: 90px; border-radius: 5px; border: 1px solid #eee;
+            padding: 10px; font-family: 'Courier New', monospace; font-size: 0.78em;
+            box-sizing: border-box; resize: vertical; background: #fafafa;
+        }
+        #stat-status { text-align: center; color: #888; margin-top: 10px; font-size: 0.85em; min-height: 1.2em; }
+
+        /* ── Estadística Mensual: navegación de dashboards ── */
+        .dashboard-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; justify-content: center; }
+        .dash-tab {
+            background: #f0f2f5; color: #555; border: none; padding: 9px 14px;
+            border-radius: 20px; cursor: pointer; font-size: 0.78em; font-weight: bold; transition: 0.2s;
+        }
+        .dash-tab:hover { background: #e2e5ea; }
+        .dash-tab.active { background: var(--accent); color: white; }
+        .dashboard-view { display: none; margin-top: 15px; }
+        .dashboard-view.active { display: block; }
+
+        .dash-table-wrap { overflow-x: auto; margin-bottom: 20px; }
+        table.dash-table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+        table.dash-table th {
+            background: var(--accent); color: white; padding: 8px 6px; text-align: center;
+        }
+        table.dash-table td { padding: 7px 6px; text-align: center; border-bottom: 1px solid #eee; }
+        table.dash-table tr:nth-child(even) td { background: #f7f7f7; }
+        table.dash-table td:first-child, table.dash-table th:first-child { text-align: left; padding-left: 10px; }
+
+        .dash-chart-block { margin: 25px 0; }
+        .dash-chart-block h4 { text-align: center; color: var(--accent); font-size: 0.85em; margin-bottom: 10px; }
+
+        /* ── Meta General: gauges y tarjetas ── */
+        .meta-general-control {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-bottom: 16px; font-size: 0.85em; color: #555; font-weight: bold;
+        }
+        .meta-general-control input {
+            width: 70px; padding: 5px 8px; border: 1.5px solid var(--accent); border-radius: 6px;
+            text-align: center; font-weight: bold; color: var(--accent); font-size: 1em;
+        }
+        .meta-gauges-row { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 10px; }
+        .gauge-block { text-align: center; flex: 1; min-width: 150px; max-width: 220px; }
+        .gauge-block h4 { color: var(--accent); font-size: 0.8em; margin-bottom: 6px; }
+        .gauge-svg-wrap svg { width: 100%; height: auto; display: block; }
+        .gauge-caption { font-size: 0.8em; font-weight: bold; color: #555; margin-top: 2px; }
+
+        .summary-cards-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 24px 0; }
+        .summary-card {
+            background: var(--accent-bg); border-left: 4px solid var(--accent);
+            border-radius: 8px; padding: 10px 16px; min-width: 120px; text-align: center;
+        }
+        .summary-card .value { font-size: 1.4em; font-weight: bold; color: var(--accent); }
+        .summary-card .label { font-size: 0.68em; color: #777; text-transform: uppercase; margin-top: 2px; }
+
+        /* ── Meta por Líder: barras horizontales ── */
+        .meta-lider-list { display: flex; flex-direction: column; gap: 10px; }
+        .meta-lider-row { display: grid; grid-template-columns: 90px 1fr 130px; gap: 8px; align-items: center; }
+        .meta-lider-name { font-size: 0.75em; font-weight: bold; color: #444; overflow-wrap: break-word; }
+        .meta-lider-bar-track { height: 16px; background: #eee; border-radius: 8px; overflow: hidden; }
+        .meta-lider-bar-fill { height: 100%; background: var(--accent); border-radius: 8px; transition: width 0.3s; }
+        .meta-lider-detail { font-size: 0.66em; color: #777; text-align: right; white-space: nowrap; }
 
         .btn-remove {
             position: absolute; top: 5px; right: 5px; background: #eee; color: #999;
@@ -135,9 +270,6 @@
         }
         .modal-btn:hover { opacity: 0.9; }
 
-        /* leader-title con indicador de error */
-        .leader-title.mismatch { border-bottom: 2px solid #e74c3c; background: #fff5f5; }
-
         /* ── Semana activa ── */
         .week-wrapper { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
         .week-select-styled { padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; background: white; cursor: pointer; }
@@ -146,6 +278,16 @@
 </head>
 <body>
 
+<div class="sidebar">
+    <div class="sidebar-icon active" data-page="page-consolidador" onclick="showPage('page-consolidador')" title="Consolidador">
+        <i class="fa-solid fa-users-rectangle"></i>
+    </div>
+    <div class="sidebar-icon" data-page="page-estadistica" onclick="showPage('page-estadistica')" title="Estadística Mensual">
+        <i class="fa-solid fa-chart-pie"></i>
+    </div>
+</div>
+
+<div id="page-consolidador" class="app-page active">
 <div class="container">
     <div class="header">
         <h2>Consolidador de Reportes</h2>
@@ -180,6 +322,94 @@
         <button class="btn-main btn-blue"      onclick="copyOnlyMoney()">💰 Copiar Ofrendas</button>
         <button class="btn-main btn-gray"      onclick="clearTextareas()">🧹 Limpiar</button>
     </div>
+</div>
+</div>
+
+<div id="page-estadistica" class="app-page">
+<div class="container">
+    <div class="header">
+        <h2>Estadística Mensual</h2>
+    </div>
+
+    <div class="week-input-grid" id="week-input-grid"></div>
+
+    <div style="text-align:center; margin-top:15px;">
+        <button class="btn-main btn-green" onclick="procesarSemanas()">🔄 Procesar Semanas</button>
+    </div>
+    <div id="stat-status"></div>
+
+    <div class="dashboard-nav">
+        <button class="dash-tab active" data-view="dv-celula"      onclick="showDashboardView('dv-celula')">📗 Célula por Líder</button>
+        <button class="dash-tab"        data-view="dv-red"         onclick="showDashboardView('dv-red')">🔴 Red/Culto por Líder</button>
+        <button class="dash-tab"        data-view="dv-meta-general" onclick="showDashboardView('dv-meta-general')">🎯 Meta General</button>
+        <button class="dash-tab"        data-view="dv-meta-lider"  onclick="showDashboardView('dv-meta-lider')">👤 Meta por Líder</button>
+    </div>
+
+    <div id="dashboard-container">
+        <div id="dv-celula" class="dashboard-view active">
+            <div id="celula-table-wrap" class="dash-table-wrap"></div>
+            <div class="dash-chart-block">
+                <h4>Total de la Unidad por Semana (Célula)</h4>
+                <canvas id="chart-celula-bar" height="170"></canvas>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Tendencia por Líder (Célula)</h4>
+                <canvas id="chart-celula-trend" height="220"></canvas>
+            </div>
+        </div>
+        <div id="dv-red" class="dashboard-view">
+            <div id="red-table-wrap" class="dash-table-wrap"></div>
+            <div class="dash-chart-block">
+                <h4>Total de la Unidad por Semana (Red/Culto)</h4>
+                <canvas id="chart-red-bar" height="170"></canvas>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Tendencia por Líder (Red/Culto)</h4>
+                <canvas id="chart-red-trend" height="220"></canvas>
+            </div>
+        </div>
+        <div id="dv-meta-general" class="dashboard-view">
+            <div class="meta-general-control">
+                <label for="meta-general-input">Meta Semanal General:</label>
+                <input type="number" id="meta-general-input" min="0" step="1" oninput="onMetaGeneralInputChange()">
+            </div>
+
+            <div class="meta-gauges-row">
+                <div class="gauge-block">
+                    <h4>Meta Semanal – Célula</h4>
+                    <div id="gauge-celula-general" class="gauge-svg-wrap"></div>
+                    <div class="gauge-caption" id="gauge-celula-caption"></div>
+                </div>
+                <div class="gauge-block">
+                    <h4>Meta Semanal – Red/Culto</h4>
+                    <div id="gauge-red-general" class="gauge-svg-wrap"></div>
+                    <div class="gauge-caption" id="gauge-red-caption"></div>
+                </div>
+            </div>
+
+            <div class="summary-cards-row" id="meta-summary-cards"></div>
+
+            <div class="dash-chart-block">
+                <h4>Semanal Real vs Meta – Célula</h4>
+                <canvas id="chart-meta-bar-celula" height="170"></canvas>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Semanal Real vs Meta – Red/Culto</h4>
+                <canvas id="chart-meta-bar-red" height="170"></canvas>
+            </div>
+        </div>
+        <div id="dv-meta-lider" class="dashboard-view">
+            <div class="dash-chart-block">
+                <h4>Cumplimiento de Meta — Célula</h4>
+                <div id="meta-lider-celula-list" class="meta-lider-list"></div>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Cumplimiento de Meta — Red/Culto</h4>
+                <div id="meta-lider-red-list" class="meta-lider-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 
 <!-- Modal: Supervisor obligatorio -->
@@ -380,11 +610,145 @@
         div.className = 'report-block';
         div.dataset.group = groupId;
         div.innerHTML = `
-            <div class="leader-title">${title || 'LÍDER'}</div>
+            <div class="leader-title-row">
+                <div class="leader-title">${title || 'LÍDER'}</div>
+                <div class="meta-wrap">
+                    <span class="meta-label">META:</span>
+                    <button type="button" class="meta-chip" onclick="toggleMetaWheel(this)">12</button>
+                    <div class="meta-wheel-popup">
+                        <div class="meta-wheel" tabindex="0"><div class="meta-wheel-inner"></div></div>
+                    </div>
+                </div>
+            </div>
             <textarea placeholder="Pegue el reporte aquí..." oninput="onReportPasted(this)">${text}</textarea>
         `;
         body.appendChild(div);
+
+        const wheelEl = div.querySelector('.meta-wheel');
+        const chipEl  = div.querySelector('.meta-chip');
+        initMetaWheel(wheelEl, chipEl, title || 'LÍDER');
     }
+
+    // ── META wheel picker (1–30, persistente por líder) ─────────────────────
+    function loadMetaData() {
+        return JSON.parse(localStorage.getItem('consolidadorMeta_v2') || '{}');
+    }
+
+    function saveMetaValue(leaderName, value) {
+        const data = loadMetaData();
+        data[leaderName] = value;
+        localStorage.setItem('consolidadorMeta_v2', JSON.stringify(data));
+    }
+
+    function getMetaValue(leaderName) {
+        const data = loadMetaData();
+        return data[leaderName] !== undefined ? data[leaderName] : 12;
+    }
+
+    function initMetaWheel(wheelEl, chipEl, leaderName) {
+        const inner = wheelEl.querySelector('.meta-wheel-inner');
+        inner.innerHTML = '';
+        for (let i = 1; i <= 30; i++) {
+            const item = document.createElement('div');
+            item.className = 'meta-wheel-item';
+            item.textContent = i;
+            inner.appendChild(item);
+        }
+        wheelEl.dataset.leader = leaderName;
+
+        wheelEl.addEventListener('scroll', () => {
+            clearTimeout(wheelEl._snapTimeout);
+            wheelEl._snapTimeout = setTimeout(() => snapMetaWheel(wheelEl), 120);
+        });
+
+        // Scroll de mouse/trackpad: avanza de a 1 número por evento (evita saltos de varios a la vez)
+        wheelEl.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const now = Date.now();
+            if (wheelEl._lastWheelStep && now - wheelEl._lastWheelStep < 90) return;
+            wheelEl._lastWheelStep = now;
+            stepMetaWheel(wheelEl, e.deltaY > 0 ? 1 : -1);
+        }, { passive: false });
+
+        // Flechas del teclado: arriba/abajo cambian de a 1, Enter confirma y cierra
+        wheelEl.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') { e.preventDefault(); stepMetaWheel(wheelEl, -1); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); stepMetaWheel(wheelEl, 1); }
+            else if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); closeAllMetaWheels(); }
+        });
+
+        const value = getMetaValue(leaderName);
+        chipEl.textContent = value;
+        requestAnimationFrame(() => setMetaWheelValue(wheelEl, value, false));
+    }
+
+    function setMetaWheelValue(wheelEl, value, animate = true) {
+        value = Math.min(30, Math.max(1, value));
+        wheelEl.scrollTo({ top: (value - 1) * 22, behavior: animate ? 'smooth' : 'auto' });
+        highlightMetaWheel(wheelEl, value);
+    }
+
+    function highlightMetaWheel(wheelEl, value) {
+        wheelEl.querySelectorAll('.meta-wheel-item').forEach(item => {
+            item.classList.toggle('selected', parseInt(item.textContent, 10) === value);
+        });
+    }
+
+    // Feedback táctil ligero (vibración corta si el dispositivo lo soporta)
+    function metaWheelTick() {
+        if (navigator.vibrate) navigator.vibrate(8);
+    }
+
+    function snapMetaWheel(wheelEl) {
+        const value = Math.min(30, Math.max(1, Math.round(wheelEl.scrollTop / 22) + 1));
+        const changed = parseInt(wheelEl.dataset.currentValue || '0', 10) !== value;
+        wheelEl.dataset.currentValue = value;
+
+        setMetaWheelValue(wheelEl, value);
+        saveMetaValue(wheelEl.dataset.leader, value);
+
+        const wrap = wheelEl.closest('.meta-wrap');
+        const chip = wrap?.querySelector('.meta-chip');
+        if (chip) chip.textContent = value;
+
+        if (changed) metaWheelTick();
+        // El popup ya NO se cierra solo — permanece abierto hasta que el usuario
+        // presione "✓ Listo" o haga click fuera de él.
+    }
+
+    // Cambia el valor con las flechas del teclado (o botones ± si se agregan luego)
+    function stepMetaWheel(wheelEl, delta) {
+        const current = Math.min(30, Math.max(1, Math.round(wheelEl.scrollTop / 22) + 1));
+        const next = Math.min(30, Math.max(1, current + delta));
+        wheelEl.dataset.currentValue = next;
+        setMetaWheelValue(wheelEl, next, true);
+        saveMetaValue(wheelEl.dataset.leader, next);
+
+        const chip = wheelEl.closest('.meta-wrap')?.querySelector('.meta-chip');
+        if (chip) chip.textContent = next;
+        metaWheelTick();
+    }
+
+    // Abre/cierra el popup del wheel; solo uno abierto a la vez
+    function toggleMetaWheel(chipEl) {
+        const wrap = chipEl.closest('.meta-wrap');
+        const popup = wrap.querySelector('.meta-wheel-popup');
+        const wasOpen = popup.classList.contains('open');
+        closeAllMetaWheels();
+        if (!wasOpen) {
+            popup.classList.add('open');
+            const wheelEl = popup.querySelector('.meta-wheel');
+            wheelEl?.focus({ preventScroll: true });
+        }
+    }
+
+    function closeAllMetaWheels() {
+        document.querySelectorAll('.meta-wheel-popup.open').forEach(p => p.classList.remove('open'));
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.meta-wrap')) closeAllMetaWheels();
+    });
 
     // ── Utilidades de nombre ────────────────────────────────────────────────
     function toTitleCase(str) {
@@ -834,8 +1198,381 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         document.body.removeChild(ta);
     }
 
+    // ── Menú lateral / navegación de páginas ─────────────────────────────────
+    function showPage(pageId) {
+        document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
+        document.getElementById(pageId)?.classList.add('active');
+        document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.toggle('active', i.dataset.page === pageId));
+        if (pageId === 'page-estadistica') renderCurrentDashboardView();
+    }
+
+    // ── Estadística Mensual: cajas de Semana 1-5 ─────────────────────────────
+    function buildWeekInputs() {
+        const grid = document.getElementById('week-input-grid');
+        if (!grid) return;
+        const saved = JSON.parse(localStorage.getItem('consolidadorEstadisticaSemanas_v1') || '[]');
+        grid.innerHTML = '';
+        for (let i = 1; i <= 5; i++) {
+            const wrap = document.createElement('div');
+            wrap.className = 'week-input-block';
+            wrap.innerHTML = `
+                <label>Semana ${i}</label>
+                <textarea id="stat-week-${i}" placeholder="Pega aquí el 'Copiar Reporte' de la Semana ${i}..."></textarea>
+            `;
+            grid.appendChild(wrap);
+            wrap.querySelector('textarea').value = saved[i - 1] || '';
+        }
+        grid.querySelectorAll('textarea').forEach(ta => ta.addEventListener('input', saveEstadisticaRaw));
+    }
+
+    function saveEstadisticaRaw() {
+        const raw = [];
+        for (let i = 1; i <= 5; i++) raw.push(document.getElementById(`stat-week-${i}`)?.value || '');
+        localStorage.setItem('consolidadorEstadisticaSemanas_v1', JSON.stringify(raw));
+    }
+
+    // Parsea el texto generado por "Copiar Reporte" y devuelve { NOMBRE: { celula, red } }
+    function parseWeekReport(text) {
+        const result = {};
+        if (!text || !text.trim()) return result;
+        const chunks = text.split('🔥🚨🔥🚨🔥🚨🔥');
+        chunks.forEach(chunk => {
+            const nameMatch = chunk.match(/L[IÍ]DER:\s*([^*\n]+)\*/i);
+            if (!nameMatch) return;
+            const name = toTitleCase(nameMatch[1].trim());
+            const celMatch = chunk.match(/Total\s+\S+\s+C[eé]lula:\s*(\d+)/i);
+            const redMatch = chunk.match(/Total\s+\S+\s+(?:Red|Culto):\s*(\d+)/i);
+            result[name] = {
+                celula: celMatch ? parseInt(celMatch[1], 10) : 0,
+                red:    redMatch ? parseInt(redMatch[1], 10) : 0
+            };
+        });
+        return result;
+    }
+
+    function procesarSemanas() {
+        saveEstadisticaRaw();
+        const semanas = [];
+        const resumen = [];
+        for (let i = 1; i <= 5; i++) {
+            const text = document.getElementById(`stat-week-${i}`)?.value || '';
+            const parsed = parseWeekReport(text);
+            semanas.push(parsed);
+            const count = Object.keys(parsed).length;
+            resumen.push(`S${i}: ${count} líder${count === 1 ? '' : 'es'}`);
+        }
+
+        localStorage.setItem('consolidadorEstadisticaData_v1', JSON.stringify(semanas));
+
+        const statusEl = document.getElementById('stat-status');
+        const totalDetectados = semanas.reduce((s, w) => s + Object.keys(w).length, 0);
+        if (totalDetectados === 0) {
+            statusEl.textContent = '⚠️ No se detectó ningún líder. Verifica que el texto pegado sea el generado por "Copiar Reporte".';
+            statusEl.style.color = '#e74c3c';
+        } else {
+            statusEl.textContent = `✅ Procesado: ${resumen.join(' · ')}`;
+            statusEl.style.color = '#2ecc71';
+        }
+        renderCurrentDashboardView();
+    }
+
+    // ── Estadística Mensual: render de dashboards (Célula / Red) ────────────
+    const _dashCharts = {};
+    const LEADER_LINE_COLORS = ['#dc3545','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#e84393','#16a085','#8e44ad','#2980b9'];
+
+    function destroyChart(id) {
+        if (_dashCharts[id]) { _dashCharts[id].destroy(); delete _dashCharts[id]; }
+    }
+
+    function getUnitAccentColor() {
+        return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#dc3545';
+    }
+
+    function getEstadisticaSemanas() {
+        const semanas = JSON.parse(localStorage.getItem('consolidadorEstadisticaData_v1') || '[]');
+        while (semanas.length < 5) semanas.push({});
+        return semanas;
+    }
+
+    function buildAttendanceTable(leaderNames, semanas, metaData, metricKey) {
+        let html = '<table class="dash-table"><thead><tr><th>Líder</th><th>Meta</th>';
+        for (let i = 1; i <= 5; i++) html += `<th>S${i}</th>`;
+        html += '</tr></thead><tbody>';
+        leaderNames.forEach(name => {
+            const meta = metaData[name] !== undefined ? metaData[name] : 12;
+            html += `<tr><td>${name}</td><td>${meta}</td>`;
+            for (let i = 0; i < 5; i++) {
+                const val = semanas[i][name] ? semanas[i][name][metricKey] : undefined;
+                html += `<td>${val !== undefined ? val : '–'}</td>`;
+            }
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function renderAttendanceDashboard(metricKey, tableWrapId, barChartId, trendChartId) {
+        const semanas  = getEstadisticaSemanas();
+        const metaData = loadMetaData();
+
+        const leaderSet = new Set();
+        semanas.forEach(week => Object.keys(week).forEach(n => leaderSet.add(n)));
+        const leaderNames = Array.from(leaderSet); // respeta el orden de aparición en el reporte
+
+        const wrap = document.getElementById(tableWrapId);
+        if (wrap) {
+            wrap.innerHTML = leaderNames.length
+                ? buildAttendanceTable(leaderNames, semanas, metaData, metricKey)
+                : '<p class="empty-page-msg">Aún no hay datos procesados. Pega los reportes semanales y presiona "Procesar Semanas".</p>';
+        }
+
+        if (!leaderNames.length || typeof Chart === 'undefined') {
+            destroyChart(barChartId);
+            destroyChart(trendChartId);
+            const parentBlock = document.getElementById(barChartId)?.closest('.dash-chart-block');
+            parentBlock?.querySelectorAll('.chartjs-warning').forEach(el => el.remove());
+            if (leaderNames.length && typeof Chart === 'undefined' && parentBlock) {
+                parentBlock.insertAdjacentHTML('beforeend', '<p class="empty-page-msg chartjs-warning">⚠️ No se pudo cargar la librería de gráficos (Chart.js). Verifica tu conexión a internet y recarga la página.</p>');
+            }
+            return;
+        }
+
+        const accent = getUnitAccentColor();
+
+        // Barras: total de la unidad por semana
+        const weekTotals = semanas.map(week =>
+            Object.values(week).reduce((sum, l) => sum + (l[metricKey] || 0), 0)
+        );
+        destroyChart(barChartId);
+        const barCtx = document.getElementById(barChartId)?.getContext('2d');
+        if (barCtx) {
+            _dashCharts[barChartId] = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
+                    datasets: [{ label: 'Total Unidad', data: weekTotals, backgroundColor: accent, borderRadius: 4 }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+
+        // Línea: tendencia por líder
+        destroyChart(trendChartId);
+        const trendCtx = document.getElementById(trendChartId)?.getContext('2d');
+        if (trendCtx) {
+            const datasets = leaderNames.map((name, idx) => {
+                const color = LEADER_LINE_COLORS[idx % LEADER_LINE_COLORS.length];
+                return {
+                    label: name,
+                    data: semanas.map(week => (week[name] ? (week[name][metricKey] ?? null) : null)),
+                    borderColor: color,
+                    backgroundColor: color + '33',
+                    borderWidth: 2,
+                    tension: 0.35,
+                    spanGaps: true,
+                    fill: false,
+                    _originalColor: color
+                };
+            });
+            _dashCharts[trendChartId] = new Chart(trendCtx, {
+                type: 'line',
+                data: { labels: ['S1', 'S2', 'S3', 'S4', 'S5'], datasets },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 10, font: { size: 9 } },
+                            onHover: (evt, legendItem, legend) => {
+                                const chart = legend.chart;
+                                chart.data.datasets.forEach((ds, idx) => {
+                                    if (idx === legendItem.datasetIndex) {
+                                        ds.borderColor = ds._originalColor;
+                                        ds.borderWidth = 4;
+                                    } else {
+                                        ds.borderColor = 'rgba(200,200,200,0.25)';
+                                        ds.borderWidth = 2;
+                                    }
+                                });
+                                chart.update();
+                            },
+                            onLeave: (evt, legendItem, legend) => {
+                                const chart = legend.chart;
+                                chart.data.datasets.forEach(ds => {
+                                    ds.borderColor = ds._originalColor;
+                                    ds.borderWidth = 2;
+                                });
+                                chart.update();
+                            }
+                        }
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+    }
+
+    // ── Estadística Mensual: Meta General (gauges + tarjetas + barras vs meta) ──
+    function getMetaGeneral() {
+        const v = localStorage.getItem('consolidadorMetaGeneral_v1');
+        return v !== null ? parseFloat(v) : 70;
+    }
+
+    function saveMetaGeneral(v) {
+        localStorage.setItem('consolidadorMetaGeneral_v1', v);
+    }
+
+    function onMetaGeneralInputChange() {
+        const input = document.getElementById('meta-general-input');
+        let v = parseFloat(input.value);
+        if (isNaN(v) || v < 0) v = 0;
+        saveMetaGeneral(v);
+        renderMetaGeneral();
+    }
+
+    function buildGaugeSVG(pct, color) {
+        const displayPct = Math.max(0, Math.min(100, pct));
+        const r = 80, circumference = Math.PI * r;
+        const offset = circumference * (1 - displayPct / 100);
+        return `
+        <svg viewBox="0 0 200 115" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="#e9ecef" stroke-width="18" stroke-linecap="round"/>
+            <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="${color}" stroke-width="18" stroke-linecap="round"
+                  stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"/>
+            <text x="100" y="95" text-anchor="middle" font-size="26" font-weight="bold" fill="${color}">${Math.round(pct)}%</text>
+        </svg>`;
+    }
+
+    function computeMetricSummary(semanas, metaSemanal, metricKey) {
+        const totals = semanas.map(week => Object.values(week).reduce((s, l) => s + (l[metricKey] || 0), 0));
+        const weeksWithData = semanas.filter(w => Object.keys(w).length > 0).length;
+        const sumTotals = totals.reduce((a, b) => a + b, 0);
+        const promedio = weeksWithData ? sumTotals / weeksWithData : 0;
+        const pct = metaSemanal ? (promedio / metaSemanal) * 100 : 0;
+        return { totals, promedio, pct };
+    }
+
+    function renderMetaGeneral() {
+        const semanas  = getEstadisticaSemanas();
+        const metaData = loadMetaData();
+        const accent   = getUnitAccentColor();
+
+        const leaderSet = new Set();
+        semanas.forEach(w => Object.keys(w).forEach(n => leaderSet.add(n)));
+        const leaderNames = Array.from(leaderSet);
+
+        const metaSemanal = getMetaGeneral();
+        const input = document.getElementById('meta-general-input');
+        if (input && document.activeElement !== input) input.value = metaSemanal;
+
+        const celula = computeMetricSummary(semanas, metaSemanal, 'celula');
+        const red    = computeMetricSummary(semanas, metaSemanal, 'red');
+
+        // Gauges
+        document.getElementById('gauge-celula-general').innerHTML = buildGaugeSVG(celula.pct, accent);
+        document.getElementById('gauge-celula-caption').textContent = `${celula.promedio.toFixed(1)} / ${metaSemanal} promedio semanal`;
+        document.getElementById('gauge-red-general').innerHTML = buildGaugeSVG(red.pct, accent);
+        document.getElementById('gauge-red-caption').textContent = `${red.promedio.toFixed(1)} / ${metaSemanal} promedio semanal`;
+
+        // Tarjetas resumen
+        const cards = [
+            { value: metaSemanal, label: 'Meta Semanal General' },
+            { value: celula.promedio.toFixed(1), label: 'Promedio Semanal Célula' },
+            { value: red.promedio.toFixed(1), label: 'Promedio Semanal Red/Culto' }
+        ];
+        document.getElementById('meta-summary-cards').innerHTML = cards.map(c =>
+            `<div class="summary-card"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`
+        ).join('');
+
+        if (!leaderNames.length || typeof Chart === 'undefined') {
+            destroyChart('chart-meta-bar-celula');
+            destroyChart('chart-meta-bar-red');
+            return;
+        }
+
+        // Barras Real vs línea de Meta
+        const buildMetaBarChart = (chartId, totals, label) => {
+            destroyChart(chartId);
+            const ctx = document.getElementById(chartId)?.getContext('2d');
+            if (!ctx) return;
+            _dashCharts[chartId] = new Chart(ctx, {
+                data: {
+                    labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
+                    datasets: [
+                        { type: 'bar', label, data: totals, backgroundColor: accent, borderRadius: 4 },
+                        { type: 'line', label: 'Meta Semanal', data: Array(5).fill(metaSemanal), borderColor: '#333', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        };
+        buildMetaBarChart('chart-meta-bar-celula', celula.totals, 'Real Célula');
+        buildMetaBarChart('chart-meta-bar-red', red.totals, 'Real Red/Culto');
+    }
+
+    // ── Estadística Mensual: Meta por Líder (barras horizontales) ───────────
+    function buildMetaLiderList(containerId, leaderNames, semanas, metaData, metricKey) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (!leaderNames.length) {
+            el.innerHTML = '<p class="empty-page-msg">Aún no hay datos procesados. Pega los reportes semanales y presiona "Procesar Semanas".</p>';
+            return;
+        }
+        const stats = leaderNames.map(name => {
+            const vals = semanas.filter(w => w[name] && w[name][metricKey] !== undefined).map(w => w[name][metricKey]);
+            const promedio = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+            const meta = metaData[name] !== undefined ? metaData[name] : 12;
+            const pct = meta ? (promedio / meta) * 100 : 0;
+            return { name, promedio, meta, pct };
+        }).sort((a, b) => b.pct - a.pct);
+
+        el.innerHTML = stats.map(s => `
+            <div class="meta-lider-row">
+                <div class="meta-lider-name">${s.name}</div>
+                <div class="meta-lider-bar-track"><div class="meta-lider-bar-fill" style="width:${Math.min(100, s.pct)}%"></div></div>
+                <div class="meta-lider-detail">${Math.round(s.pct)}% · Meta ${s.meta} · Prom ${s.promedio.toFixed(1)}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderMetaLider() {
+        const semanas  = getEstadisticaSemanas();
+        const metaData = loadMetaData();
+
+        const leaderSet = new Set();
+        semanas.forEach(w => Object.keys(w).forEach(n => leaderSet.add(n)));
+        const leaderNames = Array.from(leaderSet);
+
+        buildMetaLiderList('meta-lider-celula-list', leaderNames, semanas, metaData, 'celula');
+        buildMetaLiderList('meta-lider-red-list', leaderNames, semanas, metaData, 'red');
+    }
+
+    function renderCurrentDashboardView() {
+        const activeView = document.querySelector('#page-estadistica .dashboard-view.active')?.id;
+        if (activeView === 'dv-celula') renderAttendanceDashboard('celula', 'celula-table-wrap', 'chart-celula-bar', 'chart-celula-trend');
+        else if (activeView === 'dv-red') renderAttendanceDashboard('red', 'red-table-wrap', 'chart-red-bar', 'chart-red-trend');
+        else if (activeView === 'dv-meta-general') renderMetaGeneral();
+        else if (activeView === 'dv-meta-lider') renderMetaLider();
+    }
+
+    // ── Estadística Mensual: navegación entre vistas de dashboard ───────────
+    function showDashboardView(viewId) {
+        document.querySelectorAll('.dashboard-view').forEach(v => v.classList.remove('active'));
+        document.getElementById(viewId)?.classList.add('active');
+        document.querySelectorAll('.dash-tab').forEach(t => t.classList.toggle('active', t.dataset.view === viewId));
+        renderCurrentDashboardView();
+    }
+
     // ── Init ────────────────────────────────────────────────────────────────
-    window.onload = () => { initWeekBar(); loadData(); };
+    window.onload = () => { initWeekBar(); loadData(); buildWeekInputs(); };
 </script>
 </body>
 </html>
