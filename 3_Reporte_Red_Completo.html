@@ -519,7 +519,15 @@ function extractLeadersFromBlock(text) {
 
     positions.forEach((pos, i) => {
         const start = pos.index;
-        const end = i + 1 < positions.length ? positions[i + 1].index : text.length;
+        let end = i + 1 < positions.length ? positions[i + 1].index : text.length;
+
+        // Cortar el bloque antes del resumen acumulado / separador,
+        // aunque sea el último líder del texto (evita heredar totales globales
+        // cuando al líder le falta Sinpe o Efectivo en su propia sección)
+        const restante = text.slice(start, end);
+        const corte = restante.search(/RESUMEN OFRENDAS ACUMULADO|={5,}/i);
+        if (corte !== -1) end = start + corte;
+
         const block = text.substring(start, end);
 
         const sinpe = extractDirectValue(block, /Sinpe:\s*₡?([\d\s.,]+)/i);
