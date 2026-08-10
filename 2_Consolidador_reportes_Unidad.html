@@ -280,6 +280,23 @@
         }
         .modal-btn:hover { opacity: 0.9; }
 
+        /* ── Modal genérico (alert/confirm bonitos, reemplaza los nativos) ── */
+        .modal-box--generic { text-align: left; }
+        .modal-box--generic h3 { text-align: center; }
+        .modal-box--generic p {
+            white-space: pre-line; text-align: left; color: #555;
+            font-size: 0.88em; line-height: 1.55; margin: 0 0 20px;
+        }
+        .modal-generic-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .pill {
+            padding: 9px 20px; border-radius: 999px; border: 1.5px solid #ddd;
+            background: #fff; color: #666; cursor: pointer; font-weight: bold;
+            font-size: 0.85em; font-family: inherit; transition: all 0.15s ease;
+        }
+        .pill:hover { border-color: var(--accent); color: var(--accent); }
+        .pill--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .pill--primary:hover { opacity: 0.9; color: #fff; }
+
         /* ── Semana activa ── */
         .week-wrapper { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
         .week-select-styled { padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; background: white; cursor: pointer; }
@@ -434,6 +451,18 @@
         <input type="text" id="modal-supervisor-input" placeholder="NOMBRE DEL SUPERVISOR"
                onkeydown="if(event.key==='Enter') confirmSupervisorModal()">
         <button class="modal-btn" onclick="confirmSupervisorModal()">Confirmar</button>
+    </div>
+</div>
+
+<!-- Modal genérico: reemplaza alert()/confirm() nativos -->
+<div class="modal-overlay" id="modal-generic">
+    <div class="modal-box modal-box--generic">
+        <h3 id="modal-generic-title">Aviso</h3>
+        <p id="modal-generic-body"></p>
+        <div class="modal-generic-actions">
+            <button type="button" class="pill" id="modal-generic-cancel">Cancelar</button>
+            <button type="button" class="pill pill--primary" id="modal-generic-ok">Aceptar</button>
+        </div>
     </div>
 </div>
 
@@ -812,7 +841,7 @@
             if (reportSection) {
                 const validSections = GROUP_VALID_SECTIONS[groupId] || [];
                 if (!validSections.includes(reportSection)) {
-                    alert(`⚠️⚠️ Información mal ingresada a un Líder en la Sección (${reportSection}).⚠️⚠️\nEste bloque pertenece a ${groupId.toUpperCase()}.\nPor favor ingrese el reporte en la sección correcta.`);
+                    showAppAlert(`⚠️⚠️ Información mal ingresada a un Líder en la Sección (${reportSection}).⚠️⚠️\nEste bloque pertenece a ${groupId.toUpperCase()}.\nPor favor ingrese el reporte en la sección correcta.`);
                     textarea.value = '';
                     saveData();
                     return;
@@ -825,7 +854,7 @@
             if (reportWeek !== null && reportWeek !== activeWeek) {
                 const { label: activeLabel } = getWeekRange(activeWeek);
                 const { label: reportLabel } = getWeekRange(reportWeek);
-                alert(`⚠️ Semana incorrecta en el reporte.\n\nSemana activa: ${activeLabel}\nSemana del reporte: ${reportLabel}\n\nEl reporte fue descartado.`);
+                showAppAlert(`⚠️ Semana incorrecta en el reporte.\n\nSemana activa: ${activeLabel}\nSemana del reporte: ${reportLabel}\n\nEl reporte fue descartado.`);
                 textarea.value = '';
                 saveData();
                 return;
@@ -843,7 +872,7 @@
 
                 if (normCurrent !== normExtracted) {
                     titleInput.classList.add('mismatch');
-                    alert(`⚠️ La información del reporte del LÍDER "${extractedName}" no pertenece a este Líder ("${currentName}"). El reporte fue descartado.`);
+                    showAppAlert(`⚠️ La información del reporte del LÍDER "${extractedName}" no pertenece a este Líder ("${currentName}"). El reporte fue descartado.`);
                     textarea.value = '';
                 } else {
                     titleInput.classList.remove('mismatch');
@@ -853,6 +882,39 @@
             saveData();
         }, 0);
     }
+
+    // ── Modal genérico: reemplaza alert()/confirm() nativos ─────────────────
+    let _genericModalResolve = null;
+
+    function showAppAlert(message, title = 'Aviso') {
+        return new Promise(resolve => {
+            _genericModalResolve = resolve;
+            document.getElementById('modal-generic-title').textContent = title;
+            document.getElementById('modal-generic-body').textContent = message;
+            document.getElementById('modal-generic-cancel').style.display = 'none';
+            document.getElementById('modal-generic-ok').textContent = 'Aceptar';
+            document.getElementById('modal-generic').classList.add('active');
+        });
+    }
+
+    function showAppConfirm(message, title = 'Confirmar') {
+        return new Promise(resolve => {
+            _genericModalResolve = resolve;
+            document.getElementById('modal-generic-title').textContent = title;
+            document.getElementById('modal-generic-body').textContent = message;
+            document.getElementById('modal-generic-cancel').style.display = 'inline-block';
+            document.getElementById('modal-generic-ok').textContent = 'Aceptar';
+            document.getElementById('modal-generic').classList.add('active');
+        });
+    }
+
+    function _closeGenericModal(result) {
+        document.getElementById('modal-generic').classList.remove('active');
+        if (_genericModalResolve) { _genericModalResolve(result); _genericModalResolve = null; }
+    }
+
+    document.getElementById('modal-generic-ok').addEventListener('click', () => _closeGenericModal(true));
+    document.getElementById('modal-generic-cancel').addEventListener('click', () => _closeGenericModal(false));
 
     // ── Modal Supervisor ────────────────────────────────────────────────────
     let _pendingCopyFn = null;
@@ -962,7 +1024,7 @@
         });
 
         if (missing.length > 0) {
-            alert(`⚠️ Falta la información de los Líderes:\n${missing.map(n => `• ${n}`).join('\n')}`);
+            showAppAlert(`⚠️ Falta la información de los Líderes:\n${missing.map(n => `• ${n}`).join('\n')}`);
             return false;
         }
         return true;
@@ -1138,7 +1200,7 @@ if (totalCulto > 0) report += `Total en Culto: ${totalCulto}\n`;
 if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
 
         copyToClipboard(report);
-        alert('¡Reporte consolidado copiado!');
+        showAppAlert('¡Reporte consolidado copiado!');
     }
 
     // ── Copiar Solo Ofrendas ────────────────────────────────────────────────
@@ -1192,15 +1254,16 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         report += `*GRAN TOTAL: ₡${(sinpeTotal + efectivoTotal).toLocaleString('es-CR')}*`;
 
         copyToClipboard(report);
-        alert('¡Reporte de Ofrendas copiado!');
+        showAppAlert('¡Reporte de Ofrendas copiado!');
     }
 
     // ── Limpiar textareas ───────────────────────────────────────────────────
-    function clearTextareas() {
-        if (!confirm('¿Limpiar los reportes pegados? Los nombres de líderes se conservan.')) return;
+    async function clearTextareas() {
+        const ok = await showAppConfirm('¿Limpiar los reportes pegados? Los nombres de líderes se conservan.', 'Confirmar limpieza');
+        if (!ok) return;
         document.querySelectorAll('.report-block textarea').forEach(t => t.value = '');
         saveData();
-        alert('Listo: reportes limpiados.');
+        showAppAlert('Listo: reportes limpiados.');
     }
 
     function copyToClipboard(text) {
