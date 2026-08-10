@@ -14,16 +14,26 @@
             --accent-bdr:  #feb2b2;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 15px 15px 15px 71px; color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 65px 15px 15px 15px; color: #333; }
         .container { max-width: 650px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
 
-        /* ── Menú lateral ── */
+        /* ── Menú lateral (oculto por defecto, se abre con el botón hamburguesa) ── */
+        .sidebar-toggle {
+            position: fixed; top: 14px; left: 14px; z-index: 600;
+            width: 40px; height: 40px; border-radius: 10px; border: none;
+            background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+            font-size: 1.1em; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .sidebar-toggle:hover { background: var(--accent-dark); }
         .sidebar {
             position: fixed; left: 0; top: 0; bottom: 0; width: 56px;
             background: white; box-shadow: 2px 0 10px rgba(0,0,0,0.08);
             display: flex; flex-direction: column; align-items: center;
-            padding-top: 18px; gap: 10px; z-index: 500;
+            padding-top: 66px; gap: 10px; z-index: 500;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
         }
+        .sidebar.open { transform: translateX(0); }
         .sidebar-icon {
             width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
             border-radius: 10px; color: #999; font-size: 1.15em; cursor: pointer; transition: 0.2s;
@@ -277,6 +287,10 @@
     </style>
 </head>
 <body>
+
+<button type="button" class="sidebar-toggle" onclick="toggleSidebar()" title="Menú">
+    <i class="fa-solid fa-bars"></i>
+</button>
 
 <div class="sidebar">
     <div class="sidebar-icon active" data-page="page-consolidador" onclick="showPage('page-consolidador')" title="Consolidador">
@@ -1204,7 +1218,21 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         document.getElementById(pageId)?.classList.add('active');
         document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.toggle('active', i.dataset.page === pageId));
         if (pageId === 'page-estadistica') renderCurrentDashboardView();
+        closeSidebar();
     }
+
+    // ── Menú lateral: abrir / cerrar (oculto por defecto) ────────────────────
+    function toggleSidebar() {
+        document.querySelector('.sidebar')?.classList.toggle('open');
+    }
+
+    function closeSidebar() {
+        document.querySelector('.sidebar')?.classList.remove('open');
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) closeSidebar();
+    });
 
     // ── Estadística Mensual: cajas de Semana 1-5 ─────────────────────────────
     function buildWeekInputs() {
