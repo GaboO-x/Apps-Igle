@@ -178,6 +178,7 @@
             background: #f0f2f5; color: #555; border: none; padding: 9px 14px;
             border-radius: 20px; cursor: pointer; font-size: 0.78em; font-weight: bold; transition: 0.2s;
         }
+        .dash-tab i { margin-right: 5px; }
         .dash-tab:hover { background: #e2e5ea; }
         .dash-tab.active { background: var(--accent); color: white; }
         .dashboard-view { display: none; margin-top: 15px; }
@@ -370,10 +371,10 @@
     <div id="stat-status"></div>
 
     <div class="dashboard-nav">
-        <button class="dash-tab active" data-view="dv-celula"      onclick="showDashboardView('dv-celula')">📗 Célula por Líder</button>
-        <button class="dash-tab"        data-view="dv-red"         onclick="showDashboardView('dv-red')">🔴 Red/Culto por Líder</button>
-        <button class="dash-tab"        data-view="dv-meta-general" onclick="showDashboardView('dv-meta-general')">🎯 Meta General</button>
-        <button class="dash-tab"        data-view="dv-meta-lider"  onclick="showDashboardView('dv-meta-lider')">👤 Meta por Líder</button>
+        <button class="dash-tab active" data-view="dv-celula"      onclick="showDashboardView('dv-celula')"><i class="fa-solid fa-virus"></i> Célula por Líder</button>
+        <button class="dash-tab"        data-view="dv-red"         onclick="showDashboardView('dv-red')"><i class="fa-solid fa-church"></i> Red/Culto por Líder</button>
+        <button class="dash-tab"        data-view="dv-meta-general" onclick="showDashboardView('dv-meta-general')"><i class="fa-solid fa-bullseye"></i> Meta General</button>
+        <button class="dash-tab"        data-view="dv-meta-lider"  onclick="showDashboardView('dv-meta-lider')"><i class="fa-solid fa-people-roof"></i> Meta por Líder</button>
     </div>
 
     <div id="dashboard-container">
