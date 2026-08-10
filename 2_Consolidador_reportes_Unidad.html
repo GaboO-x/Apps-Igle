@@ -51,14 +51,6 @@
 
         .config-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 
-        .color-select-styled {
-            width: 100%; padding: 9px 16px; border-radius: 8px;
-            border: 2px solid var(--accent);
-            font-size: 1em; font-weight: bold;
-            color: var(--accent); background: white; cursor: pointer;
-            box-sizing: border-box; outline: none;
-        }
-
         .main-leader {
             width: 100%; padding: 10px; border: 2px solid #e74c3c; border-radius: 8px;
             font-size: 1em; text-align: center; box-sizing: border-box; outline: none;
@@ -144,6 +136,52 @@
             user-select: none; transition: color 0.12s, font-size 0.12s;
         }
         .meta-wheel-item.selected { color: var(--accent); font-weight: bold; font-size: 0.95em; }
+
+        /* ── Selector tipo wheel (semana / unidad), mismo look que el META wheel ── */
+        .sel-wrap { position: relative; }
+        .sel-chip {
+            width: 100%; box-sizing: border-box;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 10px 16px; border-radius: 8px; border: 2px solid var(--accent);
+            background: white; color: var(--accent); font-weight: bold; font-size: 1em;
+            font-family: inherit; cursor: pointer;
+        }
+        .sel-chip:hover { background: var(--accent-bg); }
+        .sel-chip i { font-size: 0.8em; opacity: 0.7; flex-shrink: 0; }
+        .sel-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sel-chip-narrow { width: auto; min-width: 150px; font-size: 1.05em; }
+        .sel-wheel-popup {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
+            background: #fff; border-radius: 8px; padding: 4px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        }
+        .sel-wheel-popup.open { display: block; }
+        .sel-wheel {
+            position: relative;
+            width: 100%; height: 108px;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            border: 1.5px solid var(--accent);
+            border-radius: 6px;
+            background: #fff;
+            scrollbar-width: none;
+        }
+        .sel-wheel:focus { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
+        .sel-wheel::-webkit-scrollbar { display: none; }
+        .sel-wheel::before, .sel-wheel::after {
+            content: ''; position: absolute; left: 0; right: 0; height: 1px;
+            background: var(--accent-bdr); pointer-events: none;
+        }
+        .sel-wheel::before { top: 36px; }
+        .sel-wheel::after  { top: 72px; }
+        .sel-wheel-inner { padding: 36px 0; }
+        .sel-wheel-item {
+            height: 36px; line-height: 36px; text-align: center; padding: 0 10px;
+            font-size: 0.82em; color: #bbb; scroll-snap-align: center; scroll-snap-stop: always;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            user-select: none; cursor: pointer; transition: color 0.12s, font-size 0.12s;
+        }
+        .sel-wheel-item.selected { color: var(--accent); font-weight: bold; font-size: 0.9em; }
 
         .report-block textarea {
             width: 100%; min-height: 90px; border-radius: 5px; border: 1px solid #eee;
@@ -301,7 +339,6 @@
 
         /* ── Semana activa ── */
         .week-wrapper { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
-        .week-select-styled { padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em; font-weight: bold; background: white; cursor: pointer; }
         .week-dates-text { font-size: 0.78em; color: #888; font-style: italic; margin-top: 3px; }
     </style>
 </head>
@@ -329,13 +366,31 @@
         <h2>Consolidador de Reportes</h2>
         <!-- Selector de semana -->
         <div class="week-wrapper">
-            <select id="week-selector" class="week-select-styled" onchange="onWeekChange()"></select>
+            <div class="sel-wrap" id="week-sel-wrap">
+                <button type="button" class="sel-chip sel-chip-narrow" onclick="toggleSelWheel('week')">
+                    <span id="week-sel-chip-text">Semana</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="sel-wheel-popup" id="week-sel-popup">
+                    <div class="sel-wheel" id="week-sel-wheel" tabindex="0"><div class="sel-wheel-inner"></div></div>
+                </div>
+            </div>
+            <select id="week-selector" onchange="onWeekChange()" style="display:none"></select>
             <div id="week-dates-display" class="week-dates-text"></div>
         </div>
     </div>
 
     <div class="config-section">
-        <select id="color-selector" class="color-select-styled" onchange="applyColor(); onUnitChange();">
+        <div class="sel-wrap" id="unit-sel-wrap">
+            <button type="button" class="sel-chip" onclick="toggleSelWheel('unit')">
+                <span id="unit-sel-chip-text">Unidad</span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="sel-wheel-popup" id="unit-sel-popup">
+                <div class="sel-wheel" id="unit-sel-wheel" tabindex="0"><div class="sel-wheel-inner"></div></div>
+            </div>
+        </div>
+        <select id="color-selector" onchange="applyColor(); onUnitChange();" style="display:none">
             <option value="purple_equipos">🟣 Equipos</option>
             <option value="red_rj">🔴 Unidad Roja RJ/TAKERS</option>
             <option value="red_makers">🔴 Unidad Roja MAKERS</option>
@@ -1999,8 +2054,161 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         renderScopeView(scopeKey, viewKey);
     }
 
+    // ── Selector tipo wheel (semana / unidad) ────────────────────────────────
+    // Envuelve un <select> nativo oculto: el wheel solo controla su .selectedIndex
+    // y dispara 'change', así que toda la lógica existente (applyColor, onWeekChange,
+    // onUnitChange, etc.) sigue funcionando sin cambios.
+    const SEL_WHEELS = {
+        week: { selectId: 'week-selector',  chipTextId: 'week-sel-chip-text',  wheelId: 'week-sel-wheel',  popupId: 'week-sel-popup',  itemHeight: 36 },
+        unit: { selectId: 'color-selector', chipTextId: 'unit-sel-chip-text', wheelId: 'unit-sel-wheel', popupId: 'unit-sel-popup', itemHeight: 36 }
+    };
+
+    function initSelectWheel(key) {
+        rebuildSelectWheel(key);
+        attachSelWheelEvents(key);
+        syncSelectWheelChip(key);
+    }
+
+    // Reconstruye los ítems del wheel a partir de las <option> del select oculto.
+    // Se debe llamar de nuevo si el select cambia sus opciones dinámicamente
+    // (p. ej. buildWeekSelector() al iniciar).
+    function rebuildSelectWheel(key) {
+        const cfg = SEL_WHEELS[key];
+        const select = document.getElementById(cfg.selectId);
+        const wheelEl = document.getElementById(cfg.wheelId);
+        if (!select || !wheelEl) return;
+        const inner = wheelEl.querySelector('.sel-wheel-inner');
+        inner.innerHTML = '';
+        Array.from(select.options).forEach((opt, idx) => {
+            const item = document.createElement('div');
+            item.className = 'sel-wheel-item';
+            item.textContent = opt.textContent;
+            item.title = opt.textContent;
+            item.addEventListener('click', () => selectWheelValue(key, idx));
+            inner.appendChild(item);
+        });
+    }
+
+    function syncSelectWheelChip(key) {
+        const cfg = SEL_WHEELS[key];
+        const select = document.getElementById(cfg.selectId);
+        const chipText = document.getElementById(cfg.chipTextId);
+        const opt = select?.options[select.selectedIndex];
+        if (chipText && opt) chipText.textContent = opt.textContent;
+    }
+
+    function positionSelectWheel(key, animate = true) {
+        const cfg = SEL_WHEELS[key];
+        const select = document.getElementById(cfg.selectId);
+        const wheelEl = document.getElementById(cfg.wheelId);
+        if (!select || !wheelEl) return;
+        const idx = Math.max(0, select.selectedIndex);
+        wheelEl.scrollTo({ top: idx * cfg.itemHeight, behavior: animate ? 'smooth' : 'auto' });
+        highlightSelectWheel(key, idx);
+    }
+
+    function highlightSelectWheel(key, idx) {
+        const cfg = SEL_WHEELS[key];
+        const wheelEl = document.getElementById(cfg.wheelId);
+        wheelEl?.querySelectorAll('.sel-wheel-item').forEach((item, i) => {
+            item.classList.toggle('selected', i === idx);
+        });
+    }
+
+    function applySelectIndex(key, idx) {
+        const cfg = SEL_WHEELS[key];
+        const select = document.getElementById(cfg.selectId);
+        const maxIdx = select.options.length - 1;
+        idx = Math.min(maxIdx, Math.max(0, idx));
+        if (select.selectedIndex !== idx) {
+            select.selectedIndex = idx;
+            select.dispatchEvent(new Event('change'));
+        }
+        syncSelectWheelChip(key);
+    }
+
+    // Click directo sobre una opción del wheel: la selecciona y cierra el popup.
+    function selectWheelValue(key, idx) {
+        clearTimeout(document.getElementById(SEL_WHEELS[key].wheelId)?._snapTimeout);
+        applySelectIndex(key, idx);
+        positionSelectWheel(key, true);
+        closeAllSelWheels();
+    }
+
+    function snapSelWheel(key) {
+        const cfg = SEL_WHEELS[key];
+        const wheelEl = document.getElementById(cfg.wheelId);
+        const idx = Math.round(wheelEl.scrollTop / cfg.itemHeight);
+        applySelectIndex(key, idx);
+        positionSelectWheel(key, true);
+    }
+
+    function stepSelWheel(key, delta) {
+        const cfg = SEL_WHEELS[key];
+        const select = document.getElementById(cfg.selectId);
+        applySelectIndex(key, select.selectedIndex + delta);
+        positionSelectWheel(key, true);
+    }
+
+    function attachSelWheelEvents(key) {
+        const cfg = SEL_WHEELS[key];
+        const wheelEl = document.getElementById(cfg.wheelId);
+        if (!wheelEl || wheelEl._selWheelBound) return;
+        wheelEl._selWheelBound = true;
+
+        wheelEl.addEventListener('scroll', () => {
+            clearTimeout(wheelEl._snapTimeout);
+            wheelEl._snapTimeout = setTimeout(() => snapSelWheel(key), 120);
+        });
+
+        wheelEl.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const now = Date.now();
+            if (wheelEl._lastWheelStep && now - wheelEl._lastWheelStep < 90) return;
+            wheelEl._lastWheelStep = now;
+            stepSelWheel(key, e.deltaY > 0 ? 1 : -1);
+        }, { passive: false });
+
+        wheelEl.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') { e.preventDefault(); stepSelWheel(key, -1); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); stepSelWheel(key, 1); }
+            else if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); closeAllSelWheels(); }
+        });
+    }
+
+    // Abre/cierra el popup del wheel; solo uno abierto a la vez (comparte cierre con el META wheel).
+    function toggleSelWheel(key) {
+        const cfg = SEL_WHEELS[key];
+        const popup = document.getElementById(cfg.popupId);
+        const wasOpen = popup.classList.contains('open');
+        closeAllSelWheels();
+        closeAllMetaWheels();
+        if (!wasOpen) {
+            popup.classList.add('open');
+            // El popup estaba en display:none, así que hay que reposicionar el
+            // scroll ahora que el wheel ya tiene layout real (igual que en el META wheel).
+            requestAnimationFrame(() => positionSelectWheel(key, false));
+            document.getElementById(cfg.wheelId)?.focus({ preventScroll: true });
+        }
+    }
+
+    function closeAllSelWheels() {
+        document.querySelectorAll('.sel-wheel-popup.open').forEach(p => p.classList.remove('open'));
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.sel-wrap')) closeAllSelWheels();
+    });
+
     // ── Init ────────────────────────────────────────────────────────────────
-    window.onload = () => { initWeekBar(); loadData(); buildScopeInputs(DASH_SCOPES.semanal); buildScopeInputs(DASH_SCOPES.cuatrimestral); };
+    window.onload = () => {
+        initWeekBar();
+        loadData();
+        buildScopeInputs(DASH_SCOPES.semanal);
+        buildScopeInputs(DASH_SCOPES.cuatrimestral);
+        initSelectWheel('week');
+        initSelectWheel('unit');
+    };
 </script>
 </body>
 </html>
