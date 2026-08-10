@@ -813,7 +813,14 @@
         if (!wasOpen) {
             popup.classList.add('open');
             const wheelEl = popup.querySelector('.meta-wheel');
-            wheelEl?.focus({ preventScroll: true });
+            if (wheelEl) {
+                // El popup estaba en display:none, así que el scroll aplicado en el
+                // init no tuvo efecto real (no hay layout). Se reposiciona ahora que
+                // el wheel ya es visible, para que abra siempre en el valor actual.
+                const currentValue = getMetaValue(wheelEl.dataset.leader);
+                requestAnimationFrame(() => setMetaWheelValue(wheelEl, currentValue, false));
+                wheelEl.focus({ preventScroll: true });
+            }
         }
     }
 
