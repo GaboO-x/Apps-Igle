@@ -254,6 +254,11 @@
         .btn-gray { background: #6c757d; }
         .btn-gray:hover { background: #5a6268; }
 
+        /* Procesar Semanas: verde acorde a la paleta plana del resto del dashboard
+           (mismo tono que usa el status de éxito y el gráfico de tendencias) */
+        .btn-main.btn-procesar { background: #2ecc71; }
+        .btn-main.btn-procesar:hover { background: #27ae60; }
+
         /* Procesar Semanas: verde = hay cambios sin procesar, azul = ya procesado y al día */
         .btn-main.btn-updated { background: #3b82f6; }
         .btn-main.btn-updated:hover { background: #2563eb; }
@@ -370,7 +375,7 @@
     <div class="week-input-grid" id="week-input-grid"></div>
 
     <div class="action-bar" style="margin-top:15px;">
-        <button class="btn-main btn-green" id="btn-procesar-semanas" onclick="procesarSemanas()">🔄 Procesar Semanas</button>
+        <button class="btn-main btn-procesar" id="btn-procesar-semanas" onclick="procesarSemanas()"><i class="fa-solid fa-arrows-rotate"></i> Procesar Semanas</button>
     </div>
     <div id="stat-status"></div>
 
