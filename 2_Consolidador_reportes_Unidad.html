@@ -254,6 +254,10 @@
         .btn-gray { background: #6c757d; }
         .btn-gray:hover { background: #5a6268; }
 
+        /* Procesar Semanas: verde = hay cambios sin procesar, azul = ya procesado y al día */
+        .btn-main.btn-updated { background: #3b82f6; }
+        .btn-main.btn-updated:hover { background: #2563eb; }
+
         /* ── Modal ── */
         .modal-overlay {
             display: none; position: fixed; inset: 0;
@@ -365,8 +369,8 @@
 
     <div class="week-input-grid" id="week-input-grid"></div>
 
-    <div style="text-align:center; margin-top:15px;">
-        <button class="btn-main btn-green" onclick="procesarSemanas()">🔄 Procesar Semanas</button>
+    <div class="action-bar" style="margin-top:15px;">
+        <button class="btn-main btn-green" id="btn-procesar-semanas" onclick="procesarSemanas()">🔄 Procesar Semanas</button>
     </div>
     <div id="stat-status"></div>
 
@@ -670,7 +674,10 @@
 
         const wheelEl = div.querySelector('.meta-wheel');
         const chipEl  = div.querySelector('.meta-chip');
-        initMetaWheel(wheelEl, chipEl, title || 'LÍDER');
+        // Se normaliza el nombre con toTitleCase para que la clave de META coincida
+        // siempre con la clave que usa parseWeekReport() en Estadística Mensual
+        // (que también aplica toTitleCase al nombre extraído del reporte pegado).
+        initMetaWheel(wheelEl, chipEl, toTitleCase(title || 'LÍDER'));
     }
 
     // ── META wheel picker (1–30, persistente por líder) ─────────────────────
@@ -696,6 +703,7 @@
             const item = document.createElement('div');
             item.className = 'meta-wheel-item';
             item.textContent = i;
+            item.addEventListener('click', () => selectMetaWheelValue(wheelEl, i));
             inner.appendChild(item);
         }
         wheelEl.dataset.leader = leaderName;
@@ -750,6 +758,7 @@
 
         setMetaWheelValue(wheelEl, value);
         saveMetaValue(wheelEl.dataset.leader, value);
+        refreshEstadisticaIfNeeded();
 
         const wrap = wheelEl.closest('.meta-wrap');
         const chip = wrap?.querySelector('.meta-chip');
@@ -767,10 +776,32 @@
         wheelEl.dataset.currentValue = next;
         setMetaWheelValue(wheelEl, next, true);
         saveMetaValue(wheelEl.dataset.leader, next);
+        refreshEstadisticaIfNeeded();
 
         const chip = wheelEl.closest('.meta-wrap')?.querySelector('.meta-chip');
         if (chip) chip.textContent = next;
         metaWheelTick();
+    }
+
+    // Click directo sobre un número del wheel: lo selecciona, guarda y cierra el popup.
+    function selectMetaWheelValue(wheelEl, value) {
+        clearTimeout(wheelEl._snapTimeout);
+        wheelEl.dataset.currentValue = value;
+        setMetaWheelValue(wheelEl, value, true);
+        saveMetaValue(wheelEl.dataset.leader, value);
+        refreshEstadisticaIfNeeded();
+
+        const chip = wheelEl.closest('.meta-wrap')?.querySelector('.meta-chip');
+        if (chip) chip.textContent = value;
+        metaWheelTick();
+        closeAllMetaWheels();
+    }
+
+    // Si la página de Estadística Mensual ya fue procesada/renderizada, la vuelve
+    // a dibujar con el META actualizado (sin esperar a que el usuario navegue o
+    // presione "Procesar Semanas" de nuevo).
+    function refreshEstadisticaIfNeeded() {
+        if (typeof renderCurrentDashboardView === 'function') renderCurrentDashboardView();
     }
 
     // Abre/cierra el popup del wheel; solo uno abierto a la vez
@@ -1314,7 +1345,16 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             grid.appendChild(wrap);
             wrap.querySelector('textarea').value = saved[i - 1] || '';
         }
-        grid.querySelectorAll('textarea').forEach(ta => ta.addEventListener('input', saveEstadisticaRaw));
+        grid.querySelectorAll('textarea').forEach(ta => {
+            ta.addEventListener('input', saveEstadisticaRaw);
+            ta.addEventListener('input', markEstadisticaPendiente);
+        });
+    }
+
+    // Marca el botón "Procesar Semanas" como pendiente (verde) apenas el usuario
+    // edita algún campo de semana después de haber procesado.
+    function markEstadisticaPendiente() {
+        document.getElementById('btn-procesar-semanas')?.classList.remove('btn-updated');
     }
 
     function saveEstadisticaRaw() {
@@ -1365,6 +1405,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             statusEl.textContent = `✅ Procesado: ${resumen.join(' · ')}`;
             statusEl.style.color = '#2ecc71';
         }
+        document.getElementById('btn-procesar-semanas')?.classList.toggle('btn-updated', totalDetectados > 0);
         renderCurrentDashboardView();
     }
 
@@ -1456,7 +1497,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         destroyChart(trendChartId);
         const trendCtx = document.getElementById(trendChartId)?.getContext('2d');
         if (trendCtx) {
-            const datasets = leaderNames.map((name, idx) => {
+            const leaderDatasets = leaderNames.map((name, idx) => {
                 const color = LEADER_LINE_COLORS[idx % LEADER_LINE_COLORS.length];
                 return {
                     label: name,
@@ -1470,6 +1511,27 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
                     _originalColor: color
                 };
             });
+            // Una línea punteada de META por líder, oculta por defecto; se muestra
+            // solo mientras el mouse está sobre el nombre del líder en la leyenda.
+            const metaDatasets = leaderNames.map((name, idx) => {
+                const color = LEADER_LINE_COLORS[idx % LEADER_LINE_COLORS.length];
+                const meta  = metaData[name] !== undefined ? metaData[name] : 12;
+                return {
+                    label: `Meta ${name}`,
+                    data: [meta, meta, meta, meta, meta],
+                    borderColor: color,
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0,
+                    fill: false,
+                    hidden: true,
+                    _isMetaLine: true
+                };
+            });
+            const nLeaders = leaderNames.length;
+            const datasets = [...leaderDatasets, ...metaDatasets];
             _dashCharts[trendChartId] = new Chart(trendCtx, {
                 type: 'line',
                 data: { labels: ['S1', 'S2', 'S3', 'S4', 'S5'], datasets },
@@ -1478,10 +1540,17 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: { boxWidth: 10, font: { size: 9 } },
+                            labels: {
+                                boxWidth: 10, font: { size: 9 },
+                                filter: (legendItem, data) => !data.datasets[legendItem.datasetIndex]._isMetaLine
+                            },
                             onHover: (evt, legendItem, legend) => {
                                 const chart = legend.chart;
                                 chart.data.datasets.forEach((ds, idx) => {
+                                    if (ds._isMetaLine) {
+                                        ds.hidden = (idx - nLeaders) !== legendItem.datasetIndex;
+                                        return;
+                                    }
                                     if (idx === legendItem.datasetIndex) {
                                         ds.borderColor = ds._originalColor;
                                         ds.borderWidth = 4;
@@ -1495,6 +1564,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
                             onLeave: (evt, legendItem, legend) => {
                                 const chart = legend.chart;
                                 chart.data.datasets.forEach(ds => {
+                                    if (ds._isMetaLine) { ds.hidden = true; return; }
                                     ds.borderColor = ds._originalColor;
                                     ds.borderWidth = 2;
                                 });
