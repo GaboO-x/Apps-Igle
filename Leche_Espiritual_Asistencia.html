@@ -109,10 +109,42 @@
         .btn-main { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; font-size: 0.85em; text-align: center; }
         .btn-copy { background: #25d366; grid-column: span 2; }
         .btn-photo { background: #3b82f6; }
+        .btn-import { background: #6f42c1; }
         .btn-reset { background: #94a3b8; }
 
         /* Clase para ocultar SOLO en la exportación */
         .export-hidden { display: none !important; }
+
+        #import-box {
+            margin: 0 10px 10px 10px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        #import-warning {
+            font-size: 0.75em;
+            color: #856404;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 6px 8px;
+            border-radius: 6px;
+            margin: 0 0 8px 0;
+        }
+        #import-textarea {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 160px;
+            font-family: monospace;
+            font-size: 0.8em;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            resize: vertical;
+        }
+        .import-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+        .btn-process { background: #25d366; }
+        .btn-cancel { background: #dc3545; }
     </style>
 </head>
 <body>
@@ -135,7 +167,17 @@
 <div class="actions">
     <button class="btn-main btn-copy" onclick="copyToWhatsApp()">📋 Copiar para WhatsApp</button>
     <button class="btn-main btn-photo" onclick="takeScreenshot()">📸 Guardar Imagen</button>
+    <button class="btn-main btn-import" onclick="toggleImportBox()">📥 Importar Reporte</button>
     <button class="btn-main btn-reset" onclick="resetChecks()">🔄 Reiniciar Checks</button>
+</div>
+
+<div id="import-box" class="export-hidden">
+    <p id="import-warning">Esto reemplazará los datos actuales de cada unidad que aparezca en el texto pegado. Las unidades no mencionadas no se tocan.</p>
+    <textarea id="import-textarea" placeholder="Pega aquí el reporte completo (formato *REPORTE SEMANA X*...)"></textarea>
+    <div class="import-actions">
+        <button class="btn-main btn-process" onclick="processImport()">✅ Procesar</button>
+        <button class="btn-main btn-cancel" onclick="toggleImportBox()">✕ Cancelar</button>
+    </div>
 </div>
 
 <script>
@@ -358,8 +400,99 @@
         });
     }
 
+    // --- IMPORTACIÓN DE REPORTES PREVIOS ---
+
+    // Mapea el emoji+nombre de unidad del texto pegado al id interno usado en `units`
+    const unitMarkers = [
+        { regex: /❤️\s*\*URT\*\s*❤️/i, id: 'urt' },
+        { regex: /💚\s*\*UVT\*\s*💚/i, id: 'uvt' },
+        { regex: /💙\s*\*UAzT\*\s*💙/i, id: 'uazt' },
+        { regex: /💛\s*\*UAmT\*\s*💛/i, id: 'uamt' },
+        { regex: /🧡\s*\*UNT\*\s*🧡/i, id: 'unt' }
+    ];
+
+    function toggleImportBox() {
+        const box = document.getElementById('import-box');
+        box.classList.toggle('export-hidden');
+        if (!box.classList.contains('export-hidden')) {
+            document.getElementById('import-textarea').focus();
+        }
+    }
+
+    function parseReportText(text) {
+        // Resultado: { urt: [{name, checks:[...]}], uvt: [...], ... } solo para unidades presentes en el texto
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const result = {};
+        let currentUnit = null;
+        let pendingName = null;
+
+        const nameRegex = /^•\s*\*~?([^*~]+)~?\*$/;      // • *NOMBRE* o • *~NOMBRE~*
+        const checksRegex = /✅|⚠️|❌/g;                    // extrae solo los símbolos válidos, ignora (F: n). OJO: ⚠️ son 2 codepoints (símbolo + selector de variación), por eso va como alternancia y no como clase de caracteres
+
+        lines.forEach(line => {
+            // ¿Es un marcador de unidad?
+            const unitMatch = unitMarkers.find(u => u.regex.test(line));
+            if (unitMatch) {
+                currentUnit = unitMatch.id;
+                if (!result[currentUnit]) result[currentUnit] = [];
+                pendingName = null;
+                return;
+            }
+
+            if (!currentUnit) return; // ignora líneas antes de la primera unidad (ej. título del reporte)
+
+            // ¿Es una línea de nombre?
+            const nameMatch = line.match(nameRegex);
+            if (nameMatch) {
+                pendingName = nameMatch[1].trim();
+                return;
+            }
+
+            // ¿Es la línea de checks del nombre pendiente?
+            if (pendingName) {
+                const symbols = line.match(checksRegex) || [];
+                if (symbols.length > 0) {
+                    const checks = symbols.slice(0, 13);
+                    while (checks.length < 13) checks.push("⬜");
+                    result[currentUnit].push({ name: pendingName, checks });
+                } else {
+                    // línea sin símbolos (ej. "---"): persona sin ningún check registrado
+                    result[currentUnit].push({ name: pendingName, checks: Array(13).fill("⬜") });
+                }
+                pendingName = null;
+            }
+        });
+
+        return result;
+    }
+
+    function processImport() {
+        const text = document.getElementById('import-textarea').value;
+        if (!text.trim()) { alert("Pega el texto del reporte antes de procesar."); return; }
+
+        const parsed = parseReportText(text);
+        const unitIds = Object.keys(parsed);
+
+        if (unitIds.length === 0) {
+            alert("No se reconoció ninguna unidad en el texto. Verifica el formato (❤️*URT*❤️, 💚*UVT*💚, etc.).");
+            return;
+        }
+
+        if (!confirm(`Se reemplazarán los datos de: ${unitIds.join(', ').toUpperCase()}. ¿Continuar?`)) return;
+
+        unitIds.forEach(unitId => {
+            const body = document.getElementById(`body-${unitId}`);
+            body.innerHTML = "";
+            parsed[unitId].forEach(p => addRow(unitId, p.name, p.checks));
+        });
+
+        saveToStorage();
+        document.getElementById('import-textarea').value = "";
+        toggleImportBox();
+        alert("✅ Importación completada.");
+    }
+
     window.onload = init;
 </script>
 </body>
-
 </html>
