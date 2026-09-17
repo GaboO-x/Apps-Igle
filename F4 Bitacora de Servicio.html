@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitácora de Servicio</title>
+<style>
+  :root{
+    --bg:#f2f4f3;
+    --card:#ffffff;
+    --ink:#1f2b28;
+    --ink-soft:#5b6a66;
+    --line:#e3e8e6;
+    --accent:#0e7c66;
+    --accent-dark:#0a5c4c;
+    --accent-bg:#e8f5f1;
+    --warn:#c0392b;
+    --warn-bg:#fdecea;
+    --check-bg:#f7faf9;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg:#141a18;
+      --card:#1c2422;
+      --ink:#eef3f1;
+      --ink-soft:#9fb0ac;
+      --line:#2c3733;
+      --accent:#22b393;
+      --accent-dark:#8fe3cd;
+      --accent-bg:#193028;
+      --warn:#ff6b5e;
+      --warn-bg:#3a1e1c;
+      --check-bg:#20302b;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141a18;
+    --card:#1c2422;
+    --ink:#eef3f1;
+    --ink-soft:#9fb0ac;
+    --line:#2c3733;
+    --accent:#22b393;
+    --accent-dark:#8fe3cd;
+    --accent-bg:#193028;
+    --warn:#ff6b5e;
+    --warn-bg:#3a1e1c;
+    --check-bg:#20302b;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:18px 14px 40px;
+  }
+  .wrap{max-width:560px;margin:0 auto;}
+
+  header{text-align:center;margin-bottom:18px;}
+  header h1{
+    font-size:1.35em;
+    margin:0 0 4px;
+    color:var(--accent-dark);
+    letter-spacing:.01em;
+  }
+  header p{margin:0;color:var(--ink-soft);font-size:.85em;}
+  .title-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+  }
+  .title-row h1{margin:0;}
+  .theme-toggle{
+    width:34px;
+    height:34px;
+    padding:0;
+    border:1px solid var(--line);
+    border-radius:50%;
+    background:var(--card);
+    font-size:1em;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:16px;
+  }
+
+  .field-row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .field-row:last-child{margin-bottom:0;}
+  .field-row label{font-size:.8em;font-weight:600;color:var(--ink-soft);}
+  .field-row input[type=date], .field-row select{
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    font-size:1em;
+    background:var(--card);
+    color:var(--ink);
+  }
+
+  .section-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:700;
+    font-size:1em;
+    color:var(--accent-dark);
+    margin-bottom:10px;
+  }
+  .section-title .count{
+    margin-left:auto;
+    font-size:.75em;
+    font-weight:600;
+    color:var(--ink-soft);
+    background:var(--check-bg);
+    padding:2px 8px;
+    border-radius:999px;
+  }
+
+  .check-item{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:10px 8px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .check-item:hover{background:var(--check-bg);}
+  .check-item input[type=checkbox]{
+    width:20px;height:20px;
+    accent-color:var(--accent);
+    margin-top:1px;
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .check-item span{font-size:.95em;line-height:1.35;}
+  .check-item.checked span{color:var(--ink-soft);text-decoration:line-through;}
+
+  textarea{
+    width:100%;
+    min-height:80px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    font-family:inherit;
+    font-size:.95em;
+    resize:vertical;
+    background:var(--card);
+    color:var(--ink);
+  }
+
+  .action-bar{
+    display:flex;
+    gap:10px;
+    margin-top:6px;
+  }
+  .btn{
+    flex:1;
+    padding:13px 16px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:700;
+    font-size:.95em;
+  }
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-danger{background:var(--warn);color:#fff;}
+
+  .pending-banner{
+    display:none;
+    background:var(--warn-bg);
+    color:var(--warn);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:.85em;
+    font-weight:600;
+    margin-bottom:14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title-row">
+      <h1>Bitácora de Servicio</h1>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Cambiar tema">☀️</button>
+    </div>
+    <p>Cierre y verificación de la Iglesia</p>
+  </header>
+
+  <div class="pending-banner" id="pending-banner"></div>
+
+  <div class="card">
+    <div class="field-row">
+      <label for="fecha">Fecha</label>
+      <input type="date" id="fecha" oninput="saveData()">
+    </div>
+    <div class="field-row">
+      <label for="coordinador">Coordinador/a</label>
+      <select id="coordinador" onchange="saveData()">
+        <option value="">Seleccionar...</option>
+        <option value="Yehilin Gudiel">Yehilin Gudiel</option>
+        <option value="Kevin Medina">Kevin Medina</option>
+        <option value="Alejandra">Alejandra</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="card">
+    <div class="section-title">📝 Observaciones</div>
+    <textarea id="observaciones" placeholder="Anotar cualquier pendiente o novedad..." oninput="saveData()"></textarea>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="copyReport()">📋 Copiar Reporte</button>
+    <button class="btn btn-danger" onclick="borrarApp()">🗑️ Borrar</button>
+  </div>
+</div>
+
+<script>
+const SECTIONS = [
+  {
+    key: 'banos', emoji: '🧹', title: 'Baños',
+    items: [
+      'Sacar la basura',
+      'Barrer el piso',
+      'Pasar el palo de piso con desinfectante',
+      'Limpiar espejos',
+      'Limpiar lavamanos'
+    ]
+  },
+  {
+    key: 'alfombra', emoji: '🧼', title: 'Alfombra',
+    items: [
+      'Barrer la alfombra',
+      'Pasar el palo de piso'
+    ]
+  },
+  {
+    key: 'parqueo', emoji: '🚘', title: 'Parqueo',
+    items: [
+      'Guardar los conos'
+    ]
+  },
+  {
+    key: 'final', emoji: '🚪', title: 'Verificación final',
+    items: [
+      'Verificar que las puertas queden cerradas',
+      'Verificar que los bloques queden acomodados',
+      'Apagar todas las luces'
+    ]
+  }
+];
+
+function itemId(sKey, i){ return `chk-${sKey}-${i}`; }
+
+function buildSections(){
+  const container = document.getElementById('sections');
+  container.innerHTML = SECTIONS.map(s => `
+    <div class="card" data-section="${s.key}">
+      <div class="section-title">
+        <span>${s.emoji}</span><span>${s.title}</span>
+        <span class="count" id="count-${s.key}">0/${s.items.length}</span>
+      </div>
+      ${s.items.map((label, i) => `
+        <label class="check-item" id="item-${itemId(s.key, i)}">
+          <input type="checkbox" id="${itemId(s.key, i)}" onchange="onCheck('${s.key}', ${i})">
+          <span>${label}</span>
+        </label>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function onCheck(sKey, i){
+  const id = itemId(sKey, i);
+  const checkbox = document.getElementById(id);
+  const row = document.getElementById(`item-${id}`);
+  row.classList.toggle('checked', checkbox.checked);
+  updateCounts();
+  saveData();
+}
+
+function updateCounts(){
+  SECTIONS.forEach(s => {
+    let done = 0;
+    s.items.forEach((_, i) => {
+      if (document.getElementById(itemId(s.key, i)).checked) done++;
+    });
+    document.getElementById(`count-${s.key}`).textContent = `${done}/${s.items.length}`;
+  });
+}
+
+function getPendingItems(){
+  const pending = [];
+  SECTIONS.forEach(s => {
+    s.items.forEach((label, i) => {
+      if (!document.getElementById(itemId(s.key, i)).checked) {
+        pending.push(`${s.emoji} ${label}`);
+      }
+    });
+  });
+  return pending;
+}
+
+function showPendingBanner(pending){
+  const banner = document.getElementById('pending-banner');
+  if (pending.length === 0){
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = 'block';
+  banner.textContent = `⚠️ Pendientes: ${pending.length} tarea(s) sin marcar`;
+}
+
+function copyReport(){
+  const pending = getPendingItems();
+  showPendingBanner(pending);
+
+  if (pending.length > 0){
+    alert(`⚠️ Faltan tareas por marcar:\n\n${pending.join('\n')}\n\nCompleta la bitácora antes de copiar el reporte.`);
+    return;
+  }
+
+  const dateVal = document.getElementById('fecha').value;
+  const dateStr = dateVal ? dateVal.split('-').reverse().join('/') : '';
+  const coordinador = document.getElementById('coordinador').value || '(sin asignar)';
+  const observaciones = document.getElementById('observaciones').value.trim();
+
+  let text = `Bitácora de Servicio ${dateStr}\n`;
+  text += `Coordinador/a: ${coordinador}\n\n`;
+  SECTIONS.forEach(s => {
+    text += `${s.emoji} ${s.title}\n`;
+    s.items.forEach(label => { text += `✅ ${label}\n`; });
+    text += `\n`;
+  });
+  text += `Observaciones:\n${observaciones || '(ninguna)'}`;
+
+  copyText(text, '¡Reporte copiado!');
+}
+
+function copyText(text, msg){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
+  alert(msg);
+}
+
+function borrarApp(){
+  if(!confirm('¿Borrar todos los datos de la bitácora?')) return;
+  try { localStorage.removeItem('bitacoraServicioData'); } catch(e){}
+  document.querySelectorAll('input[type=checkbox]').forEach(c => { c.checked = false; });
+  document.querySelectorAll('.check-item').forEach(r => r.classList.remove('checked'));
+  document.getElementById('coordinador').value = '';
+  document.getElementById('observaciones').value = '';
+  document.getElementById('fecha').valueAsDate = new Date();
+  updateCounts();
+  showPendingBanner(getPendingItems());
+}
+
+function saveData(){
+  const data = {
+    fecha: document.getElementById('fecha').value,
+    coordinador: document.getElementById('coordinador').value,
+    observaciones: document.getElementById('observaciones').value,
+    checks: {}
+  };
+  SECTIONS.forEach(s => {
+    s.items.forEach((_, i) => {
+      const id = itemId(s.key, i);
+      data.checks[id] = document.getElementById(id).checked;
+    });
+  });
+  try { localStorage.setItem('bitacoraServicioData', JSON.stringify(data)); } catch(e){}
+}
+
+function loadData(){
+  document.getElementById('fecha').valueAsDate = new Date();
+  let raw = null;
+  try { raw = localStorage.getItem('bitacoraServicioData'); } catch(e){}
+  if (!raw){ updateCounts(); showPendingBanner(getPendingItems()); return; }
+  try{
+    const data = JSON.parse(raw);
+    if (data.coordinador) document.getElementById('coordinador').value = data.coordinador;
+    if (data.observaciones) document.getElementById('observaciones').value = data.observaciones;
+    if (data.checks){
+      Object.keys(data.checks).forEach(id => {
+        const cb = document.getElementById(id);
+        if (cb && data.checks[id]){
+          cb.checked = true;
+          document.getElementById(`item-${id}`).classList.add('checked');
+        }
+      });
+    }
+  }catch(e){}
+  updateCounts();
+  showPendingBanner(getPendingItems());
+}
+
+function applyTheme(theme){
+  if (theme === 'light'){
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('theme-toggle').textContent = '🌙';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    document.getElementById('theme-toggle').textContent = '☀️';
+  }
+}
+
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'auto' : 'light';
+  try { localStorage.setItem('bitacoraServicioTheme', next); } catch(e){}
+  applyTheme(next);
+}
+
+function loadTheme(){
+  let theme = 'auto';
+  try { theme = localStorage.getItem('bitacoraServicioTheme') || 'auto'; } catch(e){}
+  applyTheme(theme);
+}
+
+window.onload = () => { loadTheme(); buildSections(); loadData(); };
+</script>
+</body>
+</html>
