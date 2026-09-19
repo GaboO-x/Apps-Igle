@@ -1,0 +1,386 @@
+<title>Marcador de Equipos</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --surface:#ffffff;
+    --surface-2:#f3f4f6;
+    --border:#e2e4e8;
+    --border-strong:#c9cdd4;
+    --text:#15181d;
+    --text-dim:#767c88;
+
+    --gold:#2f8f5f;
+    --gold-bg:#eaf7ef;
+    --gold-border:#a9dfc0;
+    --silver:#5a6270;
+    --bronze:#a15a2a;
+    --danger:#c22c42;
+    --danger-bg:#fdecef;
+    --danger-border:#f0aab6;
+    --focus:#2f8f5f;
+
+    --azul:#2563eb;
+    --amarillo:#d69e06;
+    --naranja:#e0650a;
+    --rojo:#dc2626;
+    --verde:#16a34a;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  html{
+    font-size:clamp(13px, min(2.5dvh, 4.4vw), 40px);
+  }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    padding-inline:clamp(12px, 2vw, 28px);
+    padding-block:clamp(8px, 1.4dvh, 18px);
+    overflow:hidden;
+    display:flex;
+    justify-content:center;
+  }
+  .page{
+    width:100%;
+    max-width:52rem;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    gap:clamp(0.5rem, 1.4dvh, 1rem);
+    min-height:0;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    flex:0 0 auto;
+  }
+  h1{
+    font-family:"Sora", "IBM Plex Sans", sans-serif;
+    font-size:1.6rem;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0;
+    text-wrap:balance;
+    color:var(--text);
+  }
+  .subtitle{
+    font-size:0.78rem;
+    color:var(--text-dim);
+    margin:2px 0 0;
+  }
+  button.reset{
+    background:var(--surface);
+    border:1px solid var(--border-strong);
+    color:var(--text-dim);
+    font-size:0.75rem;
+    padding:0.5rem 0.8rem;
+    border-radius:8px;
+    cursor:pointer;
+    font-family:inherit;
+    transition:border-color .15s, color .15s;
+    flex:none;
+  }
+  button.reset:hover{ color:var(--text); border-color:#9aa0ac; }
+  button.reset:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+
+  ol.board{
+    list-style:none;
+    margin:0; padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:clamp(0.4rem, 1.1dvh, 0.8rem);
+    flex:1 1 auto;
+    min-height:0;
+  }
+
+  .row{
+    position:relative;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding-inline:clamp(0.8rem, 1.6vw, 1.4rem);
+    display:grid;
+    grid-template-columns:1.6em 1fr auto;
+    align-items:center;
+    gap:clamp(0.6rem, 1.4vw, 1.2rem);
+    will-change:transform;
+    flex:1 1 0;
+    min-height:0;
+    overflow:hidden;
+  }
+  .row.podium{
+    border-color:var(--gold-border);
+    background:linear-gradient(180deg, var(--gold-bg), var(--surface) 65%);
+  }
+  .row.elim{
+    border-color:var(--danger-border);
+    background:linear-gradient(180deg, var(--danger-bg), var(--surface) 65%);
+  }
+
+  .rank{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:1.15rem;
+    font-weight:600;
+    color:var(--text-dim);
+    text-align:center;
+    font-variant-numeric:tabular-nums;
+  }
+  .row.podium .rank{ color:var(--gold); }
+  .row.elim .rank{ color:var(--danger); }
+
+  .info{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:0.35rem;
+    min-width:0;
+  }
+  .team-name{
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+    font-family:"Sora", sans-serif;
+    font-weight:600;
+    font-size:1.15rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .swatch{
+    width:0.85em; height:0.85em;
+    border-radius:4px;
+    flex:none;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18);
+  }
+  .status-pill{
+    font-size:0.68rem;
+    font-weight:600;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    padding:0.15rem 0.55rem;
+    border-radius:99px;
+    width:fit-content;
+    visibility:visible;
+  }
+  .status-pill.podium{ background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold-border); }
+  .status-pill.elim{ background:var(--danger-bg); color:var(--danger); border:1px solid var(--danger-border); }
+
+  .score-controls{
+    display:flex;
+    align-items:center;
+    gap:clamp(0.5rem, 1.2vw, 0.9rem);
+  }
+  .score{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:2rem;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+    min-width:2ch;
+    text-align:right;
+    color:var(--text);
+  }
+  .controls-inline{
+    display:flex;
+    gap:0.4rem;
+  }
+  select.delta{
+    appearance:none;
+    background:var(--surface-2);
+    border:1px solid var(--border-strong);
+    color:var(--text);
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:0.85rem;
+    font-variant-numeric:tabular-nums;
+    padding:0.45rem 1.6rem 0.45rem 0.65rem;
+    border-radius:8px;
+    cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0L5 6L10 0Z' fill='%23767c88'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 0.6rem center;
+    max-width:5.2rem;
+  }
+  select.delta:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+  button.apply{
+    background:var(--surface-2);
+    border:1px solid var(--border-strong);
+    color:var(--text);
+    font-family:inherit;
+    font-size:0.82rem;
+    font-weight:600;
+    padding:0.45rem 0.7rem;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background .15s, border-color .15s, transform .08s;
+    flex:none;
+  }
+  button.apply:hover{ border-color:#9aa0ac; }
+  button.apply:active{ transform:scale(0.96); }
+  button.apply:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+
+  footer{
+    font-size:0.68rem;
+    color:var(--text-dim);
+    text-align:center;
+    flex:0 0 auto;
+  }
+
+  @media (max-width:520px){
+    .row{ grid-template-columns:1.4em 1fr; row-gap:0.5rem; padding-block:0.5rem; }
+    .score-controls{ grid-column:1 / -1; justify-content:space-between; }
+    .score{ text-align:left; }
+    .team-name{ font-size:1rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .row{ transition:none !important; }
+  }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+
+<div class="page">
+  <header>
+    <div>
+      <h1>Marcador de Equipos</h1>
+    </div>
+    <button class="reset" id="resetBtn" type="button">Reiniciar puntajes</button>
+  </header>
+
+  <ol class="board" id="board"></ol>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "marcador-equipos-v1";
+
+  var DEFAULT_TEAMS = [
+    { id:"azul",     name:"Azul",     color:"var(--azul)",     score:0 },
+    { id:"amarillo", name:"Amarillo", color:"var(--amarillo)", score:0 },
+    { id:"naranja",  name:"Naranja",  color:"var(--naranja)",  score:0 },
+    { id:"rojo",     name:"Rojo",     color:"var(--rojo)",     score:0 },
+    { id:"verde",    name:"Verde",    color:"var(--verde)",    score:0 }
+  ];
+
+  var DELTAS = [5,4,3,2,1,-1,-2,-3];
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      var parsed = JSON.parse(raw);
+      if(!Array.isArray(parsed)) return null;
+      var byId = {};
+      parsed.forEach(function(t){ if(t && t.id) byId[t.id] = t.score; });
+      return DEFAULT_TEAMS.map(function(t){
+        return { id:t.id, name:t.name, color:t.color, score: typeof byId[t.id] === "number" ? byId[t.id] : 0 };
+      });
+    }catch(e){ return null; }
+  }
+
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(teams.map(function(t){
+        return { id:t.id, score:t.score };
+      })));
+    }catch(e){ /* storage unavailable — continue without persistence */ }
+  }
+
+  var teams = loadState() || DEFAULT_TEAMS.map(function(t){ return Object.assign({}, t); });
+
+  var board = document.getElementById("board");
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function optionsHtml(){
+    var placeholder = '<option value="" selected disabled hidden>Pts</option>';
+    var rest = DELTAS.map(function(d){
+      var label = d > 0 ? ("+" + d) : String(d);
+      return '<option value="' + d + '">' + label + "</option>";
+    }).join("");
+    return placeholder + rest;
+  }
+
+  function render(){
+    // FLIP: capture current row positions before reordering
+    var firstRects = {};
+    if(!reduceMotion){
+      board.querySelectorAll(".row").forEach(function(el){
+        firstRects[el.dataset.id] = el.getBoundingClientRect();
+      });
+    }
+
+    var ranked = teams.slice().sort(function(a,b){ return b.score - a.score; });
+    var allTied = ranked.every(function(t){ return t.score === ranked[0].score; });
+
+    board.innerHTML = ranked.map(function(team, i){
+      var rank = i + 1;
+      var zoneClass = allTied ? "" : (rank <= 3 ? "podium" : "elim");
+      var pillHtml = allTied ? "" :
+        '<span class="status-pill ' + zoneClass + '">' + (rank <= 3 ? "Clasifica" : "Eliminado") + '</span>';
+      return (
+        '<li class="row ' + zoneClass + '" data-id="' + team.id + '">' +
+          '<div class="rank">' + rank + '</div>' +
+          '<div class="info">' +
+            '<div class="team-name"><span class="swatch" style="background:' + team.color + '"></span>' + team.name + '</div>' +
+            pillHtml +
+          '</div>' +
+          '<div class="score-controls">' +
+            '<span class="score">' + team.score + '</span>' +
+            '<div class="controls-inline">' +
+              '<select class="delta" id="delta-' + team.id + '" aria-label="Puntos a aplicar a ' + team.name + '">' + optionsHtml() + '</select>' +
+              '<button class="apply" type="button" data-id="' + team.id + '">Aplicar</button>' +
+            '</div>' +
+          '</div>' +
+        '</li>'
+      );
+    }).join("");
+
+    // FLIP: animate from old position to new
+    if(!reduceMotion){
+      board.querySelectorAll(".row").forEach(function(el){
+        var first = firstRects[el.dataset.id];
+        if(!first) return;
+        var last = el.getBoundingClientRect();
+        var dx = first.left - last.left;
+        var dy = first.top - last.top;
+        if(dx || dy){
+          el.style.transition = "none";
+          el.style.transform = "translate(" + dx + "px," + dy + "px)";
+          requestAnimationFrame(function(){
+            el.style.transition = "transform .32s cubic-bezier(.2,.7,.3,1)";
+            el.style.transform = "translate(0,0)";
+          });
+        }
+      });
+    }
+
+    board.querySelectorAll("button.apply").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-id");
+        var select = document.getElementById("delta-" + id);
+        if(select.value === "") return;
+        var delta = parseInt(select.value, 10);
+        var team = teams.find(function(t){ return t.id === id; });
+        if(team){
+          team.score += delta;
+          saveState();
+          render();
+        }
+      });
+    });
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    teams.forEach(function(t){ t.score = 0; });
+    saveState();
+    render();
+  });
+
+  render();
+})();
+</script>
