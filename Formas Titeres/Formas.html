@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Generador de patrones — Formas de revolución (v6)</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#14171b; --line:#2a2f36; --text:#e6e8eb;
+    --muted:#8a9099; --accent:#4fd1c5; --danger:#e5533d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    display:flex; height:100vh; overflow:hidden;
+  }
+  #panel{
+    width:380px; flex-shrink:0; background:var(--panel);
+    border-right:1px solid var(--line); padding:20px;
+    overflow-y:auto;
+  }
+  h1{font-size:14px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:0 0 18px;}
+  label{display:block; font-size:12px; color:var(--text); margin:14px 0 4px;}
+  input[type=number], select{
+    background:#0e1114; border:1px solid var(--line); color:var(--text);
+    padding:8px; font-family:inherit; font-size:13px; border-radius:4px;
+  }
+  .field{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0;}
+  .field label{margin:0; flex:1; min-width:0;}
+  .field input[type=number]{width:64px; flex:none; text-align:right;}
+  .field select{width:130px; flex:none;}
+  .field-wide select{width:190px;}
+  .field-warning label{color:#e0c341;}
+  .field-warning input{border-color:#e0c341; color:#e0c341;}
+  .libre-anillo-row{display:flex; align-items:center; gap:6px; margin:6px 0;}
+  .libre-anillo-row .ring-num{font-size:11px; color:var(--muted); width:56px; flex:none;}
+  .libre-anillo-row input[type=number]{width:64px; flex:none; text-align:right;}
+  .libre-anillo-row .ring-remove{
+    width:auto; margin:0; padding:2px 8px; background:transparent;
+    border:1px solid var(--line); color:var(--danger); flex:none; font-size:12px;
+  }
+  .libre-anillo-row input:disabled{opacity:.35;}
+  .section-box{border:1px solid #e0c341; border-radius:6px; padding:12px 14px; margin:16px 0;}
+  .section-box .field:first-child{margin-top:0;}
+  .section-heading{font-size:14px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:20px 0 10px;}
+  .libre-anillo-header{display:flex; align-items:center; gap:6px; margin-top:10px; margin-bottom:2px;}
+  .libre-anillo-header .ring-num{font-size:11px; color:var(--muted); width:56px; flex:none;}
+  .libre-anillo-header .col-label{font-size:10px; color:var(--muted); width:64px; flex:none; text-align:right;}
+  .row{display:flex; gap:8px;}
+  .row > div{flex:1;}
+  button{
+    width:100%; margin-top:18px; padding:10px; background:var(--accent);
+    color:#04201d; border:none; border-radius:4px; font-weight:600;
+    font-family:inherit; font-size:13px; cursor:pointer;
+  }
+  button:hover{filter:brightness(1.1);}
+  button.secondary{background:transparent; border:1px solid var(--line); color:var(--text); margin-top:8px;}
+  button.preset{background:#22262c; color:var(--text); margin-top:6px; font-weight:400; font-size:12px;}
+  #stats{margin-top:20px; padding-top:16px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); line-height:1.8;}
+  #stats b{color:var(--text);}
+  #canvasWrap{flex:1; overflow:auto; padding:30px; display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;}
+  .page{background:#fff; box-shadow:0 0 0 1px var(--line); position:relative; width:230px;}
+  .page svg{width:230px; height:auto; display:block;}
+  .gore-outline{fill:none; stroke:#000; stroke-width:0.3;}
+  .fold-hint{stroke:#e5342b; stroke-width:0.15;}
+  .ring-line{stroke:#e5342b; stroke-width:0.2; stroke-dasharray:1,0.8;}
+  .libre-anillo-mark{stroke:#00c853; stroke-width:0.3; stroke-dasharray:1.2,0.6;}
+  .page-cut{stroke:#666; stroke-width:0.25; stroke-dasharray:1.5,1;}
+  .label-txt{font-size:3px; fill:#333; font-family:monospace;}
+  .info-block{font-size:3px; fill:#000; font-family:monospace;}
+  .info-block .title{font-size:4px; font-weight:bold;}
+  .warn{color:var(--danger); font-size:11px; margin-top:10px;}
+  .page-tag{font-size:10px; color:var(--muted); margin-bottom:4px;}
+  .hidden{display:none;}
+  .preview-box{background:#fff; box-shadow:0 0 0 1px var(--line); padding:10px;}
+  .preview-silhouette{stroke:#000; stroke-width:1; fill:#f0f0f0;}
+  .preview-highlight{stroke:#000; stroke-width:1; fill:#cfe8e4;}
+  .preview-ring{stroke:#e5342b; stroke-width:0.6; stroke-dasharray:2,2;}
+  .preview-anillo-mark{stroke:#00c853; stroke-width:1.4; stroke-dasharray:2,1.5;}
+  .preview-axis{stroke:#999; stroke-width:0.4; stroke-dasharray:2,2;}
+  .preview-label{font-size:11px; fill:#333; font-family:monospace;}
+
+  @media print{
+    #panel, .preview-box, .page-tag{display:none !important;}
+    body{background:#fff; display:block; height:auto; overflow:visible;}
+    #canvasWrap{padding:0; gap:0; display:block;}
+    .page{box-shadow:none; margin:0; width:auto;}
+    .page:not(:last-child){page-break-after:always;}
+    .page svg{width:auto !important; height:auto !important;}
+  }
+</style>
+<style id="print-page-size"></style>
+</head>
+<body>
+
+<div id="panel">
+  <h1>Formas de revolución — Gajo continuo</h1>
+
+  <div class="section-box">
+    <div class="field field-wide">
+      <label>Forma</label>
+      <select id="forma">
+        <option value="esfera">Esfera</option>
+        <option value="huevo">Huevo</option>
+        <option value="cupula">Cúpula</option>
+        <option value="pera">Pera</option>
+        <option value="elipsoide">Elipsoide / Óvalo</option>
+        <option value="capsula">Cápsula</option>
+        <option value="cono">Cono</option>
+        <option value="cilindro">Cilindro</option>
+        <option value="libre">Libre (personalizada)</option>
+      </select>
+    </div>
+
+    <div id="p-diametro" class="field">
+      <label>Diámetro (cm)</label>
+      <input type="number" id="diametro" value="20" min="1" max="999" step="0.5">
+    </div>
+
+    <div id="p-ancho" class="field hidden">
+      <label>Ancho (cm)</label>
+      <input type="number" id="ancho" value="16" min="1" max="999" step="0.5">
+    </div>
+
+    <div id="p-alto" class="field hidden">
+      <label>Alto (cm)</label>
+      <input type="number" id="alto" value="20" min="1" max="999" step="0.5">
+    </div>
+
+    <div id="p-ecuador" class="field hidden">
+      <label>Posición del ecuador (% desde arriba)</label>
+      <input type="number" id="ecuador" value="40" min="10" max="90" step="1">
+    </div>
+
+    <div id="p-bulbo" class="field hidden">
+      <label>Posición del bulbo (% desde abajo)</label>
+      <input type="number" id="bulbo" value="35" min="10" max="90" step="1">
+    </div>
+
+    <div id="p-pera" class="hidden">
+      <div class="field">
+        <label>Diámetro superior (cm)</label>
+        <input type="number" id="peraDiamSup" value="5" min="1" max="999" step="0.5">
+      </div>
+      <div class="field">
+        <label>Alto superior (cm)</label>
+        <input type="number" id="peraAltoSup" value="2.5" min="0.5" max="999" step="0.5">
+      </div>
+      <div class="field">
+        <label>Largo del cuello (cm)</label>
+        <input type="number" id="peraCuelloLargo" value="3" min="0" max="999" step="0.5">
+      </div>
+      <div class="field field-wide">
+        <label>Tipo de cuello</label>
+        <select id="peraCuelloTipo">
+          <option value="curvo">Curvo</option>
+          <option value="recto">Recto</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Diámetro inferior (cm)</label>
+        <input type="number" id="peraDiamInf" value="9" min="1" max="999" step="0.5">
+      </div>
+      <div class="field">
+        <label>Alto inferior (cm)</label>
+        <input type="number" id="peraAltoInf" value="4.5" min="0.5" max="999" step="0.5">
+      </div>
+    </div>
+
+    <div id="p-libre-interp" class="field field-wide hidden">
+      <label>Curva: Recta/Suave</label>
+      <select id="libreInterp">
+        <option value="recta">Recta</option>
+        <option value="curva">Curva suave</option>
+      </select>
+    </div>
+
+    <div id="p-libre-remates" class="hidden">
+      <div class="field">
+        <label>Omitir remate superior</label>
+        <input type="checkbox" id="libreOmitirSup">
+      </div>
+      <div class="field">
+        <label>Omitir remate inferior</label>
+        <input type="checkbox" id="libreOmitirInf">
+      </div>
+      <div class="field" id="p-libre-cierreSup">
+        <label>Cierre superior suave</label>
+        <input type="checkbox" id="libreCierreSupSuave">
+      </div>
+      <div class="field" id="p-libre-cierreInf">
+        <label>Cierre inferior suave</label>
+        <input type="checkbox" id="libreCierreInfSuave">
+      </div>
+    </div>
+
+    <div class="field field-warning">
+      <label>Alto general (cm)</label>
+      <input type="number" id="altoGeneral" value="20" min="0.1" max="999" step="0.5">
+    </div>
+  </div>
+
+  <div id="p-libre-anillos-section" class="hidden">
+    <label>Anillos</label>
+    <div class="field" id="p-libre-altoSup">
+      <label>Alto superior (cm)</label>
+      <input type="number" id="libreAltoSup" value="2" min="0.1" max="999" step="0.5">
+    </div>
+    <div class="libre-anillo-header">
+      <span class="ring-num"></span>
+      <span class="col-label">Diámetro</span>
+      <span class="col-label">Profundidad</span>
+      <span></span>
+    </div>
+    <div id="libreAnillosWrap"></div>
+    <button class="preset" id="btnLibreAdd" type="button">+ Agregar anillo</button>
+  </div>
+
+  <div class="field">
+    <label>Segmentos (gajos alrededor)</label>
+    <input type="number" id="segmentos" value="12" min="2" max="999" step="1">
+  </div>
+
+  <div class="section-box">
+    <div class="field">
+      <label>Anillos (líneas guía / bandas)</label>
+      <input type="number" id="anillos" value="6" min="1" max="999" step="1">
+    </div>
+  </div>
+
+  <div class="section-heading">Impresión</div>
+
+  <div class="field">
+    <label>Usar desde anillo — hasta anillo</label>
+    <span style="display:flex; gap:6px;">
+      <input type="number" id="anilloDesde" value="0" min="0" max="999" step="1">
+      <input type="number" id="anilloHasta" value="6" min="1" max="999" step="1">
+    </span>
+  </div>
+
+  <button class="preset" id="btnCompleta">Preset: figura completa</button>
+  <button class="secondary" id="btnSVG">Descargar SVG (escala real)</button>
+  <button class="secondary" id="btnPrint">Imprimir / Guardar como PDF</button>
+
+  <div id="stats"></div>
+  <div class="warn" id="warn"></div>
+</div>
+
+<div id="canvasWrap"></div>
+
+<script>
+// ---------- Perfiles r(z) por forma ----------
+function sphereProfile(D){
+  const R=D/2;
+  return {H:D, r:z=>{ const d=z-R; const v=R*R-d*d; return v>0?Math.sqrt(v):0; }};
+}
+function ellipsoidProfile(W,H){
+  const Rw=W/2, Rh=H/2;
+  return {H, r:z=>{ const d=(z-Rh)/Rh; const v=1-d*d; return v>0?Rw*Math.sqrt(v):0; }};
+}
+function eggProfile(W,H,eqPct){
+  const Rw=W/2;
+  const topH = H*eqPct/100;
+  const botH = H-topH;
+  return {H, r:z=>{
+    if(z<=topH){ const d=topH>0?(topH-z)/topH:0; const v=1-d*d; return v>0?Rw*Math.sqrt(v):0; }
+    const zz=z-topH; const d=botH>0?zz/botH:0; const v=1-d*d; return v>0?Rw*Math.sqrt(v):0;
+  }};
+}
+function cupulaProfile(W,H,bulgePct){
+  const Rw=W/2;
+  const zw = H*bulgePct/100;
+  const topH = H-zw;
+  const neckPower = 1.8;
+  return {H, r:z=>{
+    if(z<=zw){
+      const d = zw>0?(zw-z)/zw:0; const v=1-d*d;
+      return v>0?Rw*Math.sqrt(v):0;
+    }
+    const t = topH>0?(z-zw)/topH:0;
+    const v = Math.max(0, 1-t);
+    return Rw*Math.pow(v, neckPower);
+  }};
+}
+function pearProfile(diamInf, altoInf, diamSup, altoSup, cuelloLargo, cuelloTipo){
+  const Rinf = diamInf/2, Rsup = diamSup/2;
+  const H = altoSup + cuelloLargo + altoInf;
+  const waistAmplitude = cuelloTipo==='curvo' ? Math.min(Rinf,Rsup)*0.22 : 0;
+  function smootherstep(t){ return t*t*t*(t*(t*6-15)+10); } // easing con derivada 0 en ambos extremos
+  return {H, r:z=>{
+    // z=0 es la parte de ARRIBA de la hoja impresa -> ahí va el semicírculo "superior"
+    if(z<=altoSup){
+      const d = altoSup>0?(altoSup-z)/altoSup:0; const v=1-d*d;
+      return v>0?Rsup*Math.sqrt(v):0;
+    }
+    if(z<=altoSup+cuelloLargo){
+      const t = cuelloLargo>0?(z-altoSup)/cuelloLargo:0;
+      const te = smootherstep(t);
+      const baseLinear = Rsup + (Rinf-Rsup)*te;
+      const waist = waistAmplitude*Math.sin(Math.PI*te);
+      return Math.max(0, baseLinear-waist);
+    }
+    // z cerca de H es la parte de ABAJO de la hoja -> semicírculo "inferior"
+    const zt = z-(altoSup+cuelloLargo);
+    const d = altoInf>0?zt/altoInf:0; const v=1-d*d;
+    return v>0?Rinf*Math.sqrt(v):0;
+  }};
+}
+function coneProfile(D,H){
+  const R=D/2;
+  return {H, r:z=> Math.max(0, R*(1-z/H))};
+}
+function cylinderProfile(D,H){
+  const R=D/2;
+  return {H, r:z=> R};
+}
+function capsuleProfile(D,Htotal){
+  const R=D/2;
+  const Lcyl = Math.max(0, Htotal-D);
+  const Htot = 2*R+Lcyl;
+  return {H:Htot, r:z=>{
+    if(z<=R){ const d=z-R; const v=R*R-d*d; return v>0?Math.sqrt(v):0; }
+    if(z<=R+Lcyl){ return R; }
+    const topCenter = Htot-R;
+    const d=z-topCenter; const v=R*R-d*d; return v>0?Math.sqrt(v):0;
+  }};
+}
+
+// Tangentes monótonas (Fritsch-Carlson / PCHIP) para el spline de Hermite del
+// perfil completo. A diferencia de Catmull-Rom, esto SÍ da curvatura real
+// (no colapsa a una recta) pero garantiza que la curva nunca se desborde más
+// allá de los valores de los puntos vecinos — sin pancitas ni necesidad de
+// "reflejar" artificialmente los puntos cercanos a un remate.
+function computeTangents(points){
+  const n = points.length;
+  const m = new Array(n).fill(0);
+  if(n<2) return m;
+  const h=[], d=[];
+  for(let i=0;i<n-1;i++){
+    h.push(points[i+1].z - points[i].z);
+    d.push(h[i]>0 ? (points[i+1].r-points[i].r)/h[i] : 0);
+  }
+  if(n===2){ m[0]=d[0]; m[1]=d[0]; return m; }
+  for(let k=1;k<n-1;k++){
+    if(d[k-1]===0 || d[k]===0 || (d[k-1]>0)!==(d[k]>0)){
+      m[k]=0; // cambio de dirección -> tangente plana, evita desborde (pancita)
+    } else {
+      const w1=2*h[k]+h[k-1], w2=h[k]+2*h[k-1];
+      m[k]=(w1+w2)/(w1/d[k-1]+w2/d[k]); // media armónica ponderada
+    }
+  }
+  function endTangent(d0,d1,h0,h1){
+    let m0=((2*h0+h1)*d0-h0*d1)/(h0+h1);
+    if(d0===0){ return 0; }
+    if((m0>0)!==(d0>0)){ m0=0; }
+    else if((d0>0)!==(d1>0) && Math.abs(m0)>3*Math.abs(d0)){ m0=3*d0; }
+    return m0;
+  }
+  m[0] = endTangent(d[0], d[1], h[0], h[1]);
+  m[n-1] = endTangent(d[n-2], d[n-3], h[n-2], h[n-3]);
+  return m;
+}
+function hermite(p0,p1,m0,m1,dz,t){
+  const t2=t*t, t3=t2*t;
+  const h00=2*t3-3*t2+1, h10=t3-2*t2+t, h01=-2*t3+3*t2, h11=t3-t2;
+  return h00*p0 + h10*dz*m0 + h01*p1 + h11*dz*m1;
+}
+
+// Cierre "suave" de un remate: cuarto de elipse — igual técnica que ya usan
+// sphereProfile/eggProfile. Tangente VERTICAL (crecimiento rápido) en el polo
+// (la punta, para que se vea redondeada como una cápsula) y tangente PLANA
+// en el extremo que conecta con el anillo (para que empalme sin quiebre).
+// t va de 0 a 1 a lo largo del segmento; poleAtStart indica si el polo es el
+// punto inicial (remate superior) o el final (remate inferior) del segmento.
+function domeSegment(r0, r1, t, poleAtStart){
+  if(poleAtStart){
+    const w = 1-t;
+    const v = Math.max(0, 1-w*w);
+    return r0 + (r1-r0)*Math.sqrt(v);
+  }
+  const v = Math.max(0, 1-t*t);
+  return r1 + (r0-r1)*Math.sqrt(v);
+}
+
+// Perfil "Libre": puntos de control armados a partir de los anillos + remates
+// opcionales, con interpolación recta o curva (Catmull-Rom) entre ellos.
+function libreProfile(){
+  const omitirSup = document.getElementById('libreOmitirSup').checked;
+  const omitirInf = document.getElementById('libreOmitirInf').checked;
+  const interp = document.getElementById('libreInterp').value;
+  const cierreSupSuave = document.getElementById('libreCierreSupSuave').checked;
+  const cierreInfSuave = document.getElementById('libreCierreInfSuave').checked;
+
+  const rows = Array.from(document.querySelectorAll('.libre-anillo-row'));
+  const anillos = rows.map(row => ({
+    diam: parseFloat(row.querySelector('.libreDiam').value),
+    alto: parseFloat(row.querySelector('.libreAlto').value)
+  }));
+
+  const points = [];
+  const anilloMarksZ = []; // alturas z de los anillos REALES (no remates), para marcarlos en la vista
+  let z = 0;
+
+  if(!omitirSup){
+    const altoSup = parseFloat(document.getElementById('libreAltoSup').value);
+    points.push({z:0, r:0});
+    z = altoSup;
+  }
+
+  anillos.forEach((an, i) => {
+    const isLast = i === anillos.length-1;
+    points.push({z, r: an.diam/2});
+    anilloMarksZ.push(z);
+    if(!isLast){
+      z += an.alto;
+    } else if(!omitirInf){
+      z += an.alto; // 'alto' del último anillo = distancia hasta el punto inferior
+    }
+  });
+
+  if(!omitirInf && anillos.length>0){
+    points.push({z, r:0});
+  }
+
+  const H = points.length>0 ? points[points.length-1].z : 0;
+
+  // El segmento 0 es el remate superior (si existe) y el último segmento es
+  // el remate inferior (si existe) — se resuelven con domeSegment en vez de
+  // la interpolación general cuando su checkbox de "cierre suave" está activo.
+  const capSupSegIdx = !omitirSup ? 0 : -1;
+  const capInfSegIdx = !omitirInf ? points.length-2 : -1;
+  const tangents = computeTangents(points);
+  // domeSegment siempre llega al anillo con tangente exactamente plana (0).
+  // Si no se iguala la tangente del tramo Hermite vecino en ese mismo punto,
+  // queda un quiebre visible justo en el anillo. Se fuerza a 0 para que
+  // ambos tramos empalmen sin corte.
+  if(capSupSegIdx===0 && cierreSupSuave){
+    tangents[1] = 0;
+  }
+  if(capInfSegIdx===points.length-2 && capInfSegIdx>=0 && cierreInfSuave){
+    tangents[capInfSegIdx] = 0;
+  }
+
+  function rAt(zq){
+    if(points.length===0) return 0;
+    if(points.length===1) return points[0].r;
+    if(zq<=points[0].z) return Math.max(0,points[0].r);
+    if(zq>=points[points.length-1].z) return Math.max(0,points[points.length-1].r);
+    let idx=0;
+    for(let k=0;k<points.length-1;k++){
+      if(zq>=points[k].z && zq<=points[k+1].z){ idx=k; break; }
+    }
+    const p0=points[idx], p1=points[idx+1];
+    const span = p1.z-p0.z;
+    const t = span>0 ? (zq-p0.z)/span : 0;
+
+    if(idx===capSupSegIdx && cierreSupSuave){
+      return Math.max(0, domeSegment(p0.r, p1.r, t, true));
+    }
+    if(idx===capInfSegIdx && cierreInfSuave){
+      return Math.max(0, domeSegment(p0.r, p1.r, t, false));
+    }
+
+    if(interp==='recta'){
+      return Math.max(0, p0.r + (p1.r-p0.r)*t);
+    }
+    return Math.max(0, hermite(p0.r, p1.r, tangents[idx], tangents[idx+1], span, t));
+  }
+
+  return {H, r: rAt, points, anilloMarksZ};
+}
+
+function buildMeridianTable(profile, samples=1000){
+  const {H, r} = profile;
+  const dz = H/samples;
+  let s = 0;
+  let prevR = r(0);
+  const pts = [{z:0, s:0, r:prevR}];
+  for(let i=1;i<=samples;i++){
+    const z = i*dz;
+    const rz = r(z);
+    const dr = rz - prevR;
+    const ds = Math.sqrt(dz*dz + dr*dr);
+    s += ds;
+    pts.push({z, s, r: rz});
+    prevR = rz;
+  }
+  return {pts, totalLength: s};
+}
+function interpAt(pts, totalLength, sTarget){
+  sTarget = Math.max(0, Math.min(totalLength, sTarget));
+  let lo=0, hi=pts.length-1;
+  while(lo<hi-1){
+    const mid=(lo+hi)>>1;
+    if(pts[mid].s < sTarget) lo=mid; else hi=mid;
+  }
+  const a=pts[lo], b=pts[hi];
+  const span=(b.s-a.s)||1;
+  const t=(sTarget-a.s)/span;
+  return a.r + (b.r-a.r)*t;
+}
+// Convierte una altura z (cm, en el eje del perfil) a su posición de arco s (cm).
+// Usado para ubicar en el gajo la posición exacta de cada anillo real (forma Libre).
+function sAtZ(pts, zTarget){
+  if(pts.length===0) return 0;
+  zTarget = Math.max(pts[0].z, Math.min(pts[pts.length-1].z, zTarget));
+  let lo=0, hi=pts.length-1;
+  while(lo<hi-1){
+    const mid=(lo+hi)>>1;
+    if(pts[mid].z < zTarget) lo=mid; else hi=mid;
+  }
+  const a=pts[lo], b=pts[hi];
+  const span=(b.z-a.z)||1;
+  const t=(zTarget-a.z)/span;
+  return a.s + (b.s-a.s)*t;
+}
+
+const PAGE_MM = {
+  letter: {w: 215.9, h: 279.4},
+  a4: {w: 210, h: 297}
+};
+
+const FORMA_LABELS = {
+  esfera:'Esfera', huevo:'Huevo', cupula:'Cúpula', pera:'Pera', elipsoide:'Elipsoide / Óvalo',
+  capsula:'Cápsula', cono:'Cono', cilindro:'Cilindro', libre:'Libre (personalizada)'
+};
+
+// ---------- Gestión de anillos para la forma "Libre" ----------
+function addLibreAnillo(diam, alto){
+  const wrap = document.getElementById('libreAnillosWrap');
+  const row = document.createElement('div');
+  row.className = 'libre-anillo-row';
+  row.innerHTML =
+    '<span class="ring-num"></span>' +
+    '<input type="number" class="libreDiam" value="'+diam+'" min="0.1" max="999" step="0.5">' +
+    '<input type="number" class="libreAlto" value="'+alto+'" min="0.1" max="999" step="0.5">' +
+    '<button type="button" class="ring-remove">×</button>';
+  wrap.appendChild(row);
+  row.querySelector('.libreDiam').addEventListener('input', generate);
+  row.querySelector('.libreAlto').addEventListener('input', generate);
+  row.querySelector('.ring-remove').addEventListener('click', () => {
+    if(document.querySelectorAll('.libre-anillo-row').length <= 1) return;
+    row.remove();
+    renumberLibreAnillos();
+    updateLibreLastRingState();
+    generate();
+  });
+  renumberLibreAnillos();
+  updateLibreLastRingState();
+}
+function renumberLibreAnillos(){
+  document.querySelectorAll('.libre-anillo-row').forEach((row,i)=>{
+    row.querySelector('.ring-num').textContent = `Anillo ${i+1}`;
+  });
+}
+function updateLibreLastRingState(){
+  const rows = document.querySelectorAll('.libre-anillo-row');
+  if(rows.length===0) return;
+  const omitirInf = document.getElementById('libreOmitirInf').checked;
+  rows.forEach((row,i)=>{
+    const isLast = i===rows.length-1;
+    const altoInput = row.querySelector('.libreAlto');
+    altoInput.disabled = isLast && omitirInf;
+  });
+}
+function updateLibreRematesVisibility(){
+  const omitirSup = document.getElementById('libreOmitirSup').checked;
+  const omitirInf = document.getElementById('libreOmitirInf').checked;
+  document.getElementById('p-libre-cierreSup').classList.toggle('hidden', omitirSup);
+  document.getElementById('p-libre-altoSup').classList.toggle('hidden', omitirSup);
+  document.getElementById('p-libre-cierreInf').classList.toggle('hidden', omitirInf);
+  updateLibreLastRingState();
+}
+
+function updateFieldVisibility(){
+  const forma = document.getElementById('forma').value;
+  const show = (id,v)=>document.getElementById(id).classList.toggle('hidden', !v);
+  show('p-diametro', ['esfera','capsula','cono','cilindro'].includes(forma));
+  show('p-ancho', ['huevo','cupula','elipsoide'].includes(forma));
+  show('p-alto', ['huevo','cupula','elipsoide','capsula','cono','cilindro'].includes(forma));
+  show('p-ecuador', forma==='huevo');
+  show('p-bulbo', forma==='cupula');
+  show('p-pera', forma==='pera');
+  show('p-libre-interp', forma==='libre');
+  show('p-libre-remates', forma==='libre');
+  show('p-libre-anillos-section', forma==='libre');
+  if(forma==='libre'){
+    if(document.querySelectorAll('.libre-anillo-row').length===0){
+      addLibreAnillo(10, 5);
+      addLibreAnillo(6, 5);
+    }
+    updateLibreRematesVisibility();
+  }
+}
+
+function getProfileAndSize(){
+  const forma = document.getElementById('forma').value;
+  if(forma==='esfera'){
+    const D = parseFloat(document.getElementById('diametro').value);
+    return {profile: sphereProfile(D), sizeOk: D>0, dims:[{k:'Diámetro (cm)', v:D}]};
+  }
+  if(forma==='huevo'){
+    const W = parseFloat(document.getElementById('ancho').value);
+    const H = parseFloat(document.getElementById('alto').value);
+    const eq = parseFloat(document.getElementById('ecuador').value);
+    return {profile: eggProfile(W,H,eq), sizeOk: W>0&&H>0, dims:[{k:'Ancho (cm)', v:W},{k:'Alto (cm)', v:H},{k:'Ecuador (%)', v:eq}]};
+  }
+  if(forma==='cupula'){
+    const W = parseFloat(document.getElementById('ancho').value);
+    const H = parseFloat(document.getElementById('alto').value);
+    const bulge = parseFloat(document.getElementById('bulbo').value);
+    return {profile: cupulaProfile(W,H,bulge), sizeOk: W>0&&H>0, dims:[{k:'Ancho (cm)', v:W},{k:'Alto (cm)', v:H},{k:'Bulbo (%)', v:bulge}]};
+  }
+  if(forma==='pera'){
+    const diamInf = parseFloat(document.getElementById('peraDiamInf').value);
+    const altoInf = parseFloat(document.getElementById('peraAltoInf').value);
+    const diamSup = parseFloat(document.getElementById('peraDiamSup').value);
+    const altoSup = parseFloat(document.getElementById('peraAltoSup').value);
+    const cuelloLargo = parseFloat(document.getElementById('peraCuelloLargo').value);
+    const cuelloTipo = document.getElementById('peraCuelloTipo').value;
+    const ok = diamInf>0 && altoInf>0 && diamSup>0 && altoSup>0 && cuelloLargo>=0;
+    return {profile: pearProfile(diamInf,altoInf,diamSup,altoSup,cuelloLargo,cuelloTipo), sizeOk: ok, dims:[
+      {k:'Diámetro inferior (cm)', v:diamInf}, {k:'Alto inferior (cm)', v:altoInf},
+      {k:'Diámetro superior (cm)', v:diamSup}, {k:'Alto superior (cm)', v:altoSup},
+      {k:'Cuello (cm)', v:cuelloLargo}, {k:'Tipo de cuello', v:cuelloTipo}
+    ]};
+  }
+  if(forma==='elipsoide'){
+    const W = parseFloat(document.getElementById('ancho').value);
+    const H = parseFloat(document.getElementById('alto').value);
+    return {profile: ellipsoidProfile(W,H), sizeOk: W>0&&H>0, dims:[{k:'Ancho (cm)', v:W},{k:'Alto (cm)', v:H}]};
+  }
+  if(forma==='capsula'){
+    const D = parseFloat(document.getElementById('diametro').value);
+    const H = parseFloat(document.getElementById('alto').value);
+    return {profile: capsuleProfile(D,H), sizeOk: D>0&&H>0, dims:[{k:'Diámetro (cm)', v:D},{k:'Alto total (cm)', v:H}]};
+  }
+  if(forma==='cono'){
+    const D = parseFloat(document.getElementById('diametro').value);
+    const H = parseFloat(document.getElementById('alto').value);
+    return {profile: coneProfile(D,H), sizeOk: D>0&&H>0, dims:[{k:'Diámetro base (cm)', v:D},{k:'Alto (cm)', v:H}]};
+  }
+  if(forma==='cilindro'){
+    const D = parseFloat(document.getElementById('diametro').value);
+    const H = parseFloat(document.getElementById('alto').value);
+    return {profile: cylinderProfile(D,H), sizeOk: D>0&&H>0, dims:[{k:'Diámetro (cm)', v:D},{k:'Alto (cm)', v:H}]};
+  }
+  if(forma==='libre'){
+    const rows = document.querySelectorAll('.libre-anillo-row');
+    const omitirSup = document.getElementById('libreOmitirSup').checked;
+    const omitirInf = document.getElementById('libreOmitirInf').checked;
+    let ok = rows.length>=1;
+    rows.forEach(row=>{
+      const d = parseFloat(row.querySelector('.libreDiam').value);
+      const a = parseFloat(row.querySelector('.libreAlto').value);
+      if(isNaN(d)||d<0) ok=false;
+      if(row.querySelector('.libreAlto').disabled===false && (isNaN(a)||a<=0)) ok=false;
+    });
+    if(omitirSup && omitirInf && rows.length<2) ok=false;
+    if(!omitirSup){
+      const as = parseFloat(document.getElementById('libreAltoSup').value);
+      if(isNaN(as)||as<=0) ok=false;
+    }
+    const profile = libreProfile();
+    const dims = [
+      {k:'Anillos', v: rows.length},
+      {k:'Interpolación', v: document.getElementById('libreInterp').value==='recta'?'Recta':'Curva suave'},
+      {k:'Remate superior', v: omitirSup?'Abierto':'Cerrado'},
+      {k:'Remate inferior', v: omitirInf?'Abierto':'Cerrado'}
+    ];
+    return {profile, sizeOk: ok && profile.H>0, dims};
+  }
+}
+
+function nearestPointByS(pts, sTarget){
+  let lo=0, hi=pts.length-1;
+  while(lo<hi-1){
+    const mid=(lo+hi)>>1;
+    if(pts[mid].s < sTarget) lo=mid; else hi=mid;
+  }
+  return Math.abs(pts[lo].s-sTarget) < Math.abs(pts[hi].s-sTarget) ? pts[lo] : pts[hi];
+}
+
+function renderPreview(wrap, pts, totalLength, sGlobalStart, sGlobalEnd, ringSValues, anilloMarkSValues, nombreFigura, N){
+  const H = pts[pts.length-1].z;
+  const maxR = Math.max(...pts.map(p=>p.r));
+  const boxW = 300, boxH = 340, boxPad = 24;
+  const scale = Math.min((boxW-2*boxPad)/(2*maxR), (boxH-2*boxPad)/H);
+
+  const holder = document.createElement('div');
+  holder.className = 'preview-box';
+  const tag = document.createElement('div');
+  tag.className = 'page-tag';
+  tag.textContent = `Vista previa — ${nombreFigura} (silueta)`;
+  holder.appendChild(tag);
+
+  const svgEl = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svgEl.setAttribute('width', boxW);
+  svgEl.setAttribute('height', boxH);
+  svgEl.setAttribute('viewBox', `0 0 ${boxW} ${boxH}`);
+
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const contentH = H*scale;
+  const yOffset = boxPad + (boxH-2*boxPad-contentH)/2;
+  g.setAttribute('transform', `translate(${boxW/2},${yOffset})`);
+
+  // silueta completa (tenue)
+  let dR='', dL='';
+  pts.forEach((p,i)=>{
+    const x=p.r*scale, y=p.z*scale;
+    dR += (i===0?'M':'L')+x.toFixed(2)+','+y.toFixed(2)+' ';
+    dL = (i===0?'':'L')+(-x).toFixed(2)+','+y.toFixed(2)+' '+dL;
+  });
+  const full = document.createElementNS('http://www.w3.org/2000/svg','path');
+  full.setAttribute('d', dR+dL+' Z');
+  full.setAttribute('class','preview-silhouette');
+  g.appendChild(full);
+
+  // tramo usado (resaltado), según el rango de anillos seleccionado
+  const usedPts = pts.filter(p=>p.s>=sGlobalStart && p.s<=sGlobalEnd);
+  if(usedPts.length>1){
+    let uR='', uL='';
+    usedPts.forEach((p,i)=>{
+      const x=p.r*scale, y=p.z*scale;
+      uR += (i===0?'M':'L')+x.toFixed(2)+','+y.toFixed(2)+' ';
+      uL = (i===0?'':'L')+(-x).toFixed(2)+','+y.toFixed(2)+' '+uL;
+    });
+    const hl = document.createElementNS('http://www.w3.org/2000/svg','path');
+    hl.setAttribute('d', uR+uL+' Z');
+    hl.setAttribute('class','preview-highlight');
+    g.appendChild(hl);
+  }
+
+  // eje central
+  const axis = document.createElementNS('http://www.w3.org/2000/svg','line');
+  axis.setAttribute('x1',0); axis.setAttribute('x2',0);
+  axis.setAttribute('y1',0); axis.setAttribute('y2', H*scale);
+  axis.setAttribute('class','preview-axis');
+  g.appendChild(axis);
+
+  // anillos
+  ringSValues.forEach(sVal=>{
+    const p = nearestPointByS(pts, sVal);
+    const x = p.r*scale, y = p.z*scale;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',-x); line.setAttribute('x2',x);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('class','preview-ring');
+    g.appendChild(line);
+  });
+
+  // anillos reales (forma Libre) — marca verde, distinta de las líneas guía rojas
+  (anilloMarkSValues||[]).forEach(sVal=>{
+    const p = nearestPointByS(pts, sVal);
+    const x = p.r*scale, y = p.z*scale;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',-x); line.setAttribute('x2',x);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('class','preview-anillo-mark');
+    g.appendChild(line);
+  });
+
+  // gajos (meridianos visibles de frente, proyección ortográfica: x = r(z)*sin(φ))
+  const angleStepDeg = 360/N;
+  for(let k=0;k<N;k++){
+    let phiDeg = k*angleStepDeg;
+    if(phiDeg>180) phiDeg -= 360; // rango (-180,180]
+    if(Math.abs(phiDeg) > 90) continue; // solo el hemisferio visible de frente
+    const phiRad = phiDeg*Math.PI/180;
+    let d='';
+    pts.forEach((p,i)=>{
+      const x = p.r*scale*Math.sin(phiRad), y = p.z*scale;
+      d += (i===0?'M':'L')+x.toFixed(2)+','+y.toFixed(2)+' ';
+    });
+    const meridian = document.createElementNS('http://www.w3.org/2000/svg','path');
+    meridian.setAttribute('d', d);
+    meridian.setAttribute('fill','none');
+    meridian.setAttribute('stroke','#555');
+    meridian.setAttribute('stroke-width', Math.abs(phiDeg)<1 ? 1 : 0.5);
+    meridian.setAttribute('opacity', 0.6);
+    g.appendChild(meridian);
+  }
+
+  const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+  label.setAttribute('x',0); label.setAttribute('y', H*scale+14);
+  label.setAttribute('text-anchor','middle');
+  label.setAttribute('class','preview-label');
+  label.textContent = 'sombreado = tramo usado';
+  g.appendChild(label);
+
+  svgEl.appendChild(g);
+  holder.appendChild(svgEl);
+  wrap.appendChild(holder);
+}
+
+const SCALE_FIELDS = {
+  esfera: ['diametro'],
+  huevo: ['ancho','alto'],
+  cupula: ['ancho','alto'],
+  pera: ['peraDiamSup','peraAltoSup','peraCuelloLargo','peraDiamInf','peraAltoInf'],
+  elipsoide: ['ancho','alto'],
+  capsula: ['diametro','alto'],
+  cono: ['diametro','alto'],
+  cilindro: ['diametro','alto']
+};
+
+// Snapshot fijo de los valores base (forma + campos + alto) tomado al enfocar
+// el campo "Alto general". Escalar siempre contra este snapshot -y no contra
+// el estado ya modificado del DOM- evita que el escalado se "componga" solo
+// con cada tecla y evita que un valor intermedio muy pequeño quede clampeado
+// por el mínimo de algún campo, lo cual antes deformaba la proporción de
+// forma permanente.
+let altoGeneralBaseline = null;
+
+function captureAltoGeneralBaseline(){
+  const forma = document.getElementById('forma').value;
+  const {profile, sizeOk} = getProfileAndSize();
+  if(!sizeOk || !profile.H || profile.H<=0){ altoGeneralBaseline = null; return; }
+
+  if(forma==='libre'){
+    const omitirSup = document.getElementById('libreOmitirSup').checked;
+    const rows = Array.from(document.querySelectorAll('.libre-anillo-row'));
+    altoGeneralBaseline = {
+      forma, H: profile.H,
+      libre: {
+        altoSup: omitirSup ? null : parseFloat(document.getElementById('libreAltoSup').value),
+        anillos: rows.map(r=>({
+          diam: parseFloat(r.querySelector('.libreDiam').value),
+          alto: parseFloat(r.querySelector('.libreAlto').value)
+        }))
+      }
+    };
+    return;
+  }
+
+  const fields = {};
+  (SCALE_FIELDS[forma]||[]).forEach(id=>{
+    fields[id] = parseFloat(document.getElementById(id).value);
+  });
+  altoGeneralBaseline = {forma, H: profile.H, fields};
+}
+
+function applyAltoGeneral(){
+  const forma = document.getElementById('forma').value;
+  const target = parseFloat(document.getElementById('altoGeneral').value);
+  if(!target || target<=0) return;
+  if(!altoGeneralBaseline || altoGeneralBaseline.forma !== forma){
+    captureAltoGeneralBaseline();
+  }
+  if(!altoGeneralBaseline) return;
+  const factor = target/altoGeneralBaseline.H;
+
+  if(forma==='libre'){
+    const b = altoGeneralBaseline.libre;
+    if(b.altoSup!=null) document.getElementById('libreAltoSup').value = Math.max(0.1, +(b.altoSup*factor).toFixed(4));
+    const rows = document.querySelectorAll('.libre-anillo-row');
+    rows.forEach((row,i)=>{
+      const base = b.anillos[i];
+      if(!base) return;
+      row.querySelector('.libreDiam').value = Math.max(0.1, +(base.diam*factor).toFixed(4));
+      if(!row.querySelector('.libreAlto').disabled){
+        row.querySelector('.libreAlto').value = Math.max(0.1, +(base.alto*factor).toFixed(4));
+      }
+    });
+    generate();
+    return;
+  }
+
+  (SCALE_FIELDS[forma]||[]).forEach(id=>{
+    const el = document.getElementById(id);
+    const baseV = altoGeneralBaseline.fields[id];
+    if(!isNaN(baseV)){
+      const min = parseFloat(el.min)||0.1;
+      el.value = Math.max(min, +(baseV*factor).toFixed(4));
+    }
+  });
+  generate();
+}
+
+function generate(){
+  const forma = document.getElementById('forma').value;
+  const nombreFigura = FORMA_LABELS[forma];
+  const N = parseInt(document.getElementById('segmentos').value);
+  const rings = Math.max(1, parseInt(document.getElementById('anillos').value)||1);
+  let anilloDesde = Math.max(0, Math.min(rings-1, parseInt(document.getElementById('anilloDesde').value)||0));
+  let anilloHasta = Math.max(anilloDesde+1, Math.min(rings, parseInt(document.getElementById('anilloHasta').value)||rings));
+  const pctI = 100*anilloDesde/rings, pctF = 100*anilloHasta/rings;
+  const pageKey = 'letter';
+  const margin = 0; // mínimo permitido
+  const warnEl = document.getElementById('warn');
+  warnEl.textContent = '';
+
+  const {profile, sizeOk, dims} = getProfileAndSize();
+  if(!sizeOk || !N || N<2){
+    warnEl.textContent = 'Revisá las dimensiones y los segmentos.';
+    return;
+  }
+
+  const CM = 10;
+  const {pts, totalLength} = buildMeridianTable(profile);
+  const angleWidth = (2*Math.PI)/N;
+
+  const sGlobalStart = (pctI/100)*totalLength;
+  const sGlobalEnd = (pctF/100)*totalLength;
+  const effectiveLength = sGlobalEnd - sGlobalStart;
+  const totalHeightMM = effectiveLength*CM;
+
+  let maxHalfWidthMM = 0;
+  for(let i=0;i<=200;i++){
+    const s = sGlobalStart + effectiveLength*i/200;
+    const r = interpAt(pts, totalLength, s);
+    maxHalfWidthMM = Math.max(maxHalfWidthMM, r*angleWidth/2*CM);
+  }
+
+  const page = PAGE_MM[pageKey];
+  document.getElementById('print-page-size').textContent = `@page { size: ${page.w}mm ${page.h}mm; margin:0; }`;
+  const printableH = page.h - margin*2;
+  const printableW = page.w - margin*2;
+  const PRINT_SHIFT_X_MM = 5; // corrimiento hacia la derecha para que el borde
+                               // izquierdo no se recorte al imprimir (muchas
+                               // impresoras no imprimen hasta el borde fisico)
+  const usableW = printableW - PRINT_SHIFT_X_MM;
+
+  if(maxHalfWidthMM*2 > usableW){
+    warnEl.textContent = `El ancho del gajo (${(maxHalfWidthMM*2/10).toFixed(1)} cm) no entra en el ancho de hoja disponible (${(usableW/10).toFixed(1)} cm). Aumentá segmentos o achicá el tamaño.`;
+  }
+
+  // ------------------------------------------------------------------
+  // La figura es regular (todos los N gajos son identicos), asi que solo
+  // hace falta UN patron de referencia -- si el gajo completo no entra en
+  // una hoja por altura, se corta en "tramos" (como antes), pero cada
+  // tramo se imprime UNA sola vez (maximo 1 par patron+vecino por tramo,
+  // sin repetirlo para rellenar espacio). El espacio libre se aprovecha
+  // empaquetando esos tramos entre si -- mismo esquema de estanterias
+  // (shelf/NFDH) que en Rostro.html -- en vez de darle una hoja completa
+  // a cada uno.
+  // ------------------------------------------------------------------
+  const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const PAD_TOP_MM = 6;      // espacio arriba de cada pieza (texto de empalme)
+  const PAD_BOTTOM_MM = 12;  // espacio abajo de cada pieza (empalme + etiqueta)
+  const GAP_COLUMNAS_MM = 6; // separacion horizontal entre piezas de una misma fila
+  const GAP_FILAS_MM = 4;    // separacion vertical entre filas de una misma hoja
+
+  const tramoMaxHeightMM = Math.max(1, printableH - PAD_TOP_MM - PAD_BOTTOM_MM);
+  const tramosRaw = [];
+  {
+    let s = 0;
+    while(s < totalHeightMM - 1e-6){
+      const e = Math.min(s+tramoMaxHeightMM, totalHeightMM);
+      tramosRaw.push({sStartMM:s, sEndMM:e});
+      s = e;
+    }
+    if(tramosRaw.length===0) tramosRaw.push({sStartMM:0, sEndMM:totalHeightMM});
+  }
+
+  const numKeptBands = anilloHasta-anilloDesde;
+  const ringPositionsMM = [];
+  const ringSValues = []; // posición absoluta de cada anillo en arco (cm), para la vista previa
+  if(numKeptBands>1){
+    for(let i=1;i<numKeptBands;i++){
+      ringPositionsMM.push(totalHeightMM*i/numKeptBands);
+      ringSValues.push(sGlobalStart + (totalHeightMM*i/numKeptBands)/CM);
+    }
+  }
+
+  // Marcas de anillos reales (solo forma Libre): posición absoluta (para la vista previa
+  // completa) y posición local en mm dentro del tramo recortado (para las hojas impresas).
+  const anilloMarkSValues = [];
+  const anilloMarkPositionsMM = [];
+  if(profile.anilloMarksZ){
+    profile.anilloMarksZ.forEach(z=>{
+      const sVal = sAtZ(pts, z);
+      anilloMarkSValues.push(sVal);
+      if(sVal>=sGlobalStart && sVal<=sGlobalEnd){
+        anilloMarkPositionsMM.push((sVal-sGlobalStart)*CM);
+      }
+    });
+  }
+
+  function rAtLocalMM(localMM){
+    const sGlobalCM = sGlobalStart + localMM/CM;
+    return interpAt(pts, totalLength, sGlobalCM);
+  }
+  function boundaryPoints(localStartMM, localEndMM, steps){
+    const out=[];
+    for(let i=0;i<=steps;i++){
+      const localMM = localStartMM + (localEndMM-localStartMM)*i/steps;
+      const clamped = Math.max(0, Math.min(totalHeightMM, localMM));
+      const r = rAtLocalMM(clamped);
+      out.push({y: localMM-localStartMM, hw: r*angleWidth/2*CM});
+    }
+    return out;
+  }
+  function pathFromPoints(ptsArr){
+    let dRight='', dLeft='';
+    ptsArr.forEach((p,i)=>{
+      dRight += (i===0?'M':'L') + p.hw.toFixed(3) + ',' + p.y.toFixed(3) + ' ';
+      dLeft = (i===0?'':'L') + (-p.hw).toFixed(3) + ',' + p.y.toFixed(3) + ' ' + dLeft;
+    });
+    return dRight+dLeft+' Z';
+  }
+
+  // ---- Construir la lista de piezas (una por tramo de altura) ----
+  const piezas = tramosRaw.map((t, idxT) => {
+    const mainPts = boundaryPoints(t.sStartMM, t.sEndMM, 70);
+    const dMain = pathFromPoints(mainPts);
+    const tramoHeightMM = t.sEndMM - t.sStartMM;
+    const localMaxHalfWidthMM = Math.max(...mainPts.map(p=>p.hw));
+    const neighborFits = N>1 && (4*localMaxHalfWidthMM) <= usableW;
+    const boxW = neighborFits ? 4*localMaxHalfWidthMM : 2*localMaxHalfWidthMM;
+    return {
+      idxT, tramosLength: tramosRaw.length, letra: LETRAS[idxT] || ('T'+idxT),
+      sStartMM: t.sStartMM, sEndMM: t.sEndMM, tramoHeightMM,
+      mainPts, dMain, localMaxHalfWidthMM, neighborFits,
+      tooWide: (2*localMaxHalfWidthMM) > usableW,
+      boxW, boxH: tramoHeightMM + PAD_TOP_MM + PAD_BOTTOM_MM
+    };
+  });
+
+  // ---- Empaquetar las piezas en hojas (shelf packing / NFDH, igual que Rostro) ----
+  function empacarPiezas(items, usableW, usableH){
+    const ordenadas = items.slice().sort((a,b)=> b.boxH - a.boxH);
+    const hojas = [];
+    let hoja = null, shelfY = 0, shelfH = 0, shelfX = 0;
+    function nuevaHoja(){ hoja = {items:[]}; hojas.push(hoja); shelfY=0; shelfH=0; shelfX=0; }
+    ordenadas.forEach(p => {
+      if(hoja===null) nuevaHoja();
+      const anchoNecesario = p.boxW + (shelfX>0 ? GAP_COLUMNAS_MM : 0);
+      const cabeEnFilaActual = shelfX===0 ? p.boxW<=usableW : (shelfX+anchoNecesario)<=usableW;
+      if(cabeEnFilaActual){
+        const x = shelfX + (shelfX>0?GAP_COLUMNAS_MM:0);
+        hoja.items.push({p, x, y: shelfY});
+        shelfX = x + p.boxW; shelfH = Math.max(shelfH, p.boxH);
+        return;
+      }
+      const alturaSiFilaNueva = shelfY + shelfH + (shelfH>0?GAP_FILAS_MM:0) + p.boxH;
+      if(alturaSiFilaNueva <= usableH){
+        shelfY += shelfH + (shelfH>0?GAP_FILAS_MM:0);
+        shelfH = p.boxH; shelfX = 0;
+        hoja.items.push({p, x:0, y:shelfY});
+        shelfX = p.boxW;
+        return;
+      }
+      nuevaHoja();
+      shelfH = p.boxH;
+      hoja.items.push({p, x:0, y:0});
+      shelfX = p.boxW;
+    });
+    return hojas;
+  }
+
+  const hojas = empacarPiezas(piezas, usableW, printableH);
+  const numPages = hojas.length;
+
+  const wrap = document.getElementById('canvasWrap');
+  wrap.innerHTML = '';
+
+  renderPreview(wrap, pts, totalLength, sGlobalStart, sGlobalEnd, ringSValues, anilloMarkSValues, nombreFigura, N);
+
+  let infoYaImpresa = false;
+
+  hojas.forEach((hoja, hojaIdx) => {
+    const holder = document.createElement('div');
+    holder.className = 'page';
+    const tag = document.createElement('div');
+    tag.className='page-tag';
+    const tramosLbl = hoja.items.map(it=>it.p.letra).join(', ');
+    tag.textContent = (hojas.length>1 ? `Hoja ${hojaIdx+1}/${hojas.length}` : 'Hoja única') + (hoja.items.length>1 ? ` — tramos ${tramosLbl}` : '');
+    holder.appendChild(tag);
+
+    const svgEl = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svgEl.setAttribute('class','sheet-svg');
+    svgEl.setAttribute('width', page.w+'mm');
+    svgEl.setAttribute('height', page.h+'mm');
+    svgEl.setAttribute('viewBox', `0 0 ${page.w} ${page.h}`);
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('transform', `translate(${PRINT_SHIFT_X_MM},0)`);
+
+    hoja.items.forEach(({p, x, y}) => {
+      const groupOriginX = x + p.boxW/2;
+      const originY = y + PAD_TOP_MM;
+      const mainOffsetX = p.neighborFits ? -p.localMaxHalfWidthMM : 0;
+      const neighborOffsetX = mainOffsetX + 2*p.localMaxHalfWidthMM;
+
+      const block = document.createElementNS('http://www.w3.org/2000/svg','g');
+      block.setAttribute('transform', `translate(${groupOriginX},${originY})`);
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', p.dMain);
+      path.setAttribute('class','gore-outline');
+      path.setAttribute('transform', `translate(${mainOffsetX},0)`);
+      block.appendChild(path);
+
+      const mid = document.createElementNS('http://www.w3.org/2000/svg','line');
+      mid.setAttribute('x1',mainOffsetX); mid.setAttribute('x2',mainOffsetX);
+      mid.setAttribute('y1',0); mid.setAttribute('y2', p.tramoHeightMM);
+      mid.setAttribute('class','fold-hint');
+      block.appendChild(mid);
+
+      ringPositionsMM.forEach((ringMM)=>{
+        if(ringMM>=p.sStartMM && ringMM<=p.sEndMM){
+          const localY = ringMM-p.sStartMM;
+          const hwMM = rAtLocalMM(ringMM)*angleWidth/2*CM;
+          const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+          line.setAttribute('x1',mainOffsetX-hwMM); line.setAttribute('x2',mainOffsetX+hwMM);
+          line.setAttribute('y1',localY); line.setAttribute('y2',localY);
+          line.setAttribute('class','ring-line');
+          block.appendChild(line);
+        }
+      });
+      anilloMarkPositionsMM.forEach((markMM)=>{
+        if(markMM>=p.sStartMM && markMM<=p.sEndMM){
+          const localY = markMM-p.sStartMM;
+          const hwMM = rAtLocalMM(markMM)*angleWidth/2*CM;
+          const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+          line.setAttribute('x1',mainOffsetX-hwMM); line.setAttribute('x2',mainOffsetX+hwMM);
+          line.setAttribute('y1',localY); line.setAttribute('y2',localY);
+          line.setAttribute('class','libre-anillo-mark');
+          block.appendChild(line);
+        }
+      });
+
+      if(p.neighborFits){
+        const neighbor = document.createElementNS('http://www.w3.org/2000/svg','path');
+        neighbor.setAttribute('d', p.dMain);
+        neighbor.setAttribute('class','gore-outline');
+        neighbor.setAttribute('transform', `translate(${neighborOffsetX},0)`);
+        block.appendChild(neighbor);
+
+        ringPositionsMM.forEach((ringMM)=>{
+          if(ringMM>=p.sStartMM && ringMM<=p.sEndMM){
+            const localY = ringMM-p.sStartMM;
+            const hwMM = rAtLocalMM(ringMM)*angleWidth/2*CM;
+            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('x1', neighborOffsetX-hwMM); line.setAttribute('x2', neighborOffsetX+hwMM);
+            line.setAttribute('y1',localY); line.setAttribute('y2',localY);
+            line.setAttribute('class','ring-line');
+            block.appendChild(line);
+          }
+        });
+        anilloMarkPositionsMM.forEach((markMM)=>{
+          if(markMM>=p.sStartMM && markMM<=p.sEndMM){
+            const localY = markMM-p.sStartMM;
+            const hwMM = rAtLocalMM(markMM)*angleWidth/2*CM;
+            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('x1', neighborOffsetX-hwMM); line.setAttribute('x2', neighborOffsetX+hwMM);
+            line.setAttribute('y1',localY); line.setAttribute('y2',localY);
+            line.setAttribute('class','libre-anillo-mark');
+            block.appendChild(line);
+          }
+        });
+
+        const gLabel = document.createElementNS('http://www.w3.org/2000/svg','text');
+        gLabel.setAttribute('x', neighborOffsetX-p.localMaxHalfWidthMM+2);
+        gLabel.setAttribute('y', -2);
+        gLabel.setAttribute('class','label-txt');
+        gLabel.textContent = 'gajo vecino (referencia)';
+        block.appendChild(gLabel);
+      }
+
+      // Marca de empalme (igual que en Rostro): letra + ancho medido, arriba
+      // (si este tramo no es el primero) y abajo (si no es el ultimo) --
+      // el ancho debe coincidir en ambos lados del corte, se imprime para
+      // verificar con regla en papel.
+      if(p.idxT>0){
+        const anchoCorte = (p.mainPts[0].hw*2/10).toFixed(2);
+        const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
+        t1.setAttribute('x',mainOffsetX); t1.setAttribute('y',-2);
+        t1.setAttribute('class','label-txt'); t1.setAttribute('text-anchor','middle');
+        t1.textContent = 'empalme '+LETRAS[p.idxT-1]+'\u2192'+LETRAS[p.idxT]+' (ancho '+anchoCorte+'cm)';
+        block.appendChild(t1);
+      }
+      if(p.idxT<p.tramosLength-1){
+        const anchoCorte = (p.mainPts[p.mainPts.length-1].hw*2/10).toFixed(2);
+        const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+        t2.setAttribute('x',mainOffsetX); t2.setAttribute('y', p.tramoHeightMM+4);
+        t2.setAttribute('class','label-txt'); t2.setAttribute('text-anchor','middle');
+        t2.textContent = 'empalme '+LETRAS[p.idxT]+'\u2192'+LETRAS[p.idxT+1]+' (ancho '+anchoCorte+'cm)';
+        block.appendChild(t2);
+      }
+
+      const pieceTag=document.createElementNS('http://www.w3.org/2000/svg','text');
+      pieceTag.setAttribute('x',mainOffsetX);
+      pieceTag.setAttribute('y', p.tramoHeightMM + (p.idxT<p.tramosLength-1 ? 9 : 5));
+      pieceTag.setAttribute('class','label-txt'); pieceTag.setAttribute('text-anchor','middle');
+      pieceTag.setAttribute('fill','#4fa3d1');
+      pieceTag.textContent = p.tramosLength>1 ? ('Tramo '+p.letra+' de '+p.tramosLength) : 'Pieza única';
+      block.appendChild(pieceTag);
+
+      if(p.tooWide){
+        const warnTxt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        warnTxt.setAttribute('x',mainOffsetX); warnTxt.setAttribute('y',-2-(p.idxT>0?4:0));
+        warnTxt.setAttribute('class','label-txt'); warnTxt.setAttribute('fill','#c0392b'); warnTxt.setAttribute('text-anchor','middle');
+        warnTxt.textContent = 'ADVERTENCIA: esta pieza es mas ancha que la hoja completa';
+        block.appendChild(warnTxt);
+      }
+
+      if(!infoYaImpresa){
+        infoYaImpresa = true;
+        const mainPts = p.mainPts;
+        const lines = [{t: nombreFigura, cls:'title'}]
+          .concat(dims.map(d=>({t: `${d.k}: ${d.v}`})))
+          .concat([{t: `Segmentos (gajos alrededor): ${N}`}, {t:`Anillos (líneas guía / bandas): ${rings}`}]);
+
+        const lineHeight = 4.2, fontSize = 3;
+        const estWidthMM = (text, fs) => text.length*fs*0.62;
+        const hwAtY = (targetY) => {
+          let best=mainPts[0], bd=Infinity;
+          for(const pt of mainPts){ const d=Math.abs(pt.y-targetY); if(d<bd){bd=d;best=pt;} }
+          return best.hw;
+        };
+        const yMin=mainPts[0].y, yMax=mainPts[mainPts.length-1].y;
+        const edgeMargin=(yMax-yMin)*0.08;
+        const candidateYs=[];
+        for(let t=0;t<=1;t+=0.04) candidateYs.push(yMin+edgeMargin + t*(yMax-yMin-2*edgeMargin));
+        let widestIdx=0; mainPts.forEach((pt,i)=>{ if(pt.hw>mainPts[widestIdx].hw) widestIdx=i; });
+        const widestY = mainPts[widestIdx].y;
+        candidateYs.sort((a,b)=>Math.abs(a-widestY)-Math.abs(b-widestY));
+
+        const offsets = lines.map((ln,idx)=>(idx-(lines.length-1)/2)*lineHeight);
+        const halfWNeeded = lines.map(ln=>estWidthMM(ln.t,fontSize)/2+3);
+
+        let placement=null;
+        for(const cy of candidateYs){
+          let ok=true;
+          for(let k=0;k<lines.length;k++){
+            const y=cy+offsets[k];
+            if(y<yMin+2||y>yMax-2){ ok=false; break; }
+            if(hwAtY(y)<halfWNeeded[k]){ ok=false; break; }
+          }
+          if(ok){ placement={mode:'h',cy}; break; }
+        }
+        if(!placement){
+          const maxLineW = Math.max(...lines.map(ln=>estWidthMM(ln.t,fontSize)));
+          const neededHalfThickness = (lines.length*lineHeight)/2+3;
+          const neededHalfSpan = maxLineW/2+3;
+          for(const cy of candidateYs){
+            const yTop=cy-neededHalfSpan, yBot=cy+neededHalfSpan;
+            if(yTop<yMin+2||yBot>yMax-2) continue;
+            let minHw=Infinity;
+            mainPts.forEach(pt=>{ if(pt.y>=yTop&&pt.y<=yBot) minHw=Math.min(minHw,pt.hw); });
+            if(minHw>=neededHalfThickness){ placement={mode:'v',cy}; break; }
+          }
+        }
+        if(!placement) placement={mode:'h', cy:(yMin+yMax)/2};
+
+        const info = document.createElementNS('http://www.w3.org/2000/svg','g');
+        info.setAttribute('transform', placement.mode==='v'
+          ? `translate(${mainOffsetX},${placement.cy}) rotate(-90)`
+          : `translate(${mainOffsetX},${placement.cy})`);
+        lines.forEach((ln,idx)=>{
+          const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+          t.setAttribute('x',0);
+          t.setAttribute('y', offsets[idx]);
+          t.setAttribute('text-anchor','middle');
+          t.setAttribute('class','info-block'+(ln.cls?' '+ln.cls:''));
+          t.textContent = ln.t;
+          info.appendChild(t);
+        });
+        block.appendChild(info);
+      }
+
+      g.appendChild(block);
+    });
+
+    svgEl.appendChild(g);
+    holder.appendChild(svgEl);
+    wrap.appendChild(holder);
+  });
+
+  document.getElementById('stats').innerHTML =
+    `Forma: <b>${nombreFigura}</b><br>` +
+    `Anillos usados: <b>${anilloDesde} – ${anilloHasta}</b> de ${rings} totales<br>` +
+    `Longitud del gajo (recortado): <b>${(totalHeightMM/10).toFixed(2)} cm</b><br>` +
+    `Ancho de gajo (máx.): <b>${(maxHalfWidthMM*2/10).toFixed(2)} cm</b><br>` +
+    `Ancho angular por gajo: <b>${(angleWidth*180/Math.PI).toFixed(2)}°</b><br>` +
+    `Hojas necesarias: <b>${numPages}</b><br>` +
+    `Total de gajos para la figura completa: <b>${N}</b>`;
+
+  const altoGeneralEl = document.getElementById('altoGeneral');
+  if(document.activeElement !== altoGeneralEl){
+    altoGeneralEl.value = profile.H.toFixed(2);
+  }
+}
+
+const EXPORT_SVG_STYLE = `
+  .gore-outline{fill:none; stroke:#000; stroke-width:0.3;}
+  .fold-hint{stroke:#e5342b; stroke-width:0.15;}
+  .ring-line{stroke:#e5342b; stroke-width:0.2; stroke-dasharray:1,0.8;}
+  .libre-anillo-mark{stroke:#00c853; stroke-width:0.3; stroke-dasharray:1.2,0.6;}
+  .page-cut{stroke:#666; stroke-width:0.25; stroke-dasharray:1.5,1;}
+  .label-txt{font-size:3px; fill:#333; font-family:monospace;}
+  .info-block{font-size:3px; fill:#000; font-family:monospace;}
+  .info-block.title{font-size:4px; font-weight:bold;}
+`;
+
+function downloadSVG(){
+  const svgs = document.querySelectorAll('#canvasWrap .page svg.sheet-svg');
+  if(svgs.length===0) return;
+  const serializer = new XMLSerializer();
+  const forma = document.getElementById('forma').value;
+  svgs.forEach((svgEl,i)=>{
+    const clone = svgEl.cloneNode(true);
+    const styleEl = document.createElementNS('http://www.w3.org/2000/svg','style');
+    styleEl.textContent = EXPORT_SVG_STYLE;
+    clone.insertBefore(styleEl, clone.firstChild);
+    let src = serializer.serializeToString(clone);
+    src = '<?xml version="1.0" standalone="no"?>\n' + src;
+    const filename = svgs.length===1 ? `patron_${forma}.svg` : `patron_${forma}_hoja${i+1}.svg`;
+    triggerDownload(src, filename);
+  });
+}
+function triggerDownload(content, filename){
+  const blob = new Blob([content], {type:'image/svg+xml;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('forma').addEventListener('change', () => { updateFieldVisibility(); generate(); });
+document.getElementById('btnSVG').addEventListener('click', downloadSVG);
+document.getElementById('btnPrint').addEventListener('click', () => window.print());
+document.querySelectorAll('#panel input[type=number]').forEach(el=>{
+  if(el.id==='altoGeneral') return;
+  el.addEventListener('input', generate);
+});
+document.getElementById('altoGeneral').addEventListener('focus', captureAltoGeneralBaseline);
+document.getElementById('altoGeneral').addEventListener('input', applyAltoGeneral);
+document.getElementById('altoGeneral').addEventListener('blur', () => { altoGeneralBaseline = null; });
+document.querySelectorAll('#panel select').forEach(el=>{
+  if(el.id!=='forma') el.addEventListener('change', generate);
+});
+document.getElementById('anillos').addEventListener('change', () => {
+  const rings = Math.max(1, parseInt(document.getElementById('anillos').value)||1);
+  document.getElementById('anilloDesde').max = rings-1;
+  document.getElementById('anilloHasta').max = rings;
+  if(parseInt(document.getElementById('anilloHasta').value) > rings){
+    document.getElementById('anilloHasta').value = rings;
+  }
+});
+document.getElementById('btnLibreAdd').addEventListener('click', () => {
+  const rows = document.querySelectorAll('.libre-anillo-row');
+  const last = rows[rows.length-1];
+  const diam = last ? Math.max(0.5, parseFloat(last.querySelector('.libreDiam').value)*0.7) : 8;
+  addLibreAnillo(+diam.toFixed(2), 5);
+  generate();
+});
+document.getElementById('libreInterp').addEventListener('change', generate);
+document.getElementById('libreAltoSup').addEventListener('input', generate);
+document.getElementById('libreOmitirSup').addEventListener('change', () => { updateLibreRematesVisibility(); generate(); });
+document.getElementById('libreOmitirInf').addEventListener('change', () => { updateLibreRematesVisibility(); generate(); });
+document.getElementById('libreCierreSupSuave').addEventListener('change', generate);
+document.getElementById('libreCierreInfSuave').addEventListener('change', generate);
+
+document.getElementById('btnCompleta').addEventListener('click', () => {
+  const rings = Math.max(1, parseInt(document.getElementById('anillos').value)||1);
+  document.getElementById('anilloDesde').value = 0;
+  document.getElementById('anilloHasta').value = rings;
+  generate();
+});
+
+updateFieldVisibility();
+generate();
+</script>
+</body>
+</html>

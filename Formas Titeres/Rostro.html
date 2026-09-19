@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Generador de patrones — Rostro (elipse asimétrica) — v1</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#14171b; --line:#2a2f36; --text:#e6e8eb;
+    --muted:#8a9099; --accent:#4fd1c5; --danger:#e5533d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    display:flex; height:100vh; overflow:hidden;
+  }
+  #panel{
+    width:400px; flex-shrink:0; background:var(--panel);
+    border-right:1px solid var(--line); padding:20px;
+    overflow-y:auto;
+  }
+  h1{font-size:14px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:0 0 18px;}
+  label{display:block; font-size:12px; color:var(--text); margin:14px 0 4px;}
+  input[type=number], select{
+    background:#0e1114; border:1px solid var(--line); color:var(--text);
+    padding:8px; font-family:inherit; font-size:13px; border-radius:4px;
+  }
+  .field{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0;}
+  .field label{margin:0; flex:1; min-width:0;}
+  .field input[type=number]{width:64px; flex:none; text-align:right;}
+  .field select{width:130px; flex:none;}
+  .field-wide select{width:190px;}
+  .field-warning label{color:#e0c341;}
+  .field-warning input{border-color:#e0c341; color:#e0c341;}
+  .anillo-row{display:flex; align-items:center; gap:6px; margin:6px 0;}
+  .anillo-row .ring-num{font-size:11px; color:var(--muted); width:56px; flex:none;}
+  .anillo-row input[type=number]{width:64px; flex:none; text-align:right;}
+  .anillo-row .ring-remove{
+    width:auto; margin:0; padding:2px 8px; background:transparent;
+    border:1px solid var(--line); color:var(--danger); flex:none; font-size:12px;
+  }
+  .anillo-row input:disabled{opacity:.35;}
+  .anillo-header{display:flex; align-items:center; gap:6px; margin-top:10px; margin-bottom:2px;}
+  .anillo-header .ring-num{font-size:11px; color:var(--muted); width:56px; flex:none;}
+  .anillo-header .col-label{font-size:10px; color:var(--muted); width:64px; flex:none; text-align:right;}
+  .section-box{border:1px solid #e0c341; border-radius:6px; padding:12px 14px; margin:16px 0;}
+  .section-box .field:first-child{margin-top:0;}
+  .section-box-blue{border:1px solid #4fa3d1; border-radius:6px; padding:12px 14px; margin:16px 0;}
+  .section-box-blue .field:first-child{margin-top:0;}
+  .section-box-orange{border:1px solid #e08a34; border-radius:6px; padding:12px 14px; margin:16px 0;}
+  .section-box-green{border:1px solid #4caf50; border-radius:6px; padding:12px 14px; margin:16px 0;}
+  .section-box-orange .field:first-child{margin-top:0;}
+  .preview-box-blue{box-shadow:0 0 0 2px #4fa3d1 !important;}
+  .preview-box-orange{box-shadow:0 0 0 2px #e08a34 !important;}
+  .section-heading{font-size:14px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:20px 0 10px;}
+  button{
+    width:100%; margin-top:18px; padding:10px; background:var(--accent);
+    color:#04201d; border:none; border-radius:4px; font-weight:600;
+    font-family:inherit; font-size:13px; cursor:pointer;
+  }
+  button:hover{filter:brightness(1.1);}
+  button.secondary{background:transparent; border:1px solid var(--line); color:var(--text); margin-top:8px;}
+  button.preset{background:#22262c; color:var(--text); margin-top:6px; font-weight:400; font-size:12px;}
+  #stats{margin-top:20px; padding-top:16px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); line-height:1.8;}
+  #stats b{color:var(--text);}
+  #canvasWrap{flex:1; overflow:auto; padding:30px; display:flex; flex-direction:column; gap:24px; align-items:flex-start;}
+  #previewsRow{display:flex; gap:20px; flex-wrap:wrap;}
+  #hojasGrid{display:grid; grid-template-columns:repeat(5, 150px); gap:14px;}
+  .warn{color:var(--danger); font-size:11px; margin-top:10px;}
+  .page-tag{font-size:10px; color:var(--muted); margin-bottom:4px;}
+  .hidden{display:none;}
+  .preview-box{background:#fff; box-shadow:0 0 0 1px var(--line); padding:10px; color:#333;}
+  .page{background:#fff; box-shadow:0 0 0 1px var(--line); position:relative; width:150px;}
+  .page svg{width:150px; height:auto; display:block;}
+  .gore-outline{fill:none; stroke:#000; stroke-width:0.5;}
+  .fold-hint{stroke:#e5342b; stroke-width:0.2; stroke-dasharray:1.5,1;}
+  .ring-line{stroke:#e5342b; stroke-width:0.2; stroke-dasharray:1,0.8;}
+  .anillo-mark-line{stroke:#00c853; stroke-width:0.3; stroke-dasharray:1.2,0.6;}
+  .label-txt{font-size:2.6px; fill:#333; font-family:monospace;}
+  .preview-silhouette{stroke:#000; stroke-width:1; fill:#cfe8e4;}
+  .preview-ring{stroke:#e5342b; stroke-width:0.6; stroke-dasharray:2,2;}
+  .preview-anillo-mark{stroke:#00c853; stroke-width:1.4; stroke-dasharray:2,1.5;}
+  .anillo-handle{fill:#00c853; stroke:#fff; stroke-width:1.2; cursor:move;}
+  .anillo-handle:hover{fill:#00e676; r:6;}
+  .paginas-pendientes{color:var(--muted); font-size:11px; padding:20px 0;}
+  .preview-meridian{stroke:#555; stroke-width:0.5; fill:none; opacity:0.6;}
+  .preview-axis{stroke:#999; stroke-width:0.4; stroke-dasharray:2,2;}
+  .preview-label{font-size:11px; fill:#333; font-family:monospace;}
+  .instancia-tag{font-size:10px; color:var(--accent); text-transform:uppercase; letter-spacing:.05em; margin:16px 0 4px;}
+
+  @media print{
+    #panel, .preview-box, .page-tag, #previewsRow{display:none !important;}
+    body{background:#fff; display:block; height:auto; overflow:visible;}
+    #canvasWrap{padding:0; gap:0; display:block;}
+    #hojasGrid{display:block; grid-template-columns:none;}
+    .page{box-shadow:none; margin:0; width:auto;}
+    .page:not(:last-child){page-break-after:always;}
+    .page svg{width:auto !important; height:auto !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <h1>Rostro — elipse asimétrica (Frente + Lado)</h1>
+
+  <div class="section-box">
+    <div class="field">
+      <label>Segmentos (gajos alrededor)</label>
+      <input type="number" id="segmentos" value="6" min="4" max="24" step="1">
+    </div>
+    <div class="field field-warning">
+      <label>Altura General (cm)</label>
+      <input type="number" id="altoGeneralGlobal" value="18" min="0.1" max="999" step="0.5">
+    </div>
+  </div>
+
+  <div class="instancia-tag">Perfil de Ancho (vista Frente)</div>
+  <div class="section-box-blue" id="cajaA">
+    <div class="field">
+      <label>Alineación izquierda-derecha (0=todo izq, 50=centro, 100=todo der)</label>
+      <input type="number" id="repartoDerecha" value="50" min="0" max="100" step="1">
+    </div>
+    <div id="panelA"></div>
+  </div>
+
+  <div class="instancia-tag">Perfil de Atrás (vista Lado)</div>
+  <div class="section-box-green" id="cajaF">
+    <div id="panelF"></div>
+  </div>
+
+  <div class="instancia-tag">Perfil de Frente (vista Lado)</div>
+  <div class="section-box-orange" id="cajaB">
+    <div id="panelB"></div>
+  </div>
+
+  <div class="section-heading">Impresión</div>
+  <button id="btnGenerarPaginas">Generar Páginas</button>
+  <button class="secondary" id="btnSVG">Descargar SVG (todas las piezas)</button>
+  <button class="secondary" id="btnPrint">Imprimir / Guardar como PDF</button>
+
+  <div id="stats"></div>
+  <div class="warn" id="warn"></div>
+</div>
+
+<div id="canvasWrap"></div>
+
+<script>
+// ============================================================
+// Matemática portada de los Pasos A y B (ya validada). Se integra
+// tal cual, sin reescribirla.
+// ============================================================
+function radioElipseAsimetrica(phi, aDerecha, aIzquierda, bFrente, bAtras) {
+  phi = ((phi % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+  const c = Math.cos(phi), s = Math.sin(phi);
+  const a = c>=0 ? aDerecha : aIzquierda;
+  const b = s>=0 ? bFrente : bAtras;
+  const denom = Math.sqrt((b*c)**2 + (a*s)**2);
+  if (denom===0) return 0;
+  return (a*b)/denom;
+}
+function semiejesDesde(anchoZ, repartoDerecha, bFrente, bAtras) {
+  return { aDerecha: anchoZ*repartoDerecha, aIzquierda: anchoZ*(1-repartoDerecha), bFrente, bAtras };
+}
+function radioEnAltura(z, anchoProfile, frenteProfile, atrasProfile, repartoDerecha, phi){
+  const anchoZ = anchoProfile.valorEn(z);
+  const s = semiejesDesde(anchoZ, repartoDerecha, frenteProfile.valorEn(z), atrasProfile.valorEn(z));
+  return radioElipseAsimetrica(phi, s.aDerecha, s.aIzquierda, s.bFrente, s.bAtras);
+}
+function buildMeridianoAngulo(phi, anchoProfile, frenteProfile, atrasProfile, repartoDerecha, samples){
+  const H = Math.min(anchoProfile.H, frenteProfile.H, atrasProfile.H);
+  const dz = H/samples;
+  let s=0, prevR = radioEnAltura(0, anchoProfile, frenteProfile, atrasProfile, repartoDerecha, phi);
+  const pts=[{z:0,s:0,r:prevR}];
+  for(let i=1;i<=samples;i++){
+    const z=i*dz;
+    const r = radioEnAltura(z, anchoProfile, frenteProfile, atrasProfile, repartoDerecha, phi);
+    s += Math.hypot(dz, r-prevR);
+    pts.push({z,s,r}); prevR=r;
+  }
+  return {pts, totalLength:s, H};
+}
+function anchoGajoEnAltura(z, anchoProfile, frenteProfile, atrasProfile, repartoDerecha, phi0, phi1, samplesArco){
+  const anchoZ = anchoProfile.valorEn(z);
+  const s = semiejesDesde(anchoZ, repartoDerecha, frenteProfile.valorEn(z), atrasProfile.valorEn(z));
+  let acum=0, prevX=null, prevY=null;
+  for(let i=0;i<=samplesArco;i++){
+    const phi = phi0 + (phi1-phi0)*(i/samplesArco);
+    const r = radioElipseAsimetrica(phi, s.aDerecha, s.aIzquierda, s.bFrente, s.bAtras);
+    const x=r*Math.cos(phi), y=r*Math.sin(phi);
+    if(prevX!==null) acum += Math.hypot(x-prevX, y-prevY);
+    prevX=x; prevY=y;
+  }
+  return acum;
+}
+function construirGajos(anchoProfile, frenteProfile, atrasProfile, repartoDerecha, N, alturasSamples, samplesArco){
+  const H = Math.min(anchoProfile.H, frenteProfile.H, atrasProfile.H);
+  const angleWidth = (2*Math.PI)/N;
+  const meridianos=[];
+  for(let k=0;k<N;k++){ meridianos.push(buildMeridianoAngulo(k*angleWidth, anchoProfile, frenteProfile, atrasProfile, repartoDerecha, alturasSamples)); }
+  const gajos=[];
+  for(let k=0;k<N;k++){
+    const phi0=k*angleWidth, phi1=(k+1)*angleWidth;
+    const filas=[];
+    for(let j=0;j<=alturasSamples;j++){
+      const z=(H*j)/alturasSamples;
+      const anchoLocal = anchoGajoEnAltura(z, anchoProfile, frenteProfile, atrasProfile, repartoDerecha, phi0, phi1, samplesArco);
+      filas.push({z, anchoLocal, halfWidth:anchoLocal/2, vIzq:meridianos[k].pts[j].s, vDer:meridianos[(k+1)%N].pts[j].s});
+    }
+    gajos.push({k, filas, alturaIzq:meridianos[k].totalLength, alturaDer:meridianos[(k+1)%N].totalLength});
+  }
+  return {gajos, meridianos, H};
+}
+
+// ============================================================
+// Motor de perfil "Libre" (remates, cierre suave, interpolación)
+// portado TAL CUAL de la lógica ya validada en el generador
+// original, generalizado con parámetros en vez de leer el DOM
+// directamente, para poder tener dos instancias independientes.
+// ============================================================
+function computeTangents(points){
+  const n=points.length; const m=new Array(n).fill(0);
+  if(n<2) return m;
+  const h=[],d=[];
+  for(let i=0;i<n-1;i++){ h.push(points[i+1].z-points[i].z); d.push(h[i]>0?(points[i+1].r-points[i].r)/h[i]:0); }
+  if(n===2){ m[0]=d[0]; m[1]=d[0]; return m; }
+  for(let k=1;k<n-1;k++){
+    if(d[k-1]===0||d[k]===0||(d[k-1]>0)!==(d[k]>0)){ m[k]=0; }
+    else { const w1=2*h[k]+h[k-1], w2=h[k]+2*h[k-1]; m[k]=(w1+w2)/(w1/d[k-1]+w2/d[k]); }
+  }
+  function endTangent(d0,d1,h0,h1){
+    let m0=((2*h0+h1)*d0-h0*d1)/(h0+h1);
+    if(d0===0) return 0;
+    if((m0>0)!==(d0>0)) m0=0;
+    else if((d0>0)!==(d1>0) && Math.abs(m0)>3*Math.abs(d0)) m0=3*d0;
+    return m0;
+  }
+  m[0]=endTangent(d[0],d[1],h[0],h[1]);
+  m[n-1]=endTangent(d[n-2],d[n-3],h[n-2],h[n-3]);
+  return m;
+}
+function hermite(p0,p1,m0,m1,dz,t){
+  const t2=t*t,t3=t2*t;
+  const h00=2*t3-3*t2+1,h10=t3-2*t2+t,h01=-2*t3+3*t2,h11=t3-t2;
+  return h00*p0+h10*dz*m0+h01*p1+h11*dz*m1;
+}
+function domeSegment(r0,r1,t,poleAtStart){
+  if(poleAtStart){ const w=1-t; const v=Math.max(0,1-w*w); return r0+(r1-r0)*Math.sqrt(v); }
+  const v=Math.max(0,1-t*t); return r1+(r0-r1)*Math.sqrt(v);
+}
+function construirPerfilLibre({omitirSup, cierreSupSuave, anillos, omitirInf, altoInf, cierreInfSuave, interp}){
+  const anillosOrdenados = anillos.slice().sort((a,b)=>a.z-b.z);
+  const points=[]; const anilloMarksZ=[];
+  if(!omitirSup){ points.push({z:0,r:0}); }
+  anillosOrdenados.forEach(an=>{
+    points.push({z:an.z, r:an.valor});
+    anilloMarksZ.push(an.z);
+  });
+  if(!omitirInf && anillosOrdenados.length>0){
+    const zInf = anillosOrdenados[anillosOrdenados.length-1].z + altoInf;
+    points.push({z:zInf, r:0});
+  }
+  const H = points.length? points[points.length-1].z : 0;
+  const capSupSegIdx = !omitirSup ? 0 : -1;
+  const capInfSegIdx = !omitirInf ? points.length-2 : -1;
+  const tangents = computeTangents(points);
+  if(capSupSegIdx===0 && cierreSupSuave) tangents[1]=0;
+  if(capInfSegIdx===points.length-2 && capInfSegIdx>=0 && cierreInfSuave) tangents[capInfSegIdx]=0;
+
+  function valorEn(zq){
+    if(points.length===0) return 0;
+    if(points.length===1) return points[0].r;
+    if(zq<=points[0].z) return Math.max(0,points[0].r);
+    if(zq>=points[points.length-1].z) return Math.max(0,points[points.length-1].r);
+    let idx=0;
+    for(let k=0;k<points.length-1;k++){ if(zq>=points[k].z && zq<=points[k+1].z){idx=k;break;} }
+    const p0=points[idx], p1=points[idx+1];
+    const span=p1.z-p0.z; const t=span>0?(zq-p0.z)/span:0;
+    if(idx===capSupSegIdx && cierreSupSuave) return Math.max(0, domeSegment(p0.r,p1.r,t,true));
+    if(idx===capInfSegIdx && cierreInfSuave) return Math.max(0, domeSegment(p0.r,p1.r,t,false));
+    if(interp==='recta') return Math.max(0, p0.r+(p1.r-p0.r)*t);
+    return Math.max(0, hermite(p0.r,p1.r,tangents[idx],tangents[idx+1],span,t));
+  }
+  return {H, valorEn, points, anilloMarksZ};
+}
+
+// ============================================================
+// UI: tres instancias del panel Libre (prefijo 'A' = Ancho/Frente,
+// 'F' = Frente/Lado, 'B' = Atrás/Lado). Mismas funciones para las 3.
+// ============================================================
+function panelLibreHTML(prefijo, defaults){
+  return `
+    <div class="field field-wide">
+      <label>Curva: Recta/Suave</label>
+      <select id="interp-${prefijo}">
+        <option value="recta">Recta</option>
+        <option value="curva" selected>Curva suave</option>
+      </select>
+    </div>
+    <div class="field"><label>Omitir remate superior</label><input type="checkbox" id="omitirSup-${prefijo}"></div>
+    <div class="field"><label>Omitir remate inferior</label><input type="checkbox" id="omitirInf-${prefijo}"></div>
+    <div class="field" id="cierreSupWrap-${prefijo}"><label>Cierre superior suave</label><input type="checkbox" id="cierreSup-${prefijo}" checked></div>
+    <div class="field" id="cierreInfWrap-${prefijo}"><label>Cierre inferior suave</label><input type="checkbox" id="cierreInf-${prefijo}" checked></div>
+    <div class="anillo-header"><span class="ring-num"></span><span class="col-label">Altura (Z)</span><span class="col-label">Valor</span><span></span></div>
+    <div id="anillosWrap-${prefijo}"></div>
+    <button class="preset" type="button" id="btnAdd-${prefijo}">+ Agregar anillo</button>
+    <div class="field" id="altoInfWrap-${prefijo}" style="margin-top:14px;"><label>Alto inferior \u2014 hueco al remate (cm)</label><input type="number" id="altoInf-${prefijo}" value="${defaults.altoInf}" min="0.1" max="999" step="0.5"></div>
+  `;
+}
+document.getElementById('panelA').innerHTML = panelLibreHTML('A', {altoInf:9});
+document.getElementById('panelF').innerHTML = panelLibreHTML('F', {altoInf:9});
+document.getElementById('panelB').innerHTML = panelLibreHTML('B', {altoInf:9});
+
+// Cada anillo guarda su ALTURA REAL (Z, absoluta desde el remate superior
+// o desde 0 si no hay remate) y su Valor -- ya no una "distancia al
+// siguiente". Esto permite insertar un anillo en cualquier posici\u00f3n sin
+// tener que recalcular los vecinos, y es lo que habilita el punto 2
+// (agregar anillo con un clic en la posici\u00f3n exacta).
+// ============================================================
+// Deshacer (Ctrl+Z): captura el estado completo (los 3 perfiles, sus
+// remates/curva/reparto, segmentos y la altura bloqueada) ANTES de cada
+// edici\u00f3n confirmada -- no en cada tecla, sino al empezar a tocar un
+// campo (foco), al empezar un arrastre (mousedown), o antes de agregar
+// /quitar un anillo. Deshacer restaura ese snapshot completo.
+// ============================================================
+let historialUndo = [];
+const MAX_UNDO = 60;
+let restaurandoUndo = false;
+
+function capturarEstado(){
+  const estado = {
+    segmentos: document.getElementById('segmentos').value,
+    repartoDerecha: document.getElementById('repartoDerecha').value,
+    alturaBloqueada,
+    perfiles: {}
+  };
+  ['A','F','B'].forEach(p=>{
+    estado.perfiles[p] = {
+      interp: document.getElementById('interp-'+p).value,
+      omitirSup: document.getElementById('omitirSup-'+p).checked,
+      omitirInf: document.getElementById('omitirInf-'+p).checked,
+      cierreSup: document.getElementById('cierreSup-'+p).checked,
+      cierreInf: document.getElementById('cierreInf-'+p).checked,
+      altoInf: document.getElementById('altoInf-'+p).value,
+      anillos: Array.from(document.querySelectorAll('#anillosWrap-'+p+' .anillo-row')).map(r=>({
+        z: r.querySelector('.val-z').value, valor: r.querySelector('.val-valor').value
+      }))
+    };
+  });
+  return estado;
+}
+
+function guardarEstadoUndo(){
+  if(restaurandoUndo) return;
+  historialUndo.push(capturarEstado());
+  if(historialUndo.length>MAX_UNDO) historialUndo.shift();
+}
+
+function restaurarEstado(estado){
+  document.getElementById('segmentos').value = estado.segmentos;
+  document.getElementById('repartoDerecha').value = estado.repartoDerecha;
+  alturaBloqueada = estado.alturaBloqueada;
+  ['A','F','B'].forEach(p=>{
+    const d = estado.perfiles[p];
+    document.getElementById('interp-'+p).value = d.interp;
+    document.getElementById('omitirSup-'+p).checked = d.omitirSup;
+    document.getElementById('omitirInf-'+p).checked = d.omitirInf;
+    document.getElementById('cierreSup-'+p).checked = d.cierreSup;
+    document.getElementById('cierreInf-'+p).checked = d.cierreInf;
+    document.getElementById('altoInf-'+p).value = d.altoInf;
+    document.getElementById('anillosWrap-'+p).innerHTML = '';
+    d.anillos.forEach(a => agregarAnilloRow(p, a.z, a.valor));
+    actualizarRemates(p);
+  });
+}
+
+function deshacer(){
+  if(historialUndo.length===0) return;
+  restaurandoUndo = true;
+  const anterior = historialUndo.pop();
+  restaurarEstado(anterior);
+  restaurandoUndo = false;
+  generate();
+}
+window.addEventListener('keydown', (e) => {
+  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key.toLowerCase()==='z'){
+    e.preventDefault();
+    deshacer();
+  }
+});
+
+function agregarAnilloRow(prefijo, z, valor){
+  const wrap = document.getElementById('anillosWrap-'+prefijo);
+  const row = document.createElement('div');
+  row.className = 'anillo-row';
+  row.innerHTML =
+    '<span class="ring-num"></span>' +
+    '<input type="number" class="val-z" value="'+z+'" min="0" max="999" step="0.5">' +
+    '<input type="number" class="val-valor" value="'+valor+'" min="0.1" max="999" step="0.5">' +
+    '<button type="button" class="ring-remove">\u00d7</button>';
+  wrap.appendChild(row);
+  row.querySelector('.val-z').addEventListener('focus', guardarEstadoUndo);
+  row.querySelector('.val-valor').addEventListener('focus', guardarEstadoUndo);
+  row.querySelector('.val-z').addEventListener('input', generate);
+  row.querySelector('.val-valor').addEventListener('input', generate);
+  row.querySelector('.ring-remove').addEventListener('click', () => {
+    if(document.querySelectorAll('#anillosWrap-'+prefijo+' .anillo-row').length<=1) return;
+    guardarEstadoUndo();
+    row.remove();
+    renumerarAnillos(prefijo);
+    generate();
+  });
+  renumerarAnillos(prefijo);
+}
+function renumerarAnillos(prefijo){
+  document.querySelectorAll('#anillosWrap-'+prefijo+' .anillo-row').forEach((row,i)=>{
+    row.querySelector('.ring-num').textContent = 'Anillo '+(i+1);
+  });
+}
+function actualizarRemates(prefijo){
+  const omitirSup = document.getElementById('omitirSup-'+prefijo).checked;
+  const omitirInf = document.getElementById('omitirInf-'+prefijo).checked;
+  document.getElementById('cierreSupWrap-'+prefijo).classList.toggle('hidden', omitirSup);
+  document.getElementById('cierreInfWrap-'+prefijo).classList.toggle('hidden', omitirInf);
+  document.getElementById('altoInfWrap-'+prefijo).classList.toggle('hidden', omitirInf);
+}
+function leerPerfil(prefijo){
+  const anillos = Array.from(document.querySelectorAll('#anillosWrap-'+prefijo+' .anillo-row')).map(row => ({
+    z: parseFloat(row.querySelector('.val-z').value),
+    valor: parseFloat(row.querySelector('.val-valor').value)
+  }));
+  return construirPerfilLibre({
+    omitirSup: document.getElementById('omitirSup-'+prefijo).checked,
+    cierreSupSuave: document.getElementById('cierreSup-'+prefijo).checked,
+    anillos,
+    omitirInf: document.getElementById('omitirInf-'+prefijo).checked,
+    altoInf: parseFloat(document.getElementById('altoInf-'+prefijo).value)||0.1,
+    cierreInfSuave: document.getElementById('cierreInf-'+prefijo).checked,
+    interp: document.getElementById('interp-'+prefijo).value,
+  });
+}
+['A','F','B'].forEach(prefijo=>{
+  document.getElementById('btnAdd-'+prefijo).addEventListener('click', () => {
+    guardarEstadoUndo();
+    // agrega el nuevo anillo un poco despues del ultimo existente, como default razonable
+    const rows = document.querySelectorAll('#anillosWrap-'+prefijo+' .anillo-row');
+    const ultimoZ = rows.length ? parseFloat(rows[rows.length-1].querySelector('.val-z').value) : 0;
+    const ultimoValor = rows.length ? parseFloat(rows[rows.length-1].querySelector('.val-valor').value) : 10;
+    agregarAnilloRow(prefijo, ultimoZ+3, ultimoValor);
+    generate();
+  });
+  // mousedown (no 'change'): captura el estado ANTES de que el checkbox
+  // cambie -- 'change' dispara despues de que .checked ya se actualizo.
+  document.getElementById('omitirSup-'+prefijo).addEventListener('mousedown', guardarEstadoUndo);
+  document.getElementById('omitirInf-'+prefijo).addEventListener('mousedown', guardarEstadoUndo);
+  document.getElementById('cierreSup-'+prefijo).addEventListener('mousedown', guardarEstadoUndo);
+  document.getElementById('cierreInf-'+prefijo).addEventListener('mousedown', guardarEstadoUndo);
+  document.getElementById('interp-'+prefijo).addEventListener('mousedown', guardarEstadoUndo);
+  document.getElementById('altoInf-'+prefijo).addEventListener('focus', guardarEstadoUndo);
+
+  document.getElementById('omitirSup-'+prefijo).addEventListener('change', () => { actualizarRemates(prefijo); generate(); });
+  document.getElementById('omitirInf-'+prefijo).addEventListener('change', () => { actualizarRemates(prefijo); generate(); });
+  document.getElementById('cierreSup-'+prefijo).addEventListener('change', generate);
+  document.getElementById('cierreInf-'+prefijo).addEventListener('change', generate);
+  document.getElementById('interp-'+prefijo).addEventListener('change', generate);
+});
+document.getElementById('segmentos').addEventListener('focus', guardarEstadoUndo);
+document.getElementById('segmentos').addEventListener('input', generate);
+document.getElementById('repartoDerecha').addEventListener('focus', guardarEstadoUndo);
+document.getElementById('repartoDerecha').addEventListener('input', generate);
+
+// ============================================================
+// Escalado proporcional por instancia — misma técnica ya validada
+// en el generador original: snapshot fijo al capturar, escalar
+// siempre contra ESE snapshot (no contra el DOM ya modificado),
+// para evitar el escalado compuesto que deformaba la proporción.
+// Ya no hay campo "Alto general" por instancia visible — esto lo
+// invoca únicamente el control único "Altura General".
+// ============================================================
+let altoGeneralBaseline = {A:null, F:null, B:null};
+// Una vez que se fija un valor en "Altura General", queda como el objetivo
+// FIJO al que se resincronizan las 3 caras -- editar anillos despues ya no
+// puede correr ese total, solo el hueco al remate se ajusta para sostenerlo.
+let alturaBloqueada = null;
+function captureAltoGeneralBaseline(prefijo){
+  const profile = leerPerfil(prefijo);
+  if(!profile.H || profile.H<=0){ altoGeneralBaseline[prefijo]=null; return; }
+  const omitirInf = document.getElementById('omitirInf-'+prefijo).checked;
+  const rows = Array.from(document.querySelectorAll('#anillosWrap-'+prefijo+' .anillo-row'));
+  altoGeneralBaseline[prefijo] = {
+    H: profile.H,
+    altoInf: omitirInf ? null : parseFloat(document.getElementById('altoInf-'+prefijo).value),
+    anillos: rows.map(r=>({z:parseFloat(r.querySelector('.val-z').value), valor:parseFloat(r.querySelector('.val-valor').value)}))
+  };
+}
+function applyAltoGeneralTo(prefijo, target){
+  if(!target || target<=0) return;
+  if(!altoGeneralBaseline[prefijo]) captureAltoGeneralBaseline(prefijo);
+  if(!altoGeneralBaseline[prefijo]) return;
+  const b = altoGeneralBaseline[prefijo];
+  const factor = target/b.H;
+  if(b.altoInf!=null) document.getElementById('altoInf-'+prefijo).value = Math.max(0.1, +(b.altoInf*factor).toFixed(4));
+  const rows = document.querySelectorAll('#anillosWrap-'+prefijo+' .anillo-row');
+  rows.forEach((row,i)=>{
+    const base = b.anillos[i];
+    if(!base) return;
+    row.querySelector('.val-z').value = Math.max(0, +(base.z*factor).toFixed(4));
+    row.querySelector('.val-valor').value = Math.max(0.1, +(base.valor*factor).toFixed(4));
+  });
+}
+
+// Altura General ÚNICA: aplica el mismo mecanismo de snapshot a las 3
+// instancias a la vez, cada una escalada contra SU PROPIO alto base
+// (no un factor compartido) -- asi las 3 terminan exactas en el
+// mismo alto objetivo aunque hubieran arrancado en alturas distintas.
+function captureAltoGeneralGlobalBaseline(){
+  ['A','F','B'].forEach(p => { if(!altoGeneralBaseline[p]) captureAltoGeneralBaseline(p); });
+}
+function applyAltoGeneralGlobal(){
+  const target = parseFloat(document.getElementById('altoGeneralGlobal').value);
+  if(!target || target<=0) return;
+  captureAltoGeneralGlobalBaseline();
+  ['A','F','B'].forEach(p=>{
+    applyAltoGeneralTo(p, target);
+  });
+  alturaBloqueada = target;
+  generate();
+}
+document.getElementById('altoGeneralGlobal').addEventListener('focus', () => { guardarEstadoUndo(); captureAltoGeneralGlobalBaseline(); });
+document.getElementById('altoGeneralGlobal').addEventListener('input', applyAltoGeneralGlobal);
+document.getElementById('altoGeneralGlobal').addEventListener('blur', () => {
+  altoGeneralBaseline.A = null; altoGeneralBaseline.F = null; altoGeneralBaseline.B = null;
+});
+
+// ============================================================
+// Generación y render. generate() es LIVIANA (solo la vista previa,
+// se llama en cada edición y en cada frame de arrastre). El recorte
+// de gajos (pesado: N meridianos completos + tramos + empaquetado
+// en hojas) queda en generarPaginas(), que solo corre al apretar el
+// botón — así arrastrar/editar no dispara ese cálculo en cada frame.
+// ============================================================
+function leerTodosLosPerfiles(){
+  const warnEl = document.getElementById('warn');
+  const N = parseInt(document.getElementById('segmentos').value)||0;
+  if(N<4){ warnEl.textContent = 'Segmentos: m\u00ednimo 4.'; return null; }
+  const repD = (parseFloat(document.getElementById('repartoDerecha').value)||50)/100;
+
+  for(const p of ['A','F','B']){
+    if(document.querySelectorAll('#anillosWrap-'+p+' .anillo-row').length<1){
+      warnEl.textContent = 'Cada perfil necesita al menos 1 anillo.'; return null;
+    }
+  }
+  let anchoProfile, frenteProfile, atrasProfile;
+  try { anchoProfile = leerPerfil('A'); frenteProfile = leerPerfil('F'); atrasProfile = leerPerfil('B'); }
+  catch(e){ warnEl.textContent = 'Error en los perfiles: '+e.message; return null; }
+  if(anchoProfile.H<=0 || frenteProfile.H<=0 || atrasProfile.H<=0){ warnEl.textContent = 'Revis\u00e1 los perfiles \u2014 alguno da altura 0.'; return null; }
+  return {N, repD, anchoProfile, frenteProfile, atrasProfile};
+}
+
+// Ajusta SOLO "Alto inferior" (nunca el Z ni el Valor de un anillo) de las
+// caras mas cortas, estirando su hueco al remate hasta igualar a la mas
+// larga (o contra "Altura General" si el usuario la fijo, ver
+// alturaBloqueada) -- asi las 3 cierran en curva a la misma altura, sin
+// cortarse filoso, y sin mover nada que el usuario haya posicionado a mano.
+function resincronizarAlturasAuto(perfiles){
+  const Hs = {A:perfiles.anchoProfile.H, F:perfiles.frenteProfile.H, B:perfiles.atrasProfile.H};
+  const target = alturaBloqueada!=null ? alturaBloqueada : Math.max(Hs.A, Hs.F, Hs.B);
+  const ajustes = [];
+  const excesos = [];
+  const nombres = {A:'Ancho', F:'Frente', B:'Atr\u00e1s'};
+  ['A','F','B'].forEach(p=>{
+    if(Math.abs(target - Hs[p]) <= 0.01) return;
+    const altoInfEl = document.getElementById('altoInf-'+p);
+    if(document.activeElement === altoInfEl) return; // no pisar mientras el usuario tipea ahi
+    const rows = document.querySelectorAll('#anillosWrap-'+p+' .anillo-row');
+    if(rows.length===0) return;
+    let maxZ = -Infinity;
+    rows.forEach(r=>{ const z=parseFloat(r.querySelector('.val-z').value); if(z>maxZ) maxZ=z; });
+    const nuevoAltoInf = target - maxZ;
+    if(nuevoAltoInf > 0.05){
+      ajustes.push(nombres[p]+' ('+parseFloat(altoInfEl.value).toFixed(2)+'\u2192'+nuevoAltoInf.toFixed(2)+'cm)');
+      altoInfEl.value = nuevoAltoInf.toFixed(2);
+    } else if(alturaBloqueada!=null){
+      // el anillo mas bajo de esta cara ya sobrepasa la Altura General
+      // fijada -- no se puede cerrar en el hueco disponible sin mover el
+      // anillo (que a proposito nunca se toca).
+      excesos.push(nombres[p]);
+    }
+  });
+  return {ajustes, excesos};
+}
+
+function generate(){
+  const warnEl = document.getElementById('warn');
+  warnEl.textContent = '';
+  let datos = leerTodosLosPerfiles();
+  if(!datos) return;
+
+  const {ajustes, excesos} = resincronizarAlturasAuto(datos);
+  if(ajustes.length){
+    datos = leerTodosLosPerfiles(); // releer con el Alto inferior ya ajustado
+    if(!datos) return;
+    warnEl.textContent = 'Alto inferior ajustado autom\u00e1ticamente para cerrar sin corte: '+ajustes.join(', ')+'.';
+    warnEl.style.color = 'var(--muted)';
+  } else if(excesos.length){
+    warnEl.textContent = 'El \u00faltimo anillo de '+excesos.join(' y ')+' ya supera la Altura General fijada ('+alturaBloqueada.toFixed(2)+'cm) \u2014 no se puede cerrar sin mover ese anillo.';
+    warnEl.style.color = '';
+  } else {
+    warnEl.style.color = '';
+  }
+
+  const {N, repD, anchoProfile, frenteProfile, atrasProfile} = datos;
+  const H = Math.min(anchoProfile.H, frenteProfile.H, atrasProfile.H);
+
+  const elGlobal = document.getElementById('altoGeneralGlobal');
+  if(document.activeElement !== elGlobal){ elGlobal.value = anchoProfile.H.toFixed(2); }
+
+  let wrap = document.getElementById('canvasWrap');
+  let previewsRow = document.getElementById('previewsRow');
+  if(!previewsRow){
+    previewsRow = document.createElement('div'); previewsRow.id='previewsRow';
+    wrap.insertBefore(previewsRow, wrap.firstChild);
+  } else {
+    previewsRow.innerHTML = '';
+  }
+  renderPreviews(anchoProfile, frenteProfile, atrasProfile, repD, H, N, previewsRow);
+
+  // Las hojas de la vez anterior quedan obsoletas apenas cambia algo --
+  // se avisa en vez de dejarlas mostrando datos viejos.
+  let hojasGrid = document.getElementById('hojasGrid');
+  if(!hojasGrid){ hojasGrid = document.createElement('div'); hojasGrid.id='hojasGrid'; wrap.appendChild(hojasGrid); }
+  hojasGrid.innerHTML = '<div class="paginas-pendientes">Las hojas de impresi\u00f3n no reflejan el \u00faltimo cambio. Preson\u00e1 "Generar P\u00e1ginas" para actualizarlas.</div>';
+  document.getElementById('stats').innerHTML = '';
+}
+
+function generarPaginas(){
+  const warnEl = document.getElementById('warn');
+  warnEl.textContent = '';
+  const datos = leerTodosLosPerfiles();
+  if(!datos) return;
+  const {N, repD, anchoProfile, frenteProfile, atrasProfile} = datos;
+
+  let modelo;
+  try { modelo = construirGajos(anchoProfile, frenteProfile, atrasProfile, repD, N, 50, 100); }
+  catch(e){ warnEl.textContent = 'Error generando los gajos: '+e.message; return; }
+
+  const wrap = document.getElementById('canvasWrap');
+  let hojasGrid = document.getElementById('hojasGrid');
+  if(!hojasGrid){ hojasGrid = document.createElement('div'); hojasGrid.id='hojasGrid'; wrap.appendChild(hojasGrid); }
+  hojasGrid.innerHTML = '';
+  renderGajos(modelo.gajos, N, hojasGrid, anchoProfile, frenteProfile, atrasProfile);
+  renderStats(modelo, N, anchoProfile, frenteProfile, atrasProfile, repD);
+}
+document.getElementById('btnGenerarPaginas').addEventListener('click', generarPaginas);
+
+// Inserta un anillo en el perfil `prefijo` a la altura `zClick`, con un
+// valor por defecto interpolado de la curva actual en ese punto (para no
+// deformar la figura hasta que el usuario lo ajuste). Separada de la
+// traducción de coordenadas del mouse para poder probarla sin simular clics.
+function agregarAnilloDesdeClick(prefijo, zClick){
+  const warnEl = document.getElementById('warn');
+  let perfil;
+  try { perfil = leerPerfil(prefijo); } catch(e){ return; }
+  if(!(perfil.H>0) || !(zClick>0.1) || !(zClick<perfil.H-0.1)){
+    warnEl.textContent = 'Clic fuera de la zona editable (muy cerca de un remate).';
+    return;
+  }
+  const valorDefault = perfil.valorEn(zClick);
+  guardarEstadoUndo();
+  agregarAnilloRow(prefijo, +zClick.toFixed(2), +valorDefault.toFixed(2));
+  warnEl.textContent = '';
+  generate();
+}
+
+// Arrastre de un anillo: vertical (dy) cambia su altura Z, horizontal (dx)
+// cambia su valor (ancho). `sensibilidad` convierte el desplazamiento local
+// (ya en cm, tras dividir por sc) a delta de "valor" -- para el Perfil de
+// Ancho el valor real es el diametro completo pero en pantalla solo se ve
+// la mitad (der = valor*repartoDerecha), asi que hay que dividir por ese
+// reparto para que el arrastre mueva la cantidad que el dedo/mouse espera.
+// `signo` invierte la direccion cuando el lado dibujado en pantalla es el
+// negativo del valor (el lado "Atras", que se dibuja como -atras).
+// Solo actualiza los inputs + repinta la vista previa (liviana) en cada
+// frame -- el recorte de gajos no se toca hasta "Generar P\u00e1ginas".
+function iniciarArrastreAnillo(handle, row, sc, sensibilidad, signo){
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    guardarEstadoUndo();
+    const zInput = row.querySelector('.val-z'), valorInput = row.querySelector('.val-valor');
+    const zIni = parseFloat(zInput.value), valorIni = parseFloat(valorInput.value);
+    const mx0=e.clientX, my0=e.clientY;
+    let frame=null;
+    function onMove(ev){
+      const dx=ev.clientX-mx0, dy=ev.clientY-my0;
+      zInput.value = Math.max(0.01, zIni + dy/sc).toFixed(2);
+      valorInput.value = Math.max(0.1, valorIni + signo*(dx/sc)/sensibilidad).toFixed(2);
+      if(!frame){ frame = requestAnimationFrame(()=>{ frame=null; generate(); }); }
+    }
+    function onUp(){ window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+}
+
+function renderPreviews(anchoProfile, frenteProfile, atrasProfile, repD, H, N, wrap){
+  const samplesZ = 60;
+  const nLineasGuia = 6;
+
+  function crearSvgBox(titulo, w, h, colorClass){
+    const holder = document.createElement('div');
+    holder.className='preview-box'+(colorClass?' '+colorClass:'');
+    holder.innerHTML = '<div class="page-tag">'+titulo+'</div>';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('width',w); svg.setAttribute('height',h); svg.setAttribute('viewBox','0 0 '+w+' '+h);
+    holder.appendChild(svg); wrap.appendChild(holder);
+    return svg;
+  }
+  function linea(svg, x1,y1,x2,y2,cls){
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',x1.toFixed(1)); l.setAttribute('y1',y1.toFixed(1));
+    l.setAttribute('x2',x2.toFixed(1)); l.setAttribute('y2',y2.toFixed(1));
+    l.setAttribute('class',cls); svg.appendChild(l);
+  }
+
+  // ---- Frente: envolvente izq/der (phi=0 y phi=180) + meridianos + guias ----
+  {
+    const w=200,h=220,pad=18;
+    let maxDer=0, maxIzq=0; const filas=[];
+    for(let i=0;i<=samplesZ;i++){
+      const z=H*i/samplesZ;
+      const der=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,0);
+      const izq=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,Math.PI);
+      maxDer=Math.max(maxDer,der); maxIzq=Math.max(maxIzq,izq); filas.push({z,der,izq});
+    }
+    const spanTotal = maxDer+maxIzq;
+    const sc=Math.min((w-2*pad)/(spanTotal||1),(h-2*pad)/(H||1));
+    const centroLocal = (maxDer-maxIzq)/2; // punto medio real del rango [-maxIzq, +maxDer]
+    const svg=crearSvgBox('Vista previa \u2014 Frente', w, h, 'preview-box-blue');
+    const cx=w/2;
+    const sx = (valorLocal) => cx + (valorLocal - centroLocal)*sc;
+    linea(svg, sx(0),pad, sx(0),pad+H*sc, 'preview-axis');
+    // silueta primero (rellena) para que las lineas de abajo se dibujen ENCIMA
+    let dR='',dL='';
+    filas.forEach((f,i)=>{
+      const y=pad+f.z*sc;
+      dR += (i===0?'M':'L')+sx(f.der).toFixed(1)+','+y.toFixed(1)+' ';
+      dL = (i===0?'':'L')+sx(-f.izq).toFixed(1)+','+y.toFixed(1)+' '+dL;
+    });
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', dR+dL+' Z'); path.setAttribute('class','preview-silhouette');
+    svg.appendChild(path);
+    // meridianos: los N bordes de gajo, proyectados en X (r*cos phi)
+    for(let k=0;k<N;k++){
+      const phi=k*2*Math.PI/N; let d='';
+      for(let i=0;i<=samplesZ;i++){
+        const z=H*i/samplesZ;
+        const x=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,phi)*Math.cos(phi);
+        d += (i===0?'M':'L')+sx(x).toFixed(1)+','+(pad+z*sc).toFixed(1)+' ';
+      }
+      const m=document.createElementNS('http://www.w3.org/2000/svg','path');
+      m.setAttribute('d',d); m.setAttribute('class','preview-meridian'); svg.appendChild(m);
+    }
+    // lineas guia rojas
+    for(let i=1;i<nLineasGuia;i++){
+      const z=H*i/nLineasGuia;
+      const der=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,0);
+      const izq=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,Math.PI);
+      linea(svg, sx(-izq), pad+z*sc, sx(der), pad+z*sc, 'preview-ring');
+    }
+    // marcas verdes: anillos reales del perfil de Ancho
+    (anchoProfile.anilloMarksZ||[]).forEach(z=>{
+      if(z<0||z>H) return;
+      const der=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,0);
+      const izq=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,Math.PI);
+      linea(svg, sx(-izq), pad+z*sc, sx(der), pad+z*sc, 'preview-anillo-mark');
+    });
+    // handles arrastrables: uno por cada anillo real de Ancho
+    Array.from(document.querySelectorAll('#anillosWrap-A .anillo-row')).forEach(row=>{
+      const zRow = parseFloat(row.querySelector('.val-z').value);
+      const valorRow = parseFloat(row.querySelector('.val-valor').value);
+      if(!(zRow>=0 && zRow<=H)) return;
+      const derRow = valorRow*repD;
+      const handle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      handle.setAttribute('cx',sx(derRow).toFixed(1)); handle.setAttribute('cy',(pad+zRow*sc).toFixed(1));
+      handle.setAttribute('r',4.5); handle.setAttribute('class','anillo-handle');
+      svg.appendChild(handle);
+      iniciarArrastreAnillo(handle, row, sc, Math.max(0.02, repD), +1);
+    });
+    // clic izquierdo (fuera de un handle): agrega un anillo al Perfil de Ancho en la altura clickeada
+    svg.style.cursor = 'crosshair';
+    svg.addEventListener('click', (e) => {
+      if(e.target.classList.contains('anillo-handle')) return;
+      const pt = svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const ctm = svg.getScreenCTM(); if(!ctm) return;
+      const loc = pt.matrixTransform(ctm.inverse());
+      agregarAnilloDesdeClick('A', (loc.y-pad)/sc);
+    });
+  }
+
+  // ---- Lado: envolvente frente/atras (phi=90 y phi=270) + meridianos + guias ----
+  {
+    const w=200,h=220,pad=18;
+    let maxFrente=0, maxAtras=0; const filas=[];
+    for(let i=0;i<=samplesZ;i++){
+      const z=H*i/samplesZ;
+      const frente=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,Math.PI/2);
+      const atras=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,3*Math.PI/2);
+      maxFrente=Math.max(maxFrente,frente); maxAtras=Math.max(maxAtras,atras); filas.push({z,frente,atras});
+    }
+    const spanTotal = maxFrente+maxAtras;
+    const sc=Math.min((w-2*pad)/(spanTotal||1),(h-2*pad)/(H||1));
+    const centroLocal = (maxFrente-maxAtras)/2;
+    const svg=crearSvgBox('Vista previa \u2014 Lado', w, h, 'preview-box-orange');
+    const cx=w/2;
+    const sx = (valorLocal) => cx + (valorLocal - centroLocal)*sc;
+    linea(svg, sx(0),pad, sx(0),pad+H*sc, 'preview-axis');
+    let dR='',dL='';
+    filas.forEach((f,i)=>{
+      const y=pad+f.z*sc;
+      dR += (i===0?'M':'L')+sx(f.frente).toFixed(1)+','+y.toFixed(1)+' ';
+      dL = (i===0?'':'L')+sx(-f.atras).toFixed(1)+','+y.toFixed(1)+' '+dL;
+    });
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', dR+dL+' Z'); path.setAttribute('class','preview-silhouette');
+    svg.appendChild(path);
+    for(let k=0;k<N;k++){
+      const phi=k*2*Math.PI/N; let d='';
+      for(let i=0;i<=samplesZ;i++){
+        const z=H*i/samplesZ;
+        const y2=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,phi)*Math.sin(phi);
+        d += (i===0?'M':'L')+sx(y2).toFixed(1)+','+(pad+z*sc).toFixed(1)+' ';
+      }
+      const m=document.createElementNS('http://www.w3.org/2000/svg','path');
+      m.setAttribute('d',d); m.setAttribute('class','preview-meridian'); svg.appendChild(m);
+    }
+    for(let i=1;i<nLineasGuia;i++){
+      const z=H*i/nLineasGuia;
+      const frente=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,Math.PI/2);
+      const atras=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,3*Math.PI/2);
+      linea(svg, sx(-atras), pad+z*sc, sx(frente), pad+z*sc, 'preview-ring');
+    }
+    ([...(frenteProfile.anilloMarksZ||[]), ...(atrasProfile.anilloMarksZ||[])]).forEach(z=>{
+      if(z<0||z>H) return;
+      const frente=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,Math.PI/2);
+      const atras=radioEnAltura(z,anchoProfile,frenteProfile,atrasProfile,repD,3*Math.PI/2);
+      linea(svg, sx(-atras), pad+z*sc, sx(frente), pad+z*sc, 'preview-anillo-mark');
+    });
+    // handles arrastrables: anillos de Frente (lado derecho) y de Atras (lado izq)
+    Array.from(document.querySelectorAll('#anillosWrap-F .anillo-row')).forEach(row=>{
+      const zRow = parseFloat(row.querySelector('.val-z').value);
+      const valorRow = parseFloat(row.querySelector('.val-valor').value);
+      if(!(zRow>=0 && zRow<=H)) return;
+      const handle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      handle.setAttribute('cx',sx(valorRow).toFixed(1)); handle.setAttribute('cy',(pad+zRow*sc).toFixed(1));
+      handle.setAttribute('r',4.5); handle.setAttribute('class','anillo-handle');
+      svg.appendChild(handle);
+      iniciarArrastreAnillo(handle, row, sc, 1, +1);
+    });
+    Array.from(document.querySelectorAll('#anillosWrap-B .anillo-row')).forEach(row=>{
+      const zRow = parseFloat(row.querySelector('.val-z').value);
+      const valorRow = parseFloat(row.querySelector('.val-valor').value);
+      if(!(zRow>=0 && zRow<=H)) return;
+      const handle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      handle.setAttribute('cx',sx(-valorRow).toFixed(1)); handle.setAttribute('cy',(pad+zRow*sc).toFixed(1));
+      handle.setAttribute('r',4.5); handle.setAttribute('class','anillo-handle');
+      svg.appendChild(handle);
+      iniciarArrastreAnillo(handle, row, sc, 1, -1);
+    });
+    // clic izquierdo (fuera de un handle): agrega un anillo a Frente o Atras
+    // segun de que lado del eje central cayo el clic
+    svg.style.cursor = 'crosshair';
+    svg.addEventListener('click', (e) => {
+      if(e.target.classList.contains('anillo-handle')) return;
+      const pt = svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const ctm = svg.getScreenCTM(); if(!ctm) return;
+      const loc = pt.matrixTransform(ctm.inverse());
+      const prefijo = loc.x >= sx(0) ? 'F' : 'B';
+      agregarAnilloDesdeClick(prefijo, (loc.y-pad)/sc);
+    });
+  }
+
+  // ---- Arriba: silueta a la altura mas ancha + radios de cada gajo ----
+  {
+    let zArriba=0, maxAncho=-Infinity;
+    for(let i=0;i<=samplesZ;i++){ const z=H*i/samplesZ; const a=anchoProfile.valorEn(z); if(a>maxAncho){maxAncho=a; zArriba=z;} }
+    const w=200,h=200,pad=18;
+    const pts=[];
+    for(let i=0;i<=200;i++){
+      const phi=(i/200)*2*Math.PI;
+      const r=radioEnAltura(zArriba,anchoProfile,frenteProfile,atrasProfile,repD,phi);
+      pts.push({x:r*Math.cos(phi), y:r*Math.sin(phi)});
+    }
+    const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+    const minX=Math.min(...xs), maxX=Math.max(...xs);
+    const minY=Math.min(...ys), maxY=Math.max(...ys);
+    const midX=(minX+maxX)/2, midY=(minY+maxY)/2; // punto medio real, no el origen 0,0
+    const extX=maxX-minX, extY=maxY-minY;
+    const sc=Math.min((w-2*pad)/(extX||1),(h-2*pad)/(extY||1));
+    const svg=crearSvgBox('Vista previa \u2014 Arriba', w, h);
+    const cx=w/2, cy=h/2;
+    const sx = (lx) => cx + (lx-midX)*sc;
+    const sy = (ly) => cy - (ly-midY)*sc;
+    const d='M '+pts.map(p=>sx(p.x).toFixed(1)+','+sy(p.y).toFixed(1)).join(' L ')+' Z';
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d); path.setAttribute('class','preview-silhouette');
+    svg.appendChild(path);
+    // radios de cada gajo (desde el eje central real -> borde), encima de la silueta
+    for(let k=0;k<N;k++){
+      const phi=k*2*Math.PI/N;
+      const r=radioEnAltura(zArriba,anchoProfile,frenteProfile,atrasProfile,repD,phi);
+      linea(svg, sx(0), sy(0), sx(r*Math.cos(phi)), sy(r*Math.sin(phi)), 'preview-meridian');
+    }
+  }
+}
+
+const PAGE_MM = {w:215.9, h:279.4}; // carta
+const MARGIN_MM = 10;
+const CM = 10;
+const GAP_COLUMNAS_MM = 6; // separacion horizontal entre piezas de una misma fila
+const GAP_FILAS_MM = 4;    // separacion vertical entre filas (estantes) de una misma hoja
+const PAD_TOP_MM = 6;      // espacio reservado ARRIBA de cada pieza (texto de empalme)
+const PAD_BOTTOM_MM = 12;  // espacio reservado ABAJO de cada pieza (empalme + etiqueta "Pieza")
+const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+// Divide un gajo en "tramos" por FILA (Z), no por longitud de arco, para que
+// el corte caiga en la misma altura real en ambos bordes. Un tramo nuevo
+// arranca donde el anterior corta, así siguen conectados.
+function dividirEnTramos(g, usableColH){
+  const tramos = [];
+  let inicio = 0;
+  let vIzqBase = g.filas[0].vIzq, vDerBase = g.filas[0].vDer;
+  for(let j=1;j<g.filas.length;j++){
+    const hIzq = g.filas[j].vIzq - vIzqBase;
+    const hDer = g.filas[j].vDer - vDerBase;
+    if(Math.max(hIzq,hDer) > usableColH && j-1>inicio){
+      tramos.push({inicio, fin:j-1});
+      inicio = j-1;
+      vIzqBase = g.filas[j-1].vIzq; vDerBase = g.filas[j-1].vDer;
+    }
+  }
+  tramos.push({inicio, fin:g.filas.length-1});
+  return tramos;
+}
+
+// Construye la lista PLANA de "piezas" (cada tramo de cada gajo = una
+// pieza) con sus dimensiones en mm ya calculadas, lista para empacar en
+// hojas SIN importar de que gajo viene cada una. gajoNum es 1-indexado
+// (Pieza 1A = gajo 1, tramo A) para que coincida con el rotulo pedido.
+function construirPiezas(gajos, N, usableW, usableH){
+  const piezas = [];
+  // El alto maximo por tramo debe dejarle lugar al padding (PAD_TOP +
+  // PAD_BOTTOM) que se le suma despues para las etiquetas -- si no, un
+  // tramo que llega justo al limite de la hoja se sale con el padding.
+  const alturaMaximaTramoCm = (usableH - PAD_TOP_MM - PAD_BOTTOM_MM) / CM;
+  gajos.forEach(g => {
+    const tramos = dividirEnTramos(g, alturaMaximaTramoCm);
+    tramos.forEach((t, idxT) => {
+      const filasT = g.filas.slice(t.inicio, t.fin+1);
+      const vIzqBase = filasT[0].vIzq, vDerBase = filasT[0].vDer;
+      let anchoMM = 0;
+      for(let j=t.inicio;j<=t.fin;j++) anchoMM = Math.max(anchoMM, g.filas[j].halfWidth*CM*2);
+      const altoMM = Math.max(filasT[filasT.length-1].vIzq-vIzqBase, filasT[filasT.length-1].vDer-vDerBase)*CM;
+      piezas.push({
+        gajoNum: g.k+1, gajoN: N,
+        idxT, tramosLength: tramos.length,
+        letra: LETRAS[idxT] || ('T'+idxT),
+        filasT, vIzqBase, vDerBase,
+        anchoMM, altoMM,
+        tooWide: anchoMM > usableW,
+        boxW: anchoMM,
+        boxH: altoMM + PAD_TOP_MM + PAD_BOTTOM_MM
+      });
+    });
+  });
+  return piezas;
+}
+
+// Empaqueta piezas de TODOS los gajos en hojas usando un algoritmo de
+// estanterias (shelf packing, orden por alto descendente = NFDH): llena
+// cada fila de izquierda a derecha mezclando piezas de cualquier gajo; si
+// una pieza no entra en el ancho restante, abre una fila nueva debajo (dos
+// o mas piezas bajitas/delgadas terminan compartiendo hoja); si tampoco hay
+// alto restante, recien ahi abre una hoja nueva. Nunca se reordena el
+// dibujo de una pieza en si -- solo su posicion en la hoja -- asi que nunca
+// se superponen.
+function empacarPiezas(piezas, usableW, usableH){
+  const ordenadas = piezas.slice().sort((a,b)=> b.boxH - a.boxH);
+  const hojas = [];
+  let hoja = null, shelfY = 0, shelfH = 0, shelfX = 0;
+
+  function nuevaHoja(){
+    hoja = { items: [] };
+    hojas.push(hoja);
+    shelfY = 0; shelfH = 0; shelfX = 0;
+  }
+
+  ordenadas.forEach(p => {
+    if(hoja===null) nuevaHoja();
+
+    const anchoNecesario = p.boxW + (shelfX>0 ? GAP_COLUMNAS_MM : 0);
+    const cabeEnFilaActual = shelfX===0 ? p.boxW<=usableW : (shelfX+anchoNecesario)<=usableW;
+    if(cabeEnFilaActual){
+      const x = shelfX + (shelfX>0?GAP_COLUMNAS_MM:0);
+      hoja.items.push({p, x, y: shelfY});
+      shelfX = x + p.boxW;
+      shelfH = Math.max(shelfH, p.boxH);
+      return;
+    }
+
+    const alturaSiFilaNueva = shelfY + shelfH + (shelfH>0?GAP_FILAS_MM:0) + p.boxH;
+    if(alturaSiFilaNueva <= usableH){
+      shelfY += shelfH + (shelfH>0?GAP_FILAS_MM:0);
+      shelfH = p.boxH; shelfX = 0;
+      hoja.items.push({p, x:0, y:shelfY});
+      shelfX = p.boxW;
+      return;
+    }
+
+    nuevaHoja();
+    shelfH = p.boxH;
+    hoja.items.push({p, x:0, y:0});
+    shelfX = p.boxW;
+  });
+
+  return hojas;
+}
+
+function renderHojas(hojas, wrap, lineasEcuador){
+  hojas.forEach((hoja, hojaIdx) => {
+    const holder=document.createElement('div');
+    holder.className='page';
+    const piezasLbl = hoja.items.map(it=>it.p.gajoNum+it.p.letra).join(', ');
+    holder.innerHTML='<div class="page-tag">Hoja '+(hojaIdx+1)+'/'+hojas.length+' \u2014 piezas '+piezasLbl+'</div>';
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','sheet-svg');
+    svg.setAttribute('viewBox','0 0 '+PAGE_MM.w+' '+PAGE_MM.h);
+
+    hoja.items.forEach(({p, x, y}) => {
+      const originX = MARGIN_MM + x + p.anchoMM/2;
+      const originY = MARGIN_MM + y + PAD_TOP_MM;
+      const filasT = p.filasT, vIzqBase = p.vIzqBase, vDerBase = p.vDerBase;
+      const alturaLocal = p.altoMM;
+
+      let dR='',dL='';
+      filasT.forEach((f,i)=>{
+        const yR=originY+(f.vDer-vDerBase)*CM, yL=originY+(f.vIzq-vIzqBase)*CM;
+        dR += (i===0?'M':'L')+(originX+f.halfWidth*CM).toFixed(2)+','+yR.toFixed(2)+' ';
+        dL = (i===0?'':'L')+(originX-f.halfWidth*CM).toFixed(2)+','+yL.toFixed(2)+' '+dL;
+      });
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', dR+dL+' Z'); path.setAttribute('class','gore-outline');
+      svg.appendChild(path);
+
+      const fold=document.createElementNS('http://www.w3.org/2000/svg','line');
+      fold.setAttribute('x1',originX); fold.setAttribute('x2',originX);
+      fold.setAttribute('y1',originY); fold.setAttribute('y2',originY+alturaLocal);
+      fold.setAttribute('class','fold-hint'); svg.appendChild(fold);
+
+      // 3 lineas ecuador (30/50/70% de la altura general), solo si esa
+      // altura real cae dentro de ESTA pieza.
+      lineasEcuador.forEach(({z:zLinea, etiqueta})=>{
+        if(zLinea < filasT[0].z || zLinea > filasT[filasT.length-1].z) return;
+        let j=0, mejorDist=Infinity;
+        filasT.forEach((f,idx)=>{ const dist=Math.abs(f.z-zLinea); if(dist<mejorDist){mejorDist=dist; j=idx;} });
+        const f = filasT[j];
+        const yR=originY+(f.vDer-vDerBase)*CM, yL=originY+(f.vIzq-vIzqBase)*CM;
+        const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',(originX-f.halfWidth*CM).toFixed(2)); line.setAttribute('x2',(originX+f.halfWidth*CM).toFixed(2));
+        line.setAttribute('y1',yL.toFixed(2)); line.setAttribute('y2',yR.toFixed(2));
+        line.setAttribute('class','ring-line'); svg.appendChild(line);
+        const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+        lbl.setAttribute('x',(originX+f.halfWidth*CM+1).toFixed(2)); lbl.setAttribute('y',((yL+yR)/2+1).toFixed(2));
+        lbl.setAttribute('class','label-txt'); lbl.textContent = etiqueta;
+        svg.appendChild(lbl);
+      });
+
+      // Marca de empalme: letra + ancho medido, en el corte de ARRIBA (si
+      // esta pieza no es la primera del gajo) y de ABAJO (si no es la
+      // ultima). El ancho es el mismo valor en ambos lados del corte por
+      // construccion -- se imprime para verificar con regla en papel.
+      if(p.idxT>0){
+        const anchoCorte = (filasT[0].halfWidth*2).toFixed(2);
+        const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
+        t1.setAttribute('x',originX); t1.setAttribute('y',originY-2);
+        t1.setAttribute('class','label-txt'); t1.setAttribute('text-anchor','middle');
+        t1.textContent = 'empalme '+LETRAS[p.idxT-1]+'\u2192'+LETRAS[p.idxT]+' (ancho '+anchoCorte+'cm)';
+        svg.appendChild(t1);
+      }
+      if(p.idxT<p.tramosLength-1){
+        const anchoCorte = (filasT[filasT.length-1].halfWidth*2).toFixed(2);
+        const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+        t2.setAttribute('x',originX); t2.setAttribute('y',originY+alturaLocal+4);
+        t2.setAttribute('class','label-txt'); t2.setAttribute('text-anchor','middle');
+        t2.textContent = 'empalme '+LETRAS[p.idxT]+'\u2192'+LETRAS[p.idxT+1]+' (ancho '+anchoCorte+'cm)';
+        svg.appendChild(t2);
+      }
+
+      // Etiqueta principal de la pieza: "Pieza {gajo}{letra}" -- ej. Pieza
+      // 1A, Pieza 2A, Pieza 1B... Esta es la referencia para armar, ya que
+      // las piezas de un mismo gajo pueden terminar en hojas distintas.
+      const pieceTag=document.createElementNS('http://www.w3.org/2000/svg','text');
+      pieceTag.setAttribute('x',originX);
+      pieceTag.setAttribute('y', originY+alturaLocal + (p.idxT<p.tramosLength-1 ? 9 : 5));
+      pieceTag.setAttribute('class','label-txt'); pieceTag.setAttribute('text-anchor','middle');
+      pieceTag.setAttribute('fill','#4fa3d1');
+      pieceTag.textContent = 'Pieza '+p.gajoNum+p.letra+' (gajo '+p.gajoNum+'/'+p.gajoN+(p.tramosLength>1?', tramo '+LETRAS[p.idxT]+' de '+p.tramosLength:'')+')';
+      svg.appendChild(pieceTag);
+
+      if(p.tooWide){
+        const warnTxt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        warnTxt.setAttribute('x',originX); warnTxt.setAttribute('y',originY-2-(p.idxT>0?4:0));
+        warnTxt.setAttribute('class','label-txt'); warnTxt.setAttribute('fill','#c0392b'); warnTxt.setAttribute('text-anchor','middle');
+        warnTxt.textContent = 'ADVERTENCIA: esta pieza es mas ancha que la hoja completa';
+        svg.appendChild(warnTxt);
+      }
+    });
+
+    holder.appendChild(svg);
+    wrap.appendChild(holder);
+  });
+}
+
+function renderGajos(gajos, N, wrap, anchoProfile, frenteProfile, atrasProfile){
+  const usableW = PAGE_MM.w - 2*MARGIN_MM;
+  const usableH = PAGE_MM.h - 2*MARGIN_MM;
+  // Lineas "ecuador": 3 alturas FIJAS (30/50/70% de la altura general de la
+  // figura completa, no de cada pieza) -- son las mismas 3 posiciones reales
+  // en todas las piezas, para poder alinearlas entre si al armar.
+  const H = Math.min(anchoProfile.H, frenteProfile.H, atrasProfile.H);
+  const lineasEcuador = [{z:H*0.3, etiqueta:'30%'}, {z:H*0.5, etiqueta:'50%'}, {z:H*0.7, etiqueta:'70%'}];
+
+  const piezas = construirPiezas(gajos, N, usableW, usableH);
+  const hojas = empacarPiezas(piezas, usableW, usableH);
+  renderHojas(hojas, wrap, lineasEcuador);
+}
+
+function renderStats(modelo, N, anchoProfile, frenteProfile, atrasProfile, repD){
+  let peorDescalce=0;
+  for(let k=0;k<modelo.gajos.length;k++){
+    const sig=(k+1)%modelo.gajos.length;
+    peorDescalce=Math.max(peorDescalce, Math.abs(modelo.gajos[k].alturaDer - modelo.gajos[sig].alturaIzq));
+  }
+  const Hs = [anchoProfile.H, frenteProfile.H, atrasProfile.H];
+  document.getElementById('stats').innerHTML =
+    'Alto usado (H): <b>'+modelo.H.toFixed(2)+' cm</b><br>'+
+    'Ancho(z) H=<b>'+anchoProfile.H.toFixed(2)+'</b>, Frente(z) H=<b>'+frenteProfile.H.toFixed(2)+'</b>, Atr\u00e1s(z) H=<b>'+atrasProfile.H.toFixed(2)+'</b>'+
+      (Math.max(...Hs)!==Math.min(...Hs) ? ' \u2014 se recort\u00f3 al menor' : '') + '<br>'+
+    'Gajos: <b>'+N+'</b><br>'+
+    'Alineaci\u00f3n izquierda-derecha: <b>'+(repD*100).toFixed(0)+'% derecha</b><br>'+
+    'Descalce entre costuras compartidas: <b>'+peorDescalce.toExponential(2)+'</b> (debe ser ~0)';
+}
+
+document.getElementById('btnSVG').addEventListener('click', () => {
+  const svgs = document.querySelectorAll('#canvasWrap .page svg.sheet-svg');
+  if(svgs.length===0){ document.getElementById('warn').textContent='No hay gajos generados todav\u00eda.'; return; }
+  const ser = new XMLSerializer();
+  svgs.forEach((svgEl,i)=>{
+    let src = '<?xml version="1.0" standalone="no"?>\n' + ser.serializeToString(svgEl);
+    const blob = new Blob([src], {type:'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='gajo_'+i+'.svg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+});
+document.getElementById('btnPrint').addEventListener('click', () => window.print());
+
+// ============================================================
+// Inicialización — valores por defecto fijos, con Altura General
+// bloqueada desde el arranque (est\u00e1tica, no cambia sola).
+// ============================================================
+agregarAnilloRow('A', 3.03, 8.44);
+agregarAnilloRow('A', 9.19, 10.1);
+document.getElementById('altoInf-A').value = 8.80;
+
+agregarAnilloRow('F', 2.93, 4.89);
+agregarAnilloRow('F', 8.80, 4.89);
+agregarAnilloRow('F', 14, 4.89);
+document.getElementById('altoInf-F').value = 4.00;
+
+agregarAnilloRow('B', 4.02, 3.91);
+agregarAnilloRow('B', 8.61, 5.68);
+agregarAnilloRow('B', 12.1, 4.49);
+document.getElementById('altoInf-B').value = 5.82;
+
+actualizarRemates('A');
+actualizarRemates('F');
+actualizarRemates('B');
+document.getElementById('altoGeneralGlobal').value = 18;
+alturaBloqueada = 18;
+generate();
+</script>
+</body>
+</html>
