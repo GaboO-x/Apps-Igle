@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taller de Manos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  --ground:#e9ecea; --panel:#f8f9f8; --ink:#1d2421; --muted:#5d6863; --line:#cdd4d0;
+  --mat:#2e5a4c; --mat-grid:#4b7a6a; --mat-grid-strong:#6d9a89; --mat-ink:#d9ebe3;
+  --cut:#ffffff;
+  --accent:#d9781a; --accent-ink:#fff; --warn:#a4400e; --warn-bg:#fbe7da;
+  --paper:#ffffff; --paper-edge:#c4ccc8;
+  --display:"Bricolage Grotesque",ui-rounded,system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#141816; --panel:#1d2320; --ink:#e6ece9; --muted:#9aa7a1; --line:#34403b;
+    --mat:#1f4237; --mat-grid:#2f5c4d; --mat-grid-strong:#4a7c6b; --mat-ink:#cfe5db;
+    --accent:#f0913a; --accent-ink:#1a1206; --warn:#ffb48a; --warn-bg:#3a2216;
+    --paper:#f4f5f4; --paper-edge:#56625c;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#141816; --panel:#1d2320; --ink:#e6ece9; --muted:#9aa7a1; --line:#34403b;
+  --mat:#1f4237; --mat-grid:#2f5c4d; --mat-grid-strong:#4a7c6b; --mat-ink:#cfe5db;
+  --accent:#f0913a; --accent-ink:#1a1206; --warn:#ffb48a; --warn-bg:#3a2216;
+  --paper:#f4f5f4; --paper-edge:#56625c;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.8rem,4vw,2.6rem);line-height:1;margin:0;letter-spacing:-.02em}
+header p{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.controls{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:18px}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:12px}
+legend{font-family:var(--display);font-weight:600;font-size:1.05rem;margin-bottom:8px}
+.row{display:grid;grid-template-columns:1fr 84px;gap:4px 10px;align-items:center}
+.row label{grid-column:1/-1;font-size:.86rem;color:var(--muted);letter-spacing:.02em}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.row[aria-disabled=true],#side_row[aria-disabled=true],#wt_row[aria-disabled=true]{opacity:.4;pointer-events:none}
+.num{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--ground);padding-right:8px}
+.num input{width:100%;border:0;background:transparent;color:var(--ink);font-family:var(--mono);font-size:.92rem;padding:6px 4px 6px 8px;font-variant-numeric:tabular-nums}
+.num span{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink);font:inherit;font-size:.88rem;padding:7px 6px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--panel)}
+.seglabel{font-size:.86rem;color:var(--muted);margin-bottom:6px}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+.stage{display:grid;gap:20px}
+.mat{background:var(--mat);border-radius:10px;padding:14px;position:relative}
+.mat .tag{position:absolute;top:12px;left:16px;font-family:var(--mono);font-size:.74rem;color:var(--mat-ink);letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.mat .key{position:absolute;bottom:12px;left:16px;display:flex;gap:14px;font-family:var(--mono);font-size:.72rem;color:var(--mat-ink)}
+.mat .key i{display:inline-block;width:18px;height:0;border-top:2px solid var(--cut);vertical-align:middle;margin-right:6px}
+.mat svg{display:block;width:100%;height:auto;max-height:520px}
+.lower{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,260px);gap:20px;align-items:start}
+@media (max-width:640px){.lower{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+h2{font-family:var(--display);font-weight:600;font-size:1.05rem;margin:0 0 10px}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+td,th{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}
+th{font-weight:400;color:var(--muted);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase}
+td.m{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.86rem;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px}
+.sheet svg{display:block;width:100%;height:auto;max-width:240px;margin:0 auto}
+.btn{appearance:none;border:0;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:600;font-size:1rem;padding:11px 14px;cursor:pointer;width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{font-size:.82rem;color:var(--muted);margin:0}
+.warn{background:var(--warn-bg);color:var(--warn);border-radius:6px;padding:8px 10px;font-size:.85rem;margin:0}
+.status{font-size:.85rem;min-height:1.2em;margin:0;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Taller de Manos</h1>
+    <p>Molde plano de mano para títere, en centímetros. Solo el contorno, con comisura (membrana entre dedos) opcional, y PDF carta a tamaño real para recortar.</p>
+  </header>
+
+  <div class="grid">
+    <form class="controls" id="form" autocomplete="off">
+      <fieldset>
+        <legend>Mano y palma</legend>
+        <div class="row"><label for="pw">Ancho de la palma</label>
+          <input type="range" id="pw_r" min="2" max="16" step="0.1"><div class="num"><input type="number" id="pw" min="2" max="16" step="0.1"><span>cm</span></div></div>
+        <div class="row"><label for="hl">Largo total de la mano (base → punta del dedo más alto)</label>
+          <input type="range" id="hl_r" min="3" max="25" step="0.1"><div class="num"><input type="number" id="hl" min="3" max="25" step="0.1"><span>cm</span></div></div>
+        <div>
+          <div class="seglabel">Ancho y largo</div>
+          <div class="seg" role="group" aria-label="Ligar ancho y largo">
+            <button type="button" id="lk_on" aria-pressed="true">Ligados</button>
+            <button type="button" id="lk_off" aria-pressed="false">Independientes</button>
+          </div>
+          <p class="note" style="margin-top:6px">Ligados: al cambiar uno, el otro se calcula para mantener la proporción de la palma.</p>
+        </div>
+      </fieldset>
+      <hr>
+      <fieldset>
+        <legend>Dedos</legend>
+        <div class="row"><label for="nf">Cantidad (sin contar el pulgar)</label>
+          <input type="range" id="nf_r" min="1" max="5" step="1"><div class="num"><input type="number" id="nf" min="1" max="5" step="1"><span>u</span></div></div>
+        <div class="row"><label for="fl">Largo (igual para todos, medido desde el borde de la palma)</label>
+          <input type="range" id="fl_r" min="0.5" max="12" step="0.1"><div class="num"><input type="number" id="fl" min="0.5" max="12" step="0.1"><span>cm</span></div></div>
+        <div class="row"><label for="fw">Grosor de los dedos (% del espacio disponible en la palma)</label>
+          <input type="range" id="fw_r" min="40" max="100" step="1"><div class="num"><input type="number" id="fw" min="40" max="100" step="1"><span>%</span></div></div>
+        <div class="row"><label for="sp">Apertura de los dedos (0 % paralelos → 100 % siguen la curva)</label>
+          <input type="range" id="sp_r" min="0" max="100" step="1"><div class="num"><input type="number" id="sp" min="0" max="100" step="1"><span>%</span></div></div>
+        <div class="row"><label for="rd">Redondeo entre dedos</label>
+          <input type="range" id="rd_r" min="0" max="1.5" step="0.05"><div class="num"><input type="number" id="rd" min="0" max="1.5" step="0.05"><span>cm</span></div></div>
+      </fieldset>
+      <hr>
+      <fieldset>
+        <legend>Pulgar</legend>
+        <div class="seg" role="group" aria-label="Pulgar">
+          <button type="button" id="th_on" aria-pressed="true">Con pulgar</button>
+          <button type="button" id="th_off" aria-pressed="false">Sin pulgar</button>
+        </div>
+        <div class="row" id="tl_row"><label for="tl">Largo del pulgar</label>
+          <input type="range" id="tl_r" min="0.5" max="10" step="0.1"><div class="num"><input type="number" id="tl" min="0.5" max="10" step="0.1"><span>cm</span></div></div>
+        <div class="row" id="ta_row"><label for="ta">Ángulo (0° horizontal → 90° hacia arriba)</label>
+          <input type="range" id="ta_r" min="0" max="90" step="1"><div class="num"><input type="number" id="ta" min="0" max="90" step="1"><span>°</span></div></div>
+      </fieldset>
+      <hr>
+      <fieldset>
+        <legend>Comisura interdigital</legend>
+        <div class="seg" role="group" aria-label="Membrana entre dedos">
+          <button type="button" id="wb_off" aria-pressed="true">Dedos separados</button>
+          <button type="button" id="wb_on" aria-pressed="false">Con membrana</button>
+        </div>
+        <div class="row" id="wh_row"><label for="wh">Altura de la membrana (% del largo del dedo)</label>
+          <input type="range" id="wh_r" min="5" max="100" step="1"><div class="num"><input type="number" id="wh" min="5" max="100" step="1"><span>%</span></div></div>
+        <div id="wt_row">
+          <div class="seglabel">Membrana hacia el pulgar</div>
+          <div class="seg" role="group" aria-label="Membrana hacia el pulgar">
+            <button type="button" id="wt_on" aria-pressed="true">Incluir pulgar</button>
+            <button type="button" id="wt_off" aria-pressed="false">Pulgar libre</button>
+          </div>
+        </div>
+      </fieldset>
+      <hr>
+      <fieldset>
+        <legend>Hoja PDF</legend>
+        <div class="row"><label for="gap">Separación entre piezas</label>
+          <input type="range" id="gap_r" min="0" max="1" step="0.05"><div class="num"><input type="number" id="gap" min="0" max="1" step="0.05"><span>cm</span></div></div>
+        <p class="note">Llena la hoja con todas las manos que quepan, alternando al derecho y al revés para aprovechar el material.</p>
+      </fieldset>
+    </form>
+
+    <div class="stage">
+      <div class="mat">
+        <span class="tag">Vista · cuadrícula 1 cm</span>
+        <svg id="hand" role="img" aria-label="Vista previa del molde de mano sobre cuadrícula de 1 cm"></svg>
+        <div class="key"><span><i></i>línea de corte</span></div>
+      </div>
+      <div class="lower">
+        <div class="card">
+          <h2>Medidas</h2>
+          <table><tbody id="tbl"></tbody></table>
+          <div id="warns" style="display:grid;gap:6px;margin-top:10px"></div>
+        </div>
+        <div class="sheet">
+          <h2 style="margin:0">Hoja carta</h2>
+          <svg id="sheet" role="img" aria-label="Distribución de manos en hoja carta"></svg>
+          <button class="btn" id="dl" type="button">Descargar PDF</button>
+          <p class="status" id="status" aria-live="polite"></p>
+          <p class="note">Imprimí al 100 % / “tamaño real”. La barra de 5 cm del PDF sirve para verificar.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const S = { pw: 6.8, hl: 10.24, link: true, nf: 3, fl: 4.5, fw: 74, sp: 13, rd: 0.33, thumb: true, tl: 2.7, ta: 21, side: "l", web: false, wh: 50, webThumb: true, gap: 0.2 };
+const $ = id => document.getElementById(id);
+const PAGE_W = 21.59, PAGE_H = 27.94, MARGIN = 1.0, HEADER = 1.7, LABEL = 0.45, ROWGAP = 0.3;
+const fmt = n => (Math.round(n * 100) / 100).toLocaleString("es-CR", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+
+// ---------- shape as a distance field (cm, y up, palm base at y=0) ----------
+// the palm (the green piece in the reference) is an oval; H = palm height, solved so the whole hand = S.hl
+function fingers(H) {
+  const rx = S.pw / 2, ry = H / 2, cy = H / 2;
+  const caps = [], frames = [], w = S.pw / S.nf * S.fw / 100;
+  let thumbF = null; const n = S.nf, mix = S.sp / 100;
+  const topY = x => cy + ry * Math.sqrt(Math.max(0, 1 - (x / rx) ** 2));
+  for (let i = 0; i < n; i++) {
+    const ex = -rx + (i + 0.5) * (S.pw / n), ey = topY(ex);
+    let nx = ex / (rx * rx), ny = (ey - cy) / (ry * ry); let l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
+    nx = nx * mix; ny = ny * mix + (1 - mix); l = Math.hypot(nx, ny); nx /= l; ny /= l;
+    caps.push({ ax: ex - nx * w * 0.6, ay: ey - ny * w * 0.6, bx: ex + nx * (S.fl - w / 2), by: ey + ny * (S.fl - w / 2), r: w / 2 });
+    frames.push({ ex, ey, nx, ny, L: S.fl - w / 2 });
+  }
+  if (S.thumb) {
+    // thumb leaves the left side of the oval, just above its middle, so the thumb–index gap is a rounded V
+    const wt = Math.min(w * 1.1, H * 0.6), a = S.ta * Math.PI / 180, t = 172 * Math.PI / 180;
+    const bx = rx * Math.cos(t), by = cy + ry * Math.sin(t), dx = -Math.cos(a), dy = Math.sin(a);
+    caps.push({ ax: bx - dx * wt * 0.3, ay: by - dy * wt * 0.3, bx: bx + dx * (S.tl - wt / 2), by: by + dy * (S.tl - wt / 2), r: wt / 2 });
+    thumbF = { ex: bx, ey: by, nx: dx, ny: dy, L: S.tl - wt / 2, wt };
+  }
+  let top = H; for (const c of caps) top = Math.max(top, c.by + c.r);
+  return { rx, ry, cy, caps, frames, thumbF, w, top };
+}
+const PALM_RATIO = 0.85; // palm height / palm width when linked (proportion of the reference)
+function solvePw(target) { // linked: find the palm width that gives the requested total length
+  for (let it = 0; it < 10; it++) { const g = fingers(PALM_RATIO * S.pw); S.pw = Math.max(2, Math.min(16, S.pw + 0.9 * (target - g.top) / PALM_RATIO)); }
+  S.pw = Math.round(S.pw * 100) / 100;
+}
+function model() {
+  let H, g;
+  if (S.link) { H = PALM_RATIO * S.pw; g = fingers(H); if (!hlBase) S.hl = Math.round(g.top * 100) / 100; }
+  else { H = Math.max(1, S.hl - S.fl); g = fingers(H); for (let it = 0; it < 6; it++) { H = Math.max(1, H + (S.hl - g.top)); g = fingers(H); } }
+  lastTop = hlBase ? hlBase.top * (S.hl / hlBase.top) : g.top;
+  const { rx, ry, cy, caps, frames, thumbF, w } = g;
+  // comisura: membrane quads between neighbouring centrelines
+  const webs = [];
+  const hull = P => { const p = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = []; for (const q of p) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (const q of p.reverse()) { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    return lo.slice(0, -1).concat(up.slice(0, -1)); };
+  if (S.web) {
+    const pct = S.wh / 100, top = fr => [fr.ex + fr.nx * fr.L * pct, fr.ey + fr.ny * fr.L * pct];
+    for (let i = 0; i + 1 < frames.length; i++) { const a = frames[i], b = frames[i + 1]; webs.push(hull([[a.ex, a.ey], top(a), top(b), [b.ex, b.ey]])); }
+    if (thumbF && S.webThumb && frames.length) {
+      const near = frames[0];
+      webs.push(hull([[thumbF.ex, thumbF.ey], top(thumbF), top(near), [near.ex, near.ey]]));
+    }
+  }
+  // palm = convex hull of: rounded bottom + semicircular top + the outer edge of the two outer fingers,
+  // so the pinky side (and index side) runs straight from the finger into the palm without a notch
+  const pp = [];
+  for (let i = 0; i < 120; i++) { const t = 2 * Math.PI * i / 120; pp.push([rx * Math.cos(t), cy + ry * Math.sin(t)]); }
+  if (frames.length) {
+    const rootH = Math.min(0.3 * S.fl, 1.5 * w);
+    const outer = (fr, sgn) => [fr.ex + fr.nx * rootH + sgn * fr.ny * w / 2, fr.ey + fr.ny * rootH - sgn * fr.nx * w / 2];
+    const L = frames[0], Rr = frames[frames.length - 1];
+    // perpendicular pointing outward: left finger → (-ny, nx)·... use sgn so the point lies on the outer side
+    pp.push(outer(Rr, 1));
+    if (!thumbF) pp.push(outer(L, -1));
+  }
+  // thumb underside flows straight into the bottom of the hand (as in the reference)
+  if (thumbF) {
+    const wt = thumbF.wt, under = h => [thumbF.ex + thumbF.nx * h - thumbF.ny * wt / 2, thumbF.ey + thumbF.ny * h + thumbF.nx * wt / 2];
+    pp.push(under(-0.3 * wt), under(0), under(Math.min(0.5 * S.tl, 1.6 * wt)));
+  }
+  const palmPoly = hull(pp);
+  const sdPalm = (x, y) => sdPoly(x, y, palmPoly);
+  const sdCap = (x, y, c) => {
+    const pax = x - c.ax, pay = y - c.ay, bax = c.bx - c.ax, bay = c.by - c.ay;
+    const h = Math.max(0, Math.min(1, (pax * bax + pay * bay) / (bax * bax + bay * bay)));
+    return Math.hypot(pax - bax * h, pay - bay * h) - c.r;
+  };
+  const k = S.rd;
+  const smin = (a, b) => { if (k <= 0) return Math.min(a, b); const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k / 4; };
+  // convex polygon SDF (webs are turned into their convex hull, CCW) — robust inside test
+  const sdPoly = (x, y, v) => {
+    let d = Infinity, inside = true;
+    for (let i = 0; i < v.length; i++) {
+      const [ax, ay] = v[i], [bx, by] = v[(i + 1) % v.length], ex = bx - ax, ey = by - ay, wx = x - ax, wy = y - ay;
+      const h = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey || 1e-12)));
+      d = Math.min(d, Math.hypot(wx - ex * h, wy - ey * h));
+      if (ex * wy - ey * wx < 0) inside = false;
+    }
+    return inside ? -d : d;
+  };
+  const f = (x, y) => { let d = sdPalm(x, y); for (const c of caps) d = smin(d, sdCap(x, y, c)); for (const q of webs) d = smin(d, sdPoly(x, y, q)); return d; };
+  // bounds
+  let x0 = -rx, x1 = rx, y0 = 0, y1 = 2 * ry;
+  for (const c of caps) { x0 = Math.min(x0, c.bx - c.r); x1 = Math.max(x1, c.bx + c.r); y1 = Math.max(y1, c.by + c.r); y0 = Math.min(y0, c.by - c.r); }
+  return { f, bounds: { x0, x1, y0, y1 }, H: 2 * ry };
+}
+
+// ---------- marching squares → closed contours ----------
+function contours(m, levels, pad) {
+  const h = 0.03, { x0, x1, y0, y1 } = m.bounds;
+  const gx0 = x0 - pad, gy0 = y0 - pad, nx = Math.ceil((x1 - x0 + 2 * pad) / h) + 1, ny = Math.ceil((y1 - y0 + 2 * pad) / h) + 1;
+  const V = new Float64Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) V[j * nx + i] = m.f(gx0 + i * h, gy0 + j * h);
+  return levels.map(lv => {
+    const pts = new Map(), adj = new Map();
+    const eid = (i, j, dir) => (j * nx + i) * 2 + dir; // dir 0: horizontal edge (i,j)-(i+1,j); 1: vertical (i,j)-(i,j+1)
+    const pt = (id) => {
+      if (pts.has(id)) return;
+      const dir = id % 2, c = (id - dir) / 2, i = c % nx, j = (c - i) / nx;
+      const a = V[c] - lv, b = V[dir ? c + nx : c + 1] - lv, t = a / (a - b);
+      pts.set(id, dir ? [gx0 + i * h, gy0 + (j + t) * h] : [gx0 + (i + t) * h, gy0 + j * h]);
+    };
+    const link = (p, q) => { pt(p); pt(q); (adj.get(p) || adj.set(p, []).get(p)).push(q); (adj.get(q) || adj.set(q, []).get(q)).push(p); };
+    for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+      const a = V[j * nx + i] < lv, b = V[j * nx + i + 1] < lv, c = V[(j + 1) * nx + i + 1] < lv, d = V[(j + 1) * nx + i] < lv;
+      const idx = (a ? 1 : 0) | (b ? 2 : 0) | (c ? 4 : 0) | (d ? 8 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const B = eid(i, j, 0), R = eid(i + 1, j, 1), T = eid(i, j + 1, 0), L = eid(i, j, 1);
+      switch (idx) {
+        case 1: case 14: link(L, B); break;
+        case 2: case 13: link(B, R); break;
+        case 3: case 12: link(L, R); break;
+        case 4: case 11: link(R, T); break;
+        case 6: case 9: link(B, T); break;
+        case 7: case 8: link(L, T); break;
+        case 5: case 10: {
+          const ctr = (V[j * nx + i] + V[j * nx + i + 1] + V[(j + 1) * nx + i + 1] + V[(j + 1) * nx + i]) / 4 < lv;
+          if ((idx === 5) === ctr) { link(L, T); link(B, R); } else { link(L, B); link(R, T); }
+        }
+      }
+    }
+    // walk loops, keep the longest
+    const seen = new Set(); let best = [];
+    for (const start of adj.keys()) {
+      if (seen.has(start)) continue;
+      const loop = []; let prev = null, cur = start;
+      while (cur !== undefined && !seen.has(cur)) {
+        seen.add(cur); loop.push(pts.get(cur));
+        const nb = adj.get(cur); const nxt = nb[0] !== prev ? nb[0] : nb[1];
+        prev = cur; cur = nxt;
+      }
+      if (loop.length > best.length) best = loop;
+    }
+    return simplify(smooth(best, 0.04, 0.25), 0.004);
+  });
+}
+// resample a closed loop evenly and apply a small gaussian blur: rounds the little corners where
+// the palm meets fingers/thumb (≈2–3 mm radius) while barely touching smooth curves (<0.2 mm)
+function smooth(pts, step, sigma) {
+  if (pts.length < 8) return pts;
+  const L = []; let tot = 0;
+  for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; L.push(tot); tot += Math.hypot(b[0] - a[0], b[1] - a[1]); }
+  const n = Math.max(16, Math.round(tot / step)), rs = []; let k = 0;
+  for (let i = 0; i < n; i++) {
+    const d = tot * i / n; while (k + 1 < pts.length && L[k + 1] <= d) k++;
+    const a = pts[k], b = pts[(k + 1) % pts.length], seg = (k + 1 < pts.length ? L[k + 1] : tot) - L[k], t = seg > 0 ? (d - L[k]) / seg : 0;
+    rs.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+  }
+  const h = tot / n, R = Math.ceil(3 * sigma / h), wts = [];
+  for (let j = -R; j <= R; j++) wts.push(Math.exp(-((j * h) ** 2) / (2 * sigma * sigma)));
+  const ws = wts.reduce((a, b) => a + b, 0);
+  return rs.map((_, i) => { let x = 0, y = 0; for (let j = -R; j <= R; j++) { const q = rs[(i + j + n) % n], w = wts[j + R]; x += q[0] * w; y += q[1] * w; } return [x / ws, y / ws]; });
+}
+function simplify(pts, tol) {
+  if (pts.length < 8) return pts;
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [s, e] = stack.pop(); const [ax, ay] = pts[s], [bx, by] = pts[e];
+    const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1e-9; let md = 0, mi = -1;
+    for (let i = s + 1; i < e; i++) { const d = Math.abs((pts[i][0] - ax) * dy - (pts[i][1] - ay) * dx) / L; if (d > md) { md = d; mi = i; } }
+    if (md > tol && mi > 0) { keep[mi] = 1; stack.push([s, mi], [mi, e]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+const bbOf = pts => { let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; for (const [x, y] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } return { x0, x1, y0, y1 }; };
+
+// ---------- layout (fill the page, alternate 180°) ----------
+function ext(pts, y) {
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
+    if ((y1 - y) * (y2 - y) <= 0 && y1 !== y2) { const x = x1 + (x2 - x1) * (y - y1) / (y2 - y1); lo = Math.min(lo, x); hi = Math.max(hi, x); }
+  }
+  return lo <= hi ? [lo, hi] : null;
+}
+function altStep(p) {
+  const { x0, x1, y0, y1 } = p.bb, A = p.coll, B = A.map(([x, y]) => [x0 + x1 - x, y0 + y1 - y]);
+  const lo = Math.max(y0, bbOf(A).y0, bbOf(B).y0), hi = Math.min(y1, bbOf(A).y1, bbOf(B).y1);
+  let d = 0;
+  for (let i = 0; i <= 500; i++) { const y = lo + (hi - lo) * i / 500, ea = ext(A, y), eb = ext(B, y); if (ea && eb) d = Math.max(d, ea[1] - eb[0]); }
+  return d;
+}
+function layout(p) {
+  const areaW = PAGE_W - 2 * MARGIN, yMax = PAGE_H - MARGIN, plain = p.w + S.gap;
+  let step = plain, alt = false; const s = altStep(p); if (s < plain - 1e-3) { step = s; alt = true; }
+  const n = p.w > areaW ? 0 : Math.floor((areaW - p.w) / step + 1e-9) + 1;
+  const out = []; let y = MARGIN + HEADER + LABEL, rows = 0;
+  while (n > 0 && y + p.h <= yMax + 1e-9) {
+    for (let i = 0; i < n; i++) out.push({ x: MARGIN + i * step, y, rot: alt && (i + rows) % 2 === 1 });
+    rows++; y += p.h + S.gap + ROWGAP * 0;
+  }
+  return { out, ok: out.length > 0, perRow: n, rows };
+}
+const xf = (pl, bb) => pl.rot ? (px, py) => [pl.x + bb.x1 - px, pl.y + py - bb.y0] : (px, py) => [pl.x + px - bb.x0, pl.y + bb.y1 - py];
+
+// ---------- build piece ----------
+function build() {
+  const m = model(), pad = S.gap / 2 + 0.3;
+  const [cut, coll] = contours(m, [0, S.gap / 2], pad);
+  const bb = bbOf(cut);
+  return { cut, coll, bb, w: bb.x1 - bb.x0, h: bb.y1 - bb.y0, H: m.H };
+}
+
+// ---------- preview ----------
+const path = (pts, T) => "M" + pts.map(p => T(p[0], p[1]).map(v => v.toFixed(3)).join(" ")).join("L") + "Z";
+function drawHand(p) {
+  const pad = 1.5, { x0, x1, y0, y1 } = p.bb;
+  let vx0 = Math.floor(x0 - pad), vx1 = Math.ceil(x1 + pad); const vy0 = Math.floor(-y1 - pad), vy1 = Math.ceil(-y0 + pad + 0.6);
+  if (vx1 - vx0 < 12) { const c = Math.round((vx0 + vx1) / 2); vx0 = c - 6; vx1 = c + 6; }
+  const svg = $("hand"); svg.setAttribute("viewBox", `${vx0} ${vy0} ${vx1 - vx0} ${vy1 - vy0}`);
+  let s = "";
+  for (let x = vx0; x <= vx1; x += 0.5) s += `<line x1="${x}" y1="${vy0}" x2="${x}" y2="${vy1}" stroke="var(--${x % 1 ? "mat-grid" : "mat-grid-strong"})" stroke-width="${x % 1 ? 0.012 : 0.022}"/>`;
+  for (let y = vy0; y <= vy1; y += 0.5) s += `<line x1="${vx0}" y1="${y}" x2="${vx1}" y2="${y}" stroke="var(--${y % 1 ? "mat-grid" : "mat-grid-strong"})" stroke-width="${y % 1 ? 0.012 : 0.022}"/>`;
+  const T = (x, y) => [x, -y];
+  s += `<path d="${path(p.cut, T)}" fill="rgba(255,255,255,.06)" stroke="var(--cut)" stroke-width="0.05"/>`;
+  const dy = -y0 + 0.5;
+  s += `<line x1="${x0}" y1="${dy}" x2="${x1}" y2="${dy}" stroke="var(--mat-ink)" stroke-width="0.025"/>`;
+  s += `<text x="${(x0 + x1) / 2}" y="${dy + 0.45}" fill="var(--mat-ink)" font-family="JetBrains Mono,monospace" font-size="0.36" text-anchor="middle">${fmt(p.w)} × ${fmt(p.h)} cm</text>`;
+  svg.innerHTML = s;
+}
+function drawSheet(p, lay) {
+  const svg = $("sheet"); svg.setAttribute("viewBox", `-0.3 -0.3 ${PAGE_W + 0.6} ${PAGE_H + 0.6}`);
+  let s = `<rect x="0" y="0" width="${PAGE_W}" height="${PAGE_H}" fill="var(--paper)" stroke="var(--paper-edge)" stroke-width="0.08" rx="0.2"/>`;
+  s += `<rect x="${MARGIN}" y="${MARGIN}" width="7" height="0.4" fill="#1d2421" rx="0.1"/><rect x="${MARGIN}" y="${MARGIN + 1.05}" width="5" height="0.15" fill="#1d2421"/>`;
+  for (const pl of lay.out) {
+    const T = xf(pl, p.bb);
+    s += `<path d="${path(p.cut, T)}" fill="none" stroke="#1d2421" stroke-width="0.06"/>`;
+  }
+  svg.innerHTML = s;
+}
+
+// ---------- PDF ----------
+const K = 72 / 2.54, P = v => (v * K).toFixed(2);
+function pdfStr(s) { let o = ""; for (const ch of s) { const c = ch.charCodeAt(0); if ("()\\".includes(ch)) o += "\\" + ch; else if (c > 126 && c < 256) o += "\\" + c.toString(8).padStart(3, "0"); else if (c < 256) o += ch; else o += "-"; } return o; }
+function buildPDF(p, lay) {
+  const Y = y => PAGE_H - y, c = [];
+  const text = (x, y, size, str, bold) => c.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${P(x)} ${P(Y(y))} Td (${pdfStr(str)}) Tj ET`);
+  const poly = (pts, T) => pts.map(([a, b], i) => { const [x, y] = T(a, b); return `${P(x)} ${P(Y(y))} ${i ? "l" : "m"}`; }).join(" ") + " h";
+  c.push("0 g");
+  text(MARGIN, MARGIN + 0.42, 13, "Molde de mano para títere", true);
+  const info = `Mano ${fmt(S.pw)} (palma) x ${fmt(S.hl)} cm de largo  ·  ${S.nf} ${S.nf === 1 ? "dedo" : "dedos"} de ${fmt(S.fl)} cm (grosor ${S.fw}%)  ·  ` +
+    (S.thumb ? `pulgar ${fmt(S.tl)} cm a ${S.ta}°` : "sin pulgar") + `  ·  ` + (S.web ? `comisura ${S.wh}%` + (S.thumb ? (S.webThumb ? " (incluye pulgar)" : " (pulgar libre)") : "") : "dedos separados");
+  text(MARGIN, MARGIN + 0.82, 7.5, info);
+  const ry = Y(MARGIN + 1.3);
+  c.push(`0 G 0.6 w ${P(MARGIN)} ${P(ry)} m ${P(MARGIN + 5)} ${P(ry)} l S`);
+  for (let i = 0; i <= 5; i++) c.push(`${P(MARGIN + i)} ${P(ry)} m ${P(MARGIN + i)} ${P(ry + (i % 5 ? 0.15 : 0.28))} l S`);
+  text(MARGIN + 5.25, MARGIN + 1.33, 7.5, "5 cm: verificá con regla (imprimir al 100%, sin ajustar a página)");
+  text(MARGIN, MARGIN + HEADER + 0.32, 7.5, `MANO  ·  pieza ${fmt(p.w)} x ${fmt(p.h)} cm  ·  ${lay.out.length} ${lay.out.length === 1 ? "pieza" : "piezas"}`, true);
+  for (const pl of lay.out) {
+    const T = xf(pl, p.bb);
+    c.push(`0 G 0.6 w ${poly(p.cut, T)} S`);
+  }
+  const content = c.join("\n");
+  const objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`];
+  let out = "%PDF-1.4\n"; const offs = [];
+  objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, "0") + " 00000 n \n").join("");
+  return out + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+}
+
+// ---------- UI ----------
+let last = null, raf = 0;
+function render() {
+  const p = build(), lay = layout(p); last = { p, lay };
+  ["pw", "hl", "fl", "tl", "rd"].forEach(syncInput);
+  drawHand(p); drawSheet(p, lay);
+  $("tbl").innerHTML = [
+    ["Mano (ancho × alto)", `${fmt(p.w)} × ${fmt(p.h)} cm`],
+    ["Palma (ancho × alto)", `${fmt(S.pw)} × ${fmt(p.H)} cm`],
+    ["Manos por hoja", `${lay.out.length}  (${lay.rows} × ${lay.perRow})`]
+  ].map(r => `<tr><td>${r[0]}</td><td class="m">${r[1]}</td></tr>`).join("");
+  const w = [];
+  if (!S.link && Math.abs(p.h - S.hl) > 0.15) w.push("Con ese largo de dedos la mano no llega al largo total pedido: acortá los dedos o aumentá el largo total.");
+  if (!lay.ok) w.push("La mano no cabe en una hoja carta. Reducí las medidas.");
+  $("warns").innerHTML = w.map(s => `<p class="warn">${s}</p>`).join("");
+  $("dl").disabled = !lay.ok;
+  ["tl_row", "ta_row"].forEach(id => $(id).setAttribute("aria-disabled", String(!S.thumb)));
+  $("wh_row").setAttribute("aria-disabled", String(!S.web));
+  $("wt_row").setAttribute("aria-disabled", String(!S.web || !S.thumb));
+}
+const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(render); };
+const syncInput = k => { const v = Math.round(S[k] * 100) / 100; if (document.activeElement !== $(k)) $(k).value = v; $(k + "_r").value = v; };
+// Editing the total length scales the WHOLE design (palm, fingers, thumb, rounding) so its proportions stay intact.
+// A snapshot is taken when a length edit starts, so repeated slider moves don't accumulate rounding drift.
+let hlBase = null, lastTop = null;
+const clampTo = (id, v) => Math.max(+$(id).min, Math.min(+$(id).max, v));
+const onSet = k => {
+  if (k === "hl") {
+    if (!hlBase) hlBase = { pw: S.pw, fl: S.fl, tl: S.tl, rd: S.rd, top: lastTop || S.hl };
+    const f = S.hl / hlBase.top;
+    S.pw = clampTo("pw", hlBase.pw * f); S.fl = clampTo("fl", hlBase.fl * f);
+    S.tl = clampTo("tl", hlBase.tl * f); S.rd = clampTo("rd", hlBase.rd * f);
+  } else hlBase = null;
+  schedule();
+};
+const fields = ["pw", "hl", "nf", "fl", "fw", "sp", "rd", "tl", "ta", "wh", "gap"];
+fields.forEach(k => {
+  $(k).value = S[k]; $(k + "_r").value = S[k];
+  $(k + "_r").addEventListener("input", e => { S[k] = +e.target.value; $(k).value = S[k]; onSet(k); });
+  $(k).addEventListener("input", e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= +e.target.min) { S[k] = Math.min(v, +e.target.max); $(k + "_r").value = S[k]; onSet(k); } });
+  $(k).addEventListener("change", e => { let v = parseFloat(e.target.value); if (isNaN(v)) v = S[k]; v = Math.max(+e.target.min, Math.min(+e.target.max, v)); if (k === "nf") v = Math.round(v); S[k] = v; e.target.value = v; $(k + "_r").value = v; onSet(k); });
+});
+const toggle = (a, b, key, va, vb) => {
+  const set = v => { hlBase = null; S[key] = v; $(a).setAttribute("aria-pressed", String(v === va)); $(b).setAttribute("aria-pressed", String(v === vb)); schedule(); };
+  $(a).addEventListener("click", () => set(va)); $(b).addEventListener("click", () => set(vb));
+};
+toggle("th_on", "th_off", "thumb", true, false);
+toggle("lk_on", "lk_off", "link", true, false);
+toggle("wb_on", "wb_off", "web", true, false);
+toggle("wt_on", "wt_off", "webThumb", true, false);
+$("form").addEventListener("submit", e => e.preventDefault());
+
+let downloads = null;
+$("dl").addEventListener("click", async () => {
+  if (!last || !last.lay.ok) return;
+  const st = $("status"), pdf = buildPDF(last.p, last.lay);
+  const bytes = new Uint8Array(pdf.length); for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 255;
+  const name = `mano-${S.nf}dedos-${String(S.pw).replace(".", ",")}x${String(S.hl).replace(".", ",")}cm.pdf`;
+  if (!downloads) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000); st.textContent = "PDF descargado."; return;
+  }
+  st.textContent = "Confirmá la descarga…";
+  try { await downloads.save({ filename: name, data: bytes }); st.textContent = "PDF descargado."; }
+  catch (err) { const c = err && err.code; st.textContent = c === "declined" ? "Descarga cancelada." : c === "rate_limited" ? "Ya hay una descarga pendiente." : "No se pudo descargar el PDF en esta vista."; }
+});
+render();
+if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
+})();
+</script>
+</body>
+</html>
