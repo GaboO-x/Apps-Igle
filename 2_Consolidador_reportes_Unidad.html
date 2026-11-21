@@ -337,6 +337,30 @@
         .pill--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
         .pill--primary:hover { opacity: 0.9; color: #fff; }
 
+        /* ── Estadística (historial por semana) ── */
+        .est-box { border: 1.5px dashed var(--accent-bdr); border-radius: 10px; padding: 12px; margin-bottom: 16px; background: #fcfcfc; }
+        .est-box-title { font-weight: bold; color: var(--accent); font-size: 0.85em; margin-bottom: 8px; text-transform: uppercase; }
+        .est-box textarea {
+            width: 100%; min-height: 80px; border-radius: 5px; border: 1px solid #eee;
+            padding: 10px; font-family: 'Courier New', monospace; font-size: 0.78em;
+            box-sizing: border-box; resize: vertical; background: #fafafa;
+        }
+        #est-status { text-align: center; margin-top: 8px; font-size: 0.85em; min-height: 1.2em; }
+        .est-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin: 10px 0; }
+        .est-select {
+            padding: 8px 10px; border: 2px solid var(--accent); border-radius: 8px; background: #fff;
+            color: var(--accent); font-weight: bold; font-family: inherit; font-size: 0.9em;
+        }
+        .est-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 8px 0 4px; }
+        .est-chip {
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px;
+            background: var(--accent-bg); border: 1px solid var(--accent-bdr); color: var(--accent); font-size: 0.75em; font-weight: bold;
+        }
+        .est-chip button { border: none; background: transparent; color: #999; cursor: pointer; font-size: 1em; padding: 0 4px; }
+        .est-chip button:hover { color: #e74c3c; }
+        .est-note { text-align: center; color: #888; font-size: 0.75em; margin: 6px 0 0; }
+        table.dash-table tr.est-total td { font-weight: bold; background: var(--accent-bg); }
+
         /* ── Semana activa ── */
         .week-wrapper { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
         .week-dates-text { font-size: 0.78em; color: #888; font-style: italic; margin-top: 3px; }
@@ -352,10 +376,10 @@
     <div class="sidebar-icon active" data-page="page-consolidador" onclick="showPage('page-consolidador')" title="Consolidador">
         <i class="fa-solid fa-users-rectangle"></i>
     </div>
-    <div class="sidebar-icon" data-page="page-estadistica" onclick="showPage('page-estadistica')" title="Estadística Mensual">
+    <div class="sidebar-icon" data-page="page-estadistica" onclick="showPage('page-estadistica')" title="Estadística">
         <i class="fa-solid fa-chart-pie"></i>
     </div>
-    <div class="sidebar-icon" data-page="page-cuatrimestral" onclick="showPage('page-cuatrimestral')" title="Reporte Cuatrimestral">
+    <div class="sidebar-icon" data-page="page-cuatrimestral" onclick="showPage('page-cuatrimestral')" title="Cuatrimestral (formato anterior)">
         <i class="fa-solid fa-calendar-days"></i>
     </div>
 </div>
@@ -411,6 +435,7 @@
     <div class="action-bar">
         <button class="btn-main btn-green"     onclick="copyConsolidated()"><i class="fa-solid fa-copy"></i> Copiar Reporte</button>
         <button class="btn-main btn-blue"      onclick="copyOnlyMoney()"><i class="fa-solid fa-sack-dollar"></i> Copiar Ofrendas</button>
+        <button class="btn-main btn-procesar"  onclick="saveConsolidadorToEstadistica()"><i class="fa-solid fa-floppy-disk"></i> Guardar en Estadística</button>
         <button class="btn-main btn-gray"      onclick="clearTextareas()"><i class="fa-solid fa-trash-can"></i> Limpiar</button>
     </div>
 </div>
@@ -419,86 +444,113 @@
 <div id="page-estadistica" class="app-page">
 <div class="container">
     <div class="header">
-        <h2>Estadística Mensual</h2>
+        <h2>Estadística</h2>
+        <div class="week-dates-text" id="est-unit-label"></div>
     </div>
 
-    <div class="week-input-grid" id="week-input-grid"></div>
+    <!-- Agregar una semana pegando el "Copiar Reporte" (mismo formato de siempre) -->
+    <div class="est-box">
+        <div class="est-box-title"><i class="fa-solid fa-file-import"></i> Agregar semana pegando el reporte</div>
+        <textarea id="est-paste" placeholder="Pega aquí el 'Copiar Reporte' de una semana..."></textarea>
+        <div class="action-bar" style="margin-top:10px;">
+            <button class="btn-main btn-procesar" onclick="estSavePasted()"><i class="fa-solid fa-floppy-disk"></i> Guardar semana</button>
+        </div>
+        <div id="est-status"></div>
+    </div>
 
-    <div class="action-bar" style="margin-top:15px;">
-        <button class="btn-main btn-procesar" id="btn-procesar-semanas" onclick="procesarSemanas()"><i class="fa-solid fa-arrows-rotate"></i> Procesar Semanas</button>
+    <!-- Período -->
+    <div class="est-controls">
+        <select id="est-year" class="est-select" onchange="estOnYearChange()" aria-label="Año"></select>
+    </div>
+    <div class="dashboard-nav" id="est-period-nav" style="margin-top:6px;">
+        <button class="dash-tab active" data-period="semanal"       onclick="estSetPeriod('semanal')">Semanal</button>
+        <button class="dash-tab"        data-period="mensual"       onclick="estSetPeriod('mensual')">Mensual</button>
+        <button class="dash-tab"        data-period="cuatrimestral" onclick="estSetPeriod('cuatrimestral')">Cuatrimestral</button>
+        <button class="dash-tab"        data-period="semestral"     onclick="estSetPeriod('semestral')">Semestral</button>
+        <button class="dash-tab"        data-period="anual"         onclick="estSetPeriod('anual')">Anual</button>
+    </div>
+    <div class="est-controls">
+        <select id="est-week"     class="est-select" onchange="estRender()" aria-label="Semana"></select>
+        <select id="est-month"    class="est-select" onchange="estRender()" aria-label="Mes"></select>
+        <select id="est-quarter"  class="est-select" onchange="estRender()" aria-label="Cuatrimestre">
+            <option value="1">I (Enero–Abril)</option><option value="2">II (Mayo–Agosto)</option><option value="3">III (Septiembre–Diciembre)</option>
+        </select>
+        <select id="est-semester" class="est-select" onchange="estRender()" aria-label="Semestre">
+            <option value="1">I (Enero–Junio)</option><option value="2">II (Julio–Diciembre)</option>
+        </select>
+    </div>
+
+    <div class="est-chips" id="est-saved-weeks"></div>
+    <div class="action-bar" id="est-copy-month-bar" style="margin-top:8px;">
         <button class="btn-main btn-blue" onclick="copyMonthReport()"><i class="fa-solid fa-copy"></i> Copiar Mes</button>
-        <button class="btn-main btn-gray" onclick="limpiarMes()"><i class="fa-solid fa-trash-can"></i> Limpiar</button>
     </div>
-    <div id="stat-status"></div>
+    <p class="est-note">Cada semana cuenta en el mes donde cae su jueves. Célula y Red/Culto se muestran como promedio semanal (solo semanas con reporte).</p>
 
     <div class="dashboard-nav">
-        <button class="dash-tab active" data-view-key="celula"      onclick="showScopeView('semanal','celula')"><i class="fa-solid fa-virus"></i> Célula por Líder</button>
-        <button class="dash-tab"        data-view-key="red"         onclick="showScopeView('semanal','red')"><i class="fa-solid fa-church"></i> Red/Culto por Líder</button>
-        <button class="dash-tab"        data-view-key="metaGeneral" onclick="showScopeView('semanal','metaGeneral')"><i class="fa-solid fa-bullseye"></i> Meta General</button>
-        <button class="dash-tab"        data-view-key="metaLider"   onclick="showScopeView('semanal','metaLider')"><i class="fa-solid fa-people-roof"></i> Meta por Líder</button>
+        <button class="dash-tab active" data-est-view="celula"      onclick="estShowView('celula')"><i class="fa-solid fa-virus"></i> Célula por Líder</button>
+        <button class="dash-tab"        data-est-view="red"         onclick="estShowView('red')"><i class="fa-solid fa-church"></i> Red/Culto por Líder</button>
+        <button class="dash-tab"        data-est-view="metaGeneral" onclick="estShowView('metaGeneral')"><i class="fa-solid fa-bullseye"></i> Meta General</button>
+        <button class="dash-tab"        data-est-view="metaLider"   onclick="estShowView('metaLider')"><i class="fa-solid fa-people-roof"></i> Meta por Líder</button>
     </div>
 
-    <div id="dashboard-container">
-        <div id="dv-celula" class="dashboard-view active">
-            <div id="celula-table-wrap" class="dash-table-wrap"></div>
+    <div id="est-dashboard-container">
+        <div id="ev-celula" class="dashboard-view active">
+            <div id="ev-celula-table" class="dash-table-wrap"></div>
             <div class="dash-chart-block">
-                <h4>Total de la Unidad por Semana (Célula)</h4>
-                <canvas id="chart-celula-bar" height="170"></canvas>
+                <h4 id="ev-celula-bar-title">Total de la Unidad (Célula)</h4>
+                <canvas id="ev-chart-celula-bar" height="170"></canvas>
             </div>
             <div class="dash-chart-block">
                 <h4>Tendencia por Líder (Célula)</h4>
-                <canvas id="chart-celula-trend" height="220"></canvas>
+                <canvas id="ev-chart-celula-trend" height="220"></canvas>
             </div>
         </div>
-        <div id="dv-red" class="dashboard-view">
-            <div id="red-table-wrap" class="dash-table-wrap"></div>
+        <div id="ev-red" class="dashboard-view">
+            <div id="ev-red-table" class="dash-table-wrap"></div>
             <div class="dash-chart-block">
-                <h4>Total de la Unidad por Semana (Red/Culto)</h4>
-                <canvas id="chart-red-bar" height="170"></canvas>
+                <h4 id="ev-red-bar-title">Total de la Unidad (Red/Culto)</h4>
+                <canvas id="ev-chart-red-bar" height="170"></canvas>
             </div>
             <div class="dash-chart-block">
                 <h4>Tendencia por Líder (Red/Culto)</h4>
-                <canvas id="chart-red-trend" height="220"></canvas>
+                <canvas id="ev-chart-red-trend" height="220"></canvas>
             </div>
         </div>
-        <div id="dv-meta-general" class="dashboard-view">
+        <div id="ev-metaGeneral" class="dashboard-view">
             <div class="meta-general-control">
-                <label for="meta-general-input">Meta Semanal General:</label>
-                <input type="number" id="meta-general-input" min="0" step="1" oninput="onMetaGeneralInputChange('semanal')">
+                <label for="ev-meta-general-input">Meta Semanal General:</label>
+                <input type="number" id="ev-meta-general-input" min="0" step="1" oninput="estOnMetaGeneralInput()">
             </div>
-
             <div class="meta-gauges-row">
                 <div class="gauge-block">
-                    <h4>Meta Semanal – Célula</h4>
-                    <div id="gauge-celula-general" class="gauge-svg-wrap"></div>
-                    <div class="gauge-caption" id="gauge-celula-caption"></div>
+                    <h4>Meta – Célula</h4>
+                    <div id="ev-gauge-celula" class="gauge-svg-wrap"></div>
+                    <div class="gauge-caption" id="ev-gauge-celula-caption"></div>
                 </div>
                 <div class="gauge-block">
-                    <h4>Meta Semanal – Red/Culto</h4>
-                    <div id="gauge-red-general" class="gauge-svg-wrap"></div>
-                    <div class="gauge-caption" id="gauge-red-caption"></div>
+                    <h4>Meta – Red/Culto</h4>
+                    <div id="ev-gauge-red" class="gauge-svg-wrap"></div>
+                    <div class="gauge-caption" id="ev-gauge-red-caption"></div>
                 </div>
             </div>
-
-            <div class="summary-cards-row" id="meta-summary-cards"></div>
-
+            <div class="summary-cards-row" id="ev-meta-cards"></div>
             <div class="dash-chart-block">
-                <h4>Semanal Real vs Meta – Célula</h4>
-                <canvas id="chart-meta-bar-celula" height="170"></canvas>
+                <h4>Real vs Meta – Célula</h4>
+                <canvas id="ev-chart-meta-celula" height="170"></canvas>
             </div>
             <div class="dash-chart-block">
-                <h4>Semanal Real vs Meta – Red/Culto</h4>
-                <canvas id="chart-meta-bar-red" height="170"></canvas>
+                <h4>Real vs Meta – Red/Culto</h4>
+                <canvas id="ev-chart-meta-red" height="170"></canvas>
             </div>
         </div>
-        <div id="dv-meta-lider" class="dashboard-view">
+        <div id="ev-metaLider" class="dashboard-view">
             <div class="dash-chart-block">
                 <h4>Cumplimiento de Meta — Célula</h4>
-                <div id="meta-lider-celula-list" class="meta-lider-list"></div>
+                <div id="ev-meta-lider-celula" class="meta-lider-list"></div>
             </div>
             <div class="dash-chart-block">
                 <h4>Cumplimiento de Meta — Red/Culto</h4>
-                <div id="meta-lider-red-list" class="meta-lider-list"></div>
+                <div id="ev-meta-lider-red" class="meta-lider-list"></div>
             </div>
         </div>
     </div>
@@ -509,6 +561,7 @@
 <div class="container">
     <div class="header">
         <h2>Reporte Cuatrimestral</h2>
+        <div class="week-dates-text">Formato anterior (pegando "Copiar Mes"). La pestaña Estadística ya calcula Cuatrimestral, Semestral y Anual solo con las semanas guardadas.</div>
     </div>
 
     <div class="week-input-grid" id="month-input-grid"></div>
@@ -617,58 +670,81 @@
 </div>
 
 <script>
-    // ── Sistema de Semanas ──────────────────────────────────────────────────
-    // Semana 1: 28 dic 2025 → 3 ene 2026
-    const WEEK1_START = new Date(2025, 11, 29); // lunes 29 dic 2025 — semana inicia el lunes
-
+    // ── Sistema de Semanas (ISO 8601, mismo motor que Bitácora) ─────────────
+    // Semana de lunes a domingo; la semana 1 es la que contiene el primer
+    // jueves del año. Un año tiene 52 o 53 semanas (2026 tiene 53:
+    // 28 dic 2026 – 3 ene 2027 = semana 53 de 2026). Para 2026 las semanas
+    // 1–52 caen en las mismas fechas que el cálculo anterior (semana 1 =
+    // 29 dic 2025), así que los reportes ya hechos siguen siendo válidos.
     const MONTH_NAMES_ES = ['enero','febrero','marzo','abril','mayo','junio',
                             'julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
-    function getWeekNumber(date) {
-        const ms   = date - WEEK1_START;
-        const days = Math.floor(ms / 86400000);
-        return days < 0 ? null : Math.floor(days / 7) + 1;
+    function isoWeekOf(date) {
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); // jueves de esa semana
+        const year = d.getFullYear();
+        const jan4 = new Date(year, 0, 4);
+        jan4.setDate(jan4.getDate() + 3 - ((jan4.getDay() + 6) % 7));
+        return { year, week: 1 + Math.round((d - jan4) / (7 * 86400000)) };
+    }
+    function weeksInYear(year) { return isoWeekOf(new Date(year, 11, 28)).week; }
+    function getWeekMonday(weekNum, year) {
+        const jan4 = new Date(year, 0, 4);
+        const monday = new Date(year, 0, 4 - ((jan4.getDay() + 6) % 7));
+        monday.setDate(monday.getDate() + (weekNum - 1) * 7);
+        return monday;
+    }
+    // Mes (1–12) al que pertenece una semana: el de su jueves.
+    function weekMonth(weekNum, year) {
+        const t = getWeekMonday(weekNum, year);
+        t.setDate(t.getDate() + 3);
+        return t.getMonth() + 1;
     }
 
-    function getWeekRange(weekNum) {
-        const startMs  = WEEK1_START.getTime() + (weekNum - 1) * 7 * 86400000;
-        const start    = new Date(startMs);
-        const end      = new Date(startMs + 6 * 86400000);
-        const fmtDay   = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
+    function getWeekRange(weekNum, year) {
+        const start = getWeekMonday(weekNum, year);
+        const end   = new Date(start); end.setDate(start.getDate() + 6);
+        const fmtDay = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
         return { start, end, label: `Semana ${weekNum} (del ${fmtDay(start)} al ${fmtDay(end)} ${end.getFullYear()})` };
     }
 
-    // Poblar el selector con ±4 semanas alrededor de la actual
-    function buildWeekSelector(currentWeek) {
+    // Selector: ±4 semanas alrededor de la actual (cruza de año si hace falta).
+    // value = "AAAA-S"; el texto solo muestra el año si no es el año actual.
+    function buildWeekSelector() {
         const sel = document.getElementById('week-selector');
         sel.innerHTML = '';
-        const MIN_WEEK = Math.max(1, currentWeek - 4);
-        const MAX_WEEK = currentWeek + 4;
-        for (let w = MIN_WEEK; w <= MAX_WEEK; w++) {
+        const cur = isoWeekOf(new Date());
+        const curMonday = getWeekMonday(cur.week, cur.year);
+        for (let off = -4; off <= 4; off++) {
+            const d = new Date(curMonday); d.setDate(d.getDate() + off * 7);
+            const { year, week } = isoWeekOf(d);
             const opt = document.createElement('option');
-            opt.value = w;
-            opt.textContent = `Semana ${String(w).padStart(2, '0')}`;
-            if (w === currentWeek) opt.selected = true;
+            opt.value = `${year}-${week}`;
+            opt.textContent = `Semana ${String(week).padStart(2, '0')}` + (year !== cur.year ? ` · ${year}` : '');
+            if (off === 0) opt.selected = true;
             sel.appendChild(opt);
         }
     }
 
-    function getActiveWeek() {
-        return parseInt(document.getElementById('week-selector').value) || 1;
+    function getActiveWeekKey() {
+        const v = document.getElementById('week-selector').value || '';
+        const [y, w] = v.split('-').map(Number);
+        const cur = isoWeekOf(new Date());
+        return { year: y || cur.year, week: w || cur.week };
     }
+    function getActiveWeek() { return getActiveWeekKey().week; }
+    function getActiveYear() { return getActiveWeekKey().year; }
 
     function onWeekChange() {
-        const w = getActiveWeek();
-        const { start, end } = getWeekRange(w);
+        const { week, year } = getActiveWeekKey();
+        const { start, end } = getWeekRange(week, year);
         const fmtDay = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
         document.getElementById('week-dates-display').textContent =
             `del ${fmtDay(start)} al ${fmtDay(end)} ${end.getFullYear()}`;
     }
 
     function initWeekBar() {
-        const today   = new Date();
-        const current = getWeekNumber(today) || 1;
-        buildWeekSelector(current);
+        buildWeekSelector();
         onWeekChange();
     }
 
@@ -677,6 +753,22 @@
     function extractWeekFromReport(text) {
         const match = text.match(/semana\s+(\d+)/i);
         return match ? parseInt(match[1]) : null;
+    }
+
+    // Semana + año ISO de un reporte, usando el rango "(del D de MES al D de MES AAAA)"
+    // que ya trae el encabezado. Sin fechas, devuelve year = null.
+    function parseReportWeekKey(text) {
+        const week = extractWeekFromReport(text || '');
+        if (!week) return null;
+        const m = (text || '').match(/del\s+(\d{1,2})\s+de\s+([a-záéíóú]+)\s+al\s+(\d{1,2})\s+de\s+([a-záéíóú]+)\s+(\d{4})/i);
+        if (!m) return { week, year: null };
+        const startMonth = MONTH_NAMES_ES.indexOf(m[2].toLowerCase());
+        const endMonth   = MONTH_NAMES_ES.indexOf(m[4].toLowerCase());
+        const endYear    = parseInt(m[5], 10);
+        if (startMonth < 0 || endMonth < 0) return { week, year: null };
+        const startYear = startMonth > endMonth ? endYear - 1 : endYear;
+        const iso = isoWeekOf(new Date(startYear, startMonth, parseInt(m[1], 10)));
+        return { week, year: iso.week === week ? iso.year : null };
     }
 
     // Modificar estas listas directamente en el código fuente.
@@ -1025,12 +1117,12 @@
                 }
             }
 
-            // 1b. Verificar semana del reporte vs semana activa
-            const reportWeek = extractWeekFromReport(rawText);
-            const activeWeek = getActiveWeek();
-            if (reportWeek !== null && reportWeek !== activeWeek) {
-                const { label: activeLabel } = getWeekRange(activeWeek);
-                const { label: reportLabel } = getWeekRange(reportWeek);
+            // 1b. Verificar semana (y año, si el reporte trae fechas) vs semana activa
+            const reportKey = parseReportWeekKey(rawText);
+            const active = getActiveWeekKey();
+            if (reportKey && (reportKey.week !== active.week || (reportKey.year && reportKey.year !== active.year))) {
+                const { label: activeLabel } = getWeekRange(active.week, active.year);
+                const { label: reportLabel } = getWeekRange(reportKey.week, reportKey.year || active.year);
                 showAppAlert(`⚠️ Semana incorrecta en el reporte.\n\nSemana activa: ${activeLabel}\nSemana del reporte: ${reportLabel}\n\nEl reporte fue descartado.`);
                 textarea.value = '';
                 saveData();
@@ -1120,6 +1212,7 @@
 
     // ── Cambio de unidad ────────────────────────────────────────────────────
     function onUnitChange() {
+        if (document.getElementById('page-estadistica')?.classList.contains('active')) setTimeout(estRender, 0);
         saveData(); // guardar estado actual (grupos visibles) antes de cambiar
         const savedData = JSON.parse(localStorage.getItem('consolidadorData_v2') || 'null');
         renderGroups(savedData); // reconstruir DOM con datos completos desde storage
@@ -1304,7 +1397,7 @@
         const leader   = document.getElementById('main-leader').value || 'SUPERVISOR';
 
         const activeWeek = getActiveWeek();
-        const { start, end } = getWeekRange(activeWeek);
+        const { start, end } = getWeekRange(activeWeek, getActiveYear());
         const fmtDay = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
         const weekHeader = `*Semana ${activeWeek}* (del ${fmtDay(start)} al ${fmtDay(end)} ${end.getFullYear()})`;
 
@@ -1390,7 +1483,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         const unitName = colorOpt.options[colorOpt.selectedIndex].text;
 
         const activeWeekM = getActiveWeek();
-        const { start: startM, end: endM } = getWeekRange(activeWeekM);
+        const { start: startM, end: endM } = getWeekRange(activeWeekM, getActiveYear());
         const fmtDayM = d => `${d.getDate()} de ${MONTH_NAMES_ES[d.getMonth()]}`;
         const weekHeaderM = `*Semana ${activeWeekM}* (del ${fmtDayM(startM)} al ${fmtDayM(endM)} ${endM.getFullYear()})`;
 
@@ -1457,7 +1550,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageId)?.classList.add('active');
         document.querySelectorAll('.sidebar-icon').forEach(i => i.classList.toggle('active', i.dataset.page === pageId));
-        if (pageId === 'page-estadistica') renderScopeCurrentView('semanal');
+        if (pageId === 'page-estadistica') estRender();
         else if (pageId === 'page-cuatrimestral') renderScopeCurrentView('cuatrimestral');
         closeSidebar();
     }
@@ -1477,36 +1570,6 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
 
     // ── Dashboards por período (Estadística Mensual = semanas, Reporte Cuatrimestral = meses) ──
     const DASH_SCOPES = {
-        semanal: {
-            pageId: 'page-estadistica',
-            periods: 5,
-            periodLabel: i => `S${i}`,
-            periodNoun: 'Semana',
-            rawKey: 'consolidadorEstadisticaSemanas_v1',
-            dataKey: 'consolidadorEstadisticaData_v1',
-            metaGeneralKey: 'consolidadorMetaGeneral_v1',
-            inputGridId: 'week-input-grid',
-            inputIdPrefix: 'stat-week-',
-            inputPlaceholder: i => `Pega aquí el 'Copiar Reporte' de la Semana ${i}...`,
-            statusElId: 'stat-status',
-            procesarBtnId: 'btn-procesar-semanas',
-            emptyMsg: 'Aún no hay datos procesados. Pega los reportes semanales y presiona "Procesar Semanas".',
-            metaGeneralLabel: 'Meta Semanal General',
-            metaGeneralUnit: 'promedio semanal',
-            barLabelSuffix: 'por Semana',
-            tableWrap:  { celula: 'celula-table-wrap',  red: 'red-table-wrap' },
-            barChart:   { celula: 'chart-celula-bar',   red: 'chart-red-bar' },
-            trendChart: { celula: 'chart-celula-trend', red: 'chart-red-trend' },
-            dashViews:  { celula: 'dv-celula', red: 'dv-red', metaGeneral: 'dv-meta-general', metaLider: 'dv-meta-lider' },
-            metaGeneralIds: {
-                input: 'meta-general-input',
-                gaugeCelula: 'gauge-celula-general', gaugeCelulaCaption: 'gauge-celula-caption',
-                gaugeRed: 'gauge-red-general', gaugeRedCaption: 'gauge-red-caption',
-                cards: 'meta-summary-cards',
-                barCelula: 'chart-meta-bar-celula', barRed: 'chart-meta-bar-red'
-            },
-            metaLiderIds: { celula: 'meta-lider-celula-list', red: 'meta-lider-red-list' }
-        },
         cuatrimestral: {
             pageId: 'page-cuatrimestral',
             periods: 4,
@@ -1624,59 +1687,10 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             }
         }
         document.getElementById(scope.procesarBtnId)?.classList.toggle('btn-updated', totalDetectados > 0);
-        renderScopeCurrentView(scope === DASH_SCOPES.semanal ? 'semanal' : 'cuatrimestral');
+        renderScopeCurrentView('cuatrimestral');
     }
 
-    function procesarSemanas()      { procesarPeriodos(DASH_SCOPES.semanal); }
     function procesarCuatrimestre() { procesarPeriodos(DASH_SCOPES.cuatrimestral); }
-
-    // ── Copiar Mes: consolida las semanas ya procesadas del mes en un texto
-    // que "Procesar Cuatrimestre" puede leer directamente (mismo formato de bloques). ──
-    function copyMonthReport() {
-        const scope = DASH_SCOPES.semanal;
-        const periodsData = getScopePeriodsData(scope);
-        const leaderSet = new Set();
-        periodsData.forEach(p => Object.keys(p).forEach(n => leaderSet.add(n)));
-        const leaderNames = Array.from(leaderSet);
-
-        if (!leaderNames.length) {
-            showAppAlert('Primero pega y procesa las semanas del mes con "Procesar Semanas".', 'Sin datos que copiar');
-            return;
-        }
-
-        const now = new Date();
-        const monthLabel = `${MONTH_NAMES_ES[now.getMonth()]} ${now.getFullYear()}`;
-
-        let report = `*MES: ${monthLabel.toUpperCase()}*\n\n`;
-        report    += `==============================\n\n`;
-
-        leaderNames.forEach(name => {
-            const totalCel = periodsData.reduce((s, w) => s + (w[name] ? (w[name].celula || 0) : 0), 0);
-            const totalRed = periodsData.reduce((s, w) => s + (w[name] ? (w[name].red || 0) : 0), 0);
-            report += `🔥🚨🔥🚨🔥🚨🔥\n\n`;
-            report += `🔥 *LÍDER: ${name.toUpperCase()}* 🔥\n\n`;
-            report += `Total Mensual Célula: ${totalCel}\n`;
-            report += `Total Mensual Red: ${totalRed}\n\n`;
-        });
-
-        copyToClipboard(report);
-        showAppAlert('¡Reporte del mes copiado! Pégalo en una casilla de "Reporte Cuatrimestral".');
-    }
-
-    // ── Limpiar mes: reinicia semanas pegadas + datos ya procesados (tabla/gráficos) ──
-    async function limpiarMes() {
-        const ok = await showAppConfirm('¿Reiniciar el mes? Se borrarán las semanas pegadas y los datos ya procesados (tablas y gráficos).', 'Confirmar limpieza');
-        if (!ok) return;
-        const scope = DASH_SCOPES.semanal;
-        localStorage.removeItem(scope.rawKey);
-        localStorage.removeItem(scope.dataKey);
-        buildScopeInputs(scope);
-        const statusEl = document.getElementById(scope.statusElId);
-        if (statusEl) { statusEl.textContent = ''; }
-        document.getElementById(scope.procesarBtnId)?.classList.remove('btn-updated');
-        renderScopeCurrentView('semanal');
-        showAppAlert('Listo: mes reiniciado.');
-    }
 
     // ── Limpiar cuatrimestre: reinicia meses pegados + datos ya procesados ──────
     async function limpiarCuatrimestre() {
@@ -2039,7 +2053,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
     // Se llama al cambiar cualquier META de líder: refresca ambos dashboards
     // (semanal y cuatrimestral) si ya están renderizados, sin esperar navegación.
     function refreshEstadisticaIfNeeded() {
-        renderScopeCurrentView('semanal');
+        if (document.getElementById('page-estadistica')?.classList.contains('active')) estRender();
         renderScopeCurrentView('cuatrimestral');
     }
 
@@ -2200,12 +2214,483 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         if (!e.target.closest('.sel-wrap')) closeAllSelWheels();
     });
 
+
+    // ════════════════════════════════════════════════════════════════════
+    // ESTADÍSTICA CON HISTORIAL POR SEMANA (mismas reglas que Bitácora)
+    // ════════════════════════════════════════════════════════════════════
+    // Historial en localStorage, por unidad y por semana ISO:
+    //   { [unidad]: { "AAAA-S": { leaders: { Nombre: { celula, red } }, savedAt } } }
+    // Mensual / Cuatrimestral / Semestral / Anual se calculan solos a partir
+    // de las semanas guardadas (ya no hace falta "Procesar" ni pegar meses).
+    // Regla: Célula y Red/Culto = PROMEDIO SEMANAL entre las semanas con
+    // reporte; la meta (ej. 70) significa lo mismo en cualquier período.
+    const HIST_KEY = 'consolidadorHistorial_v1';
+    const HIST_MIGRATED_KEY = 'consolidadorHistorialMigrado_v1';
+    const META_GENERAL_KEY = 'consolidadorMetaGeneral_v1'; // mismo key de antes: conserva la meta ya escrita
+    const META_GENERAL_DEFAULT = 70;
+    const MONTH_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+    function loadHist() {
+        try { return JSON.parse(localStorage.getItem(HIST_KEY) || '{}') || {}; } catch { return {}; }
+    }
+    function saveHist(h) { localStorage.setItem(HIST_KEY, JSON.stringify(h)); }
+    function currentUnit() { return document.getElementById('color-selector').value; }
+    function unitLabel(unit) {
+        const opt = Array.from(document.getElementById('color-selector').options).find(o => o.value === unit);
+        return opt ? opt.textContent : unit;
+    }
+
+    // Detecta la unidad por la 2.ª línea del "Copiar Reporte" (*🔴 UNIDAD ROJA RJ/TAKERS*).
+    function detectUnitFromReport(text) {
+        const up = (text || '').toUpperCase();
+        const opts = Array.from(document.getElementById('color-selector').options);
+        const found = opts.find(o => up.includes(o.textContent.toUpperCase()));
+        return found ? found.value : null;
+    }
+
+    // Un registro "con datos" = algún valor > 0 (un líder en 0/0 no cuenta como semana reportada).
+    const hasData = (l) => !!l && ((Number(l.celula) || 0) > 0 || (Number(l.red) || 0) > 0);
+
+    function putWeek(unit, year, week, leaders) {
+        const h = loadHist();
+        h[unit] = h[unit] || {};
+        h[unit][`${year}-${week}`] = { leaders, savedAt: new Date().toISOString() };
+        saveHist(h);
+    }
+    function weekExists(unit, year, week) {
+        return !!(loadHist()[unit] || {})[`${year}-${week}`];
+    }
+
+    // Lee Célula / Red(Culto) de un bloque de reporte de UN líder (texto del App 1).
+    function parseLeaderTotals(text) {
+        const celMatch = text.match(/Total\s+\S+\s+C[eé]lula:\s*(\d+)/i);
+        const redMatch = text.match(/Total\s+\S+\s+(?:Red|Culto):\s*(\d+)/i);
+        return { celula: celMatch ? parseInt(celMatch[1], 10) : 0, red: redMatch ? parseInt(redMatch[1], 10) : 0 };
+    }
+
+    // Migración única: las semanas que ya estaban pegadas en la "Estadística
+    // Mensual" anterior traen "*Semana N* (del ... AAAA)" → se pasan al historial.
+    function migrateOldWeeksOnce() {
+        if (localStorage.getItem(HIST_MIGRATED_KEY)) return;
+        try {
+            const raw = JSON.parse(localStorage.getItem('consolidadorEstadisticaSemanas_v1') || '[]');
+            raw.forEach(text => {
+                if (!text || !text.trim()) return;
+                const key = parseReportWeekKey(text);
+                const leaders = parseWeekReport(text);
+                if (!key || !key.year || !Object.keys(leaders).length) return;
+                const unit = detectUnitFromReport(text) || currentUnit();
+                if (!weekExists(unit, key.year, key.week)) putWeek(unit, key.year, key.week, leaders);
+            });
+        } catch {}
+        localStorage.setItem(HIST_MIGRATED_KEY, '1');
+    }
+
+    // ── Guardar desde el Consolidador (sin copiar/pegar) ──
+    async function saveConsolidadorToEstadistica() {
+        const unit = currentUnit();
+        const { year, week } = getActiveWeekKey();
+        const leaders = {};
+        const missing = [];
+        getAllBlocks().forEach(({ title, text }) => {
+            const name = toTitleCase((title || '').trim());
+            if (!name || name === 'Líder') return;
+            if (!text.trim()) { missing.push(name); return; }
+            leaders[name] = parseLeaderTotals(text);
+        });
+        if (!Object.keys(leaders).length) {
+            showAppAlert('No hay reportes pegados para guardar.', 'Sin datos');
+            return;
+        }
+        if (missing.length) {
+            const ok = await showAppConfirm(`Faltan reportes de:\n${missing.map(n => `• ${n}`).join('\n')}\n\n¿Guardar la semana igual?`, 'Reportes incompletos');
+            if (!ok) return;
+        }
+        if (weekExists(unit, year, week)) {
+            const ok = await showAppConfirm(`La Semana ${week} de ${year} ya está guardada para ${unitLabel(unit)}. ¿Reemplazarla?`, 'Semana ya guardada');
+            if (!ok) return;
+        }
+        putWeek(unit, year, week, leaders);
+        estSelectWeek(year, week);
+        showAppAlert(`Semana ${week} de ${year} guardada en Estadística (${Object.keys(leaders).length} líderes).`, 'Guardado');
+    }
+
+    // ── Guardar pegando un "Copiar Reporte" en Estadística ──
+    async function estSavePasted() {
+        const ta = document.getElementById('est-paste');
+        const text = ta.value || '';
+        const statusEl = document.getElementById('est-status');
+        const setStatus = (msg, ok) => { statusEl.textContent = msg; statusEl.style.color = ok ? '#2ecc71' : '#e74c3c'; };
+        if (!text.trim()) { setStatus('Pega primero un "Copiar Reporte".', false); return; }
+        const key = parseReportWeekKey(text);
+        if (!key) { setStatus('⚠️ No se encontró "Semana N" en el texto.', false); return; }
+        const year = key.year || isoWeekOf(new Date()).year;
+        const leaders = parseWeekReport(text);
+        if (!Object.keys(leaders).length) { setStatus('⚠️ No se detectó ningún líder. Verificá que sea el texto de "Copiar Reporte".', false); return; }
+        const unit = detectUnitFromReport(text) || currentUnit();
+        if (weekExists(unit, year, key.week)) {
+            const ok = await showAppConfirm(`La Semana ${key.week} de ${year} ya está guardada para ${unitLabel(unit)}. ¿Reemplazarla?`, 'Semana ya guardada');
+            if (!ok) return;
+        }
+        putWeek(unit, year, key.week, leaders);
+        ta.value = '';
+        if (unit !== currentUnit()) {
+            setStatus(`✅ Semana ${key.week} de ${year} guardada en ${unitLabel(unit)} (es otra unidad: cambiala en Consolidador para verla).`, true);
+            estRender();
+            return;
+        }
+        estSelectWeek(year, key.week);
+        setStatus(`✅ Semana ${key.week} de ${year} guardada (${Object.keys(leaders).length} líderes).`, true);
+    }
+
+    async function estDeleteWeek(year, week) {
+        const unit = currentUnit();
+        const ok = await showAppConfirm(`¿Borrar la Semana ${week} de ${year} de ${unitLabel(unit)}? No se puede deshacer.`, 'Borrar semana');
+        if (!ok) return;
+        const h = loadHist();
+        if (h[unit]) delete h[unit][`${year}-${week}`];
+        saveHist(h);
+        estRender();
+    }
+
+    // ── Período ──
+    let estPeriod = 'semanal';
+    let estView = 'celula';
+
+    function estYear() { return Number(document.getElementById('est-year').value) || isoWeekOf(new Date()).year; }
+    const estIsMonthly = () => ['cuatrimestral', 'semestral', 'anual'].includes(estPeriod);
+
+    function estFillYearSelect() {
+        const sel = document.getElementById('est-year');
+        const prev = Number(sel.value) || isoWeekOf(new Date()).year;
+        const years = new Set([isoWeekOf(new Date()).year]);
+        Object.values(loadHist()).forEach(u => Object.keys(u || {}).forEach(k => years.add(Number(k.split('-')[0]))));
+        const list = Array.from(years).filter(Boolean).sort((a, b) => b - a);
+        sel.innerHTML = list.map(y => `<option value="${y}">${y}</option>`).join('');
+        sel.value = String(list.includes(prev) ? prev : list[0]);
+        sel.style.display = list.length > 1 ? '' : 'none';
+    }
+    function estFillWeekSelect() {
+        const sel = document.getElementById('est-week');
+        const year = estYear();
+        const prev = Number(sel.value) || 0;
+        const cur = isoWeekOf(new Date());
+        const total = weeksInYear(year);
+        const target = (prev >= 1 && prev <= total) ? prev : (cur.year === year ? cur.week : 1);
+        let html = '';
+        for (let w = 1; w <= total; w++) {
+            const { start, end } = getWeekRange(w, year);
+            const f = d => `${d.getDate()} ${MONTH_SHORT[d.getMonth()].toLowerCase()}`;
+            html += `<option value="${w}"${w === target ? ' selected' : ''}>Semana ${String(w).padStart(2, '0')} (${f(start)} – ${f(end)})</option>`;
+        }
+        sel.innerHTML = html;
+    }
+    function estFillMonthSelect() {
+        const sel = document.getElementById('est-month');
+        if (sel.options.length) return;
+        sel.innerHTML = MONTH_NAMES_ES.map((m, i) => `<option value="${i + 1}">${m.charAt(0).toUpperCase() + m.slice(1)}</option>`).join('');
+        const cur = isoWeekOf(new Date());
+        const curMonth = weekMonth(cur.week, cur.year);
+        sel.value = String(curMonth);
+        document.getElementById('est-quarter').value = String(Math.floor((curMonth - 1) / 4) + 1);
+        document.getElementById('est-semester').value = curMonth <= 6 ? '1' : '2';
+    }
+
+    function estSetPeriod(p) {
+        estPeriod = p;
+        document.querySelectorAll('#est-period-nav .dash-tab').forEach(t => t.classList.toggle('active', t.dataset.period === p));
+        estRender();
+    }
+    function estOnYearChange() { estFillWeekSelect(); estRender(); }
+    function estSelectWeek(year, week) {
+        estFillYearSelect();
+        document.getElementById('est-year').value = String(year);
+        estFillWeekSelect();
+        document.getElementById('est-week').value = String(week);
+        estRender();
+    }
+    function estShowView(v) {
+        estView = v;
+        document.querySelectorAll('#page-estadistica [data-est-view]').forEach(t => t.classList.toggle('active', t.dataset.estView === v));
+        document.querySelectorAll('#est-dashboard-container .dashboard-view').forEach(el => el.classList.toggle('active', el.id === `ev-${v}`));
+        estRender();
+    }
+
+    // Semanas del período elegido (por la regla del jueves).
+    function estPeriodWeeks() {
+        const year = estYear();
+        if (estPeriod === 'semanal') return [Number(document.getElementById('est-week').value) || 1];
+        let a = 1, b = 12;
+        if (estPeriod === 'mensual') { a = b = Number(document.getElementById('est-month').value) || 1; }
+        else if (estPeriod === 'cuatrimestral') { const q = Number(document.getElementById('est-quarter').value) || 1; a = (q - 1) * 4 + 1; b = a + 3; }
+        else if (estPeriod === 'semestral') { const s = Number(document.getElementById('est-semester').value) || 1; a = s === 1 ? 1 : 7; b = s === 1 ? 6 : 12; }
+        const weeks = [];
+        for (let w = 1; w <= weeksInYear(year); w++) { const m = weekMonth(w, year); if (m >= a && m <= b) weeks.push(w); }
+        return weeks;
+    }
+
+    // Arma los datos del período: semanas con registro, líderes, columnas (buckets).
+    function estBuildData() {
+        const year = estYear();
+        const unitHist = loadHist()[currentUnit()] || {};
+        const weeks = estPeriodWeeks();
+        const recs = {}; // week -> leaders
+        weeks.forEach(w => { const r = unitHist[`${year}-${w}`]; if (r) recs[w] = r.leaders || {}; });
+
+        const leaderSet = new Set();
+        Object.values(recs).forEach(ls => Object.keys(ls).forEach(n => leaderSet.add(n)));
+        const leaders = Array.from(leaderSet).sort((x, y) => x.localeCompare(y, 'es'));
+
+        let buckets;
+        if (estIsMonthly()) {
+            const byMonth = {};
+            weeks.forEach(w => { const m = weekMonth(w, year); (byMonth[m] = byMonth[m] || []).push(w); });
+            buckets = Object.keys(byMonth).sort((a, b) => a - b).map(m => ({ label: MONTH_SHORT[m - 1], weeks: byMonth[m] }));
+        } else {
+            buckets = weeks.map(w => ({ label: `S${String(w).padStart(2, '0')}`, weeks: [w] }));
+        }
+        return { year, weeks, recs, leaders, buckets };
+    }
+
+    // Promedio semanal de un líder (metric = 'celula' | 'red') en una lista de semanas.
+    function leaderAvg(recs, name, weekList, metric) {
+        const vals = weekList.map(w => recs[w] && recs[w][name]).filter(hasData).map(l => Number(l[metric]) || 0);
+        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    }
+    // Promedio semanal de la UNIDAD (suma de líderes por semana, promediada entre semanas con reporte).
+    function unitAvg(recs, weekList, metric) {
+        const sums = weekList.map(w => {
+            const ls = Object.values(recs[w] || {}).filter(hasData);
+            return ls.length ? ls.reduce((s, l) => s + (Number(l[metric]) || 0), 0) : null;
+        }).filter(v => v !== null);
+        return sums.length ? sums.reduce((a, b) => a + b, 0) / sums.length : null;
+    }
+    const weeksWithData = (recs, weekList) => weekList.filter(w => Object.values(recs[w] || {}).some(hasData)).length;
+    const fmt = (v) => (v === null || v === undefined ? '–' : (Number.isInteger(v) ? String(v) : (Math.round(v * 10) / 10).toFixed(1)));
+    const r1 = (v) => (v === null || v === undefined ? null : Math.round(v * 10) / 10);
+
+    function estRenderSavedChips(d) {
+        const el = document.getElementById('est-saved-weeks');
+        const saved = d.weeks.filter(w => d.recs[w]);
+        el.innerHTML = saved.length
+            ? saved.map(w => `<span class="est-chip">S${String(w).padStart(2, '0')}<button type="button" title="Borrar semana" aria-label="Borrar semana ${w}" onclick="estDeleteWeek(${d.year}, ${w})">✕</button></span>`).join('')
+            : '<span class="est-note">No hay semanas guardadas en este período.</span>';
+    }
+
+    function estRenderMetricView(d, metric) {
+        const ids = metric === 'celula'
+            ? { table: 'ev-celula-table', bar: 'ev-chart-celula-bar', trend: 'ev-chart-celula-trend', barTitle: 'ev-celula-bar-title', name: 'Célula' }
+            : { table: 'ev-red-table', bar: 'ev-chart-red-bar', trend: 'ev-chart-red-trend', barTitle: 'ev-red-bar-title', name: 'Red/Culto' };
+        const metaData = loadMetaData();
+        const wrap = document.getElementById(ids.table);
+        document.getElementById(ids.barTitle).textContent = estIsMonthly()
+            ? `Total de la Unidad por Mes — promedio semanal (${ids.name})`
+            : `Total de la Unidad por Semana (${ids.name})`;
+
+        if (!d.leaders.length) {
+            wrap.innerHTML = '<p class="empty-page-msg">No hay semanas guardadas en este período. Guardalas desde Consolidador o pegando el reporte arriba.</p>';
+            destroyChart(ids.bar); destroyChart(ids.trend);
+            return;
+        }
+        const multi = d.weeks.length > 1;
+        let html = '<table class="dash-table"><thead><tr><th>Líder</th><th>Meta</th>';
+        d.buckets.forEach(b => html += `<th>${b.label}</th>`);
+        if (multi) html += '<th>Prom.</th>';
+        html += '</tr></thead><tbody>';
+        d.leaders.forEach(name => {
+            const meta = metaData[name] !== undefined ? metaData[name] : 12;
+            html += `<tr><td>${name}</td><td>${meta}</td>`;
+            d.buckets.forEach(b => html += `<td>${fmt(leaderAvg(d.recs, name, b.weeks, metric))}</td>`);
+            if (multi) html += `<td><b>${fmt(leaderAvg(d.recs, name, d.weeks, metric))}</b></td>`;
+            html += '</tr>';
+        });
+        html += `<tr class="est-total"><td>TOTAL UNIDAD</td><td></td>`;
+        d.buckets.forEach(b => html += `<td>${fmt(unitAvg(d.recs, b.weeks, metric))}</td>`);
+        if (multi) html += `<td>${fmt(unitAvg(d.recs, d.weeks, metric))}</td>`;
+        html += '</tr></tbody></table>';
+        wrap.innerHTML = html;
+
+        if (typeof Chart === 'undefined') return;
+        const accent = getUnitAccentColor();
+        const labels = d.buckets.map(b => b.label);
+
+        destroyChart(ids.bar);
+        const barCtx = document.getElementById(ids.bar)?.getContext('2d');
+        if (barCtx) {
+            _dashCharts[ids.bar] = new Chart(barCtx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Total Unidad', data: d.buckets.map(b => r1(unitAvg(d.recs, b.weeks, metric))), backgroundColor: accent, borderRadius: 4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        destroyChart(ids.trend);
+        const trendCtx = document.getElementById(ids.trend)?.getContext('2d');
+        if (!trendCtx) return;
+        const lineDs = d.leaders.map((name, idx) => {
+            const color = LEADER_LINE_COLORS[idx % LEADER_LINE_COLORS.length];
+            return { label: name, data: d.buckets.map(b => r1(leaderAvg(d.recs, name, b.weeks, metric))), borderColor: color, backgroundColor: color + '33',
+                     borderWidth: 2, tension: 0.35, spanGaps: true, fill: false, _originalColor: color };
+        });
+        const metaDs = d.leaders.map((name, idx) => {
+            const color = LEADER_LINE_COLORS[idx % LEADER_LINE_COLORS.length];
+            const meta = metaData[name] !== undefined ? metaData[name] : 12;
+            return { label: `Meta ${name}`, data: Array(labels.length).fill(meta), borderColor: color, borderWidth: 2, borderDash: [6, 4],
+                     pointRadius: 0, pointHoverRadius: 0, tension: 0, fill: false, hidden: true, _isMetaLine: true };
+        });
+        const n = lineDs.length;
+        _dashCharts[ids.trend] = new Chart(trendCtx, {
+            type: 'line',
+            data: { labels, datasets: [...lineDs, ...metaDs] },
+            options: {
+                responsive: true,
+                plugins: { legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 10, font: { size: 9 }, filter: (item, data) => !data.datasets[item.datasetIndex]._isMetaLine },
+                    onHover: (evt, item, legend) => {
+                        const chart = legend.chart;
+                        chart.data.datasets.forEach((ds, idx) => {
+                            if (ds._isMetaLine) { ds.hidden = (idx - n) !== item.datasetIndex; return; }
+                            ds.borderColor = idx === item.datasetIndex ? ds._originalColor : 'rgba(200,200,200,0.25)';
+                            ds.borderWidth = idx === item.datasetIndex ? 4 : 2;
+                        });
+                        chart.update();
+                    },
+                    onLeave: (evt, item, legend) => {
+                        const chart = legend.chart;
+                        chart.data.datasets.forEach(ds => {
+                            if (ds._isMetaLine) { ds.hidden = true; return; }
+                            ds.borderColor = ds._originalColor; ds.borderWidth = 2;
+                        });
+                        chart.update();
+                    }
+                } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function estGetMetaGeneral() {
+        const v = localStorage.getItem(META_GENERAL_KEY);
+        const n = v !== null ? parseFloat(v) : NaN;
+        return isNaN(n) ? META_GENERAL_DEFAULT : n;
+    }
+    function estOnMetaGeneralInput() {
+        const v = parseFloat(document.getElementById('ev-meta-general-input').value);
+        localStorage.setItem(META_GENERAL_KEY, isNaN(v) || v < 0 ? META_GENERAL_DEFAULT : v);
+        estRender();
+    }
+
+    function estRenderMetaGeneral(d) {
+        const meta = estGetMetaGeneral();
+        const input = document.getElementById('ev-meta-general-input');
+        if (input && document.activeElement !== input) input.value = meta;
+        const accent = getUnitAccentColor();
+        const celAvg = unitAvg(d.recs, d.weeks, 'celula') || 0;
+        const redAvg = unitAvg(d.recs, d.weeks, 'red') || 0;
+        const pct = v => (meta ? (v / meta) * 100 : 0);
+        document.getElementById('ev-gauge-celula').innerHTML = buildGaugeSVG(pct(celAvg), accent);
+        document.getElementById('ev-gauge-celula-caption').textContent = `${celAvg.toFixed(1)} / ${meta} promedio semanal`;
+        document.getElementById('ev-gauge-red').innerHTML = buildGaugeSVG(pct(redAvg), accent);
+        document.getElementById('ev-gauge-red-caption').textContent = `${redAvg.toFixed(1)} / ${meta} promedio semanal`;
+        const cards = [
+            { value: meta, label: 'Meta Semanal General' },
+            { value: celAvg.toFixed(1), label: 'Promedio Semanal Célula' },
+            { value: redAvg.toFixed(1), label: 'Promedio Semanal Red/Culto' },
+            { value: weeksWithData(d.recs, d.weeks), label: 'Semanas con reporte' },
+        ];
+        document.getElementById('ev-meta-cards').innerHTML = cards.map(c =>
+            `<div class="summary-card"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`).join('');
+
+        if (typeof Chart === 'undefined') return;
+        const labels = d.buckets.map(b => b.label);
+        const build = (chartId, metric, label) => {
+            destroyChart(chartId);
+            const ctx = document.getElementById(chartId)?.getContext('2d');
+            if (!ctx) return;
+            _dashCharts[chartId] = new Chart(ctx, {
+                data: { labels, datasets: [
+                    { type: 'bar', label, data: d.buckets.map(b => r1(unitAvg(d.recs, b.weeks, metric))), backgroundColor: accent, borderRadius: 4 },
+                    { type: 'line', label: 'Meta', data: Array(labels.length).fill(meta), borderColor: '#333', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 }
+                ] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } }, scales: { y: { beginAtZero: true } } }
+            });
+        };
+        build('ev-chart-meta-celula', 'celula', 'Real Célula');
+        build('ev-chart-meta-red', 'red', 'Real Red/Culto');
+    }
+
+    function estRenderMetaLider(d) {
+        const metaData = loadMetaData();
+        const render = (containerId, metric) => {
+            const el = document.getElementById(containerId);
+            if (!d.leaders.length) { el.innerHTML = '<p class="empty-page-msg">No hay semanas guardadas en este período.</p>'; return; }
+            const stats = d.leaders.map(name => {
+                const promedio = leaderAvg(d.recs, name, d.weeks, metric) || 0;
+                const meta = metaData[name] !== undefined ? metaData[name] : 12;
+                return { name, promedio, meta, pct: meta ? (promedio / meta) * 100 : 0 };
+            }).sort((a, b) => b.pct - a.pct);
+            el.innerHTML = stats.map(s => `
+                <div class="meta-lider-row">
+                    <div class="meta-lider-name">${s.name}</div>
+                    <div class="meta-lider-bar-track"><div class="meta-lider-bar-fill" style="width:${Math.min(100, s.pct)}%"></div></div>
+                    <div class="meta-lider-detail">${Math.round(s.pct)}% · Meta ${s.meta} · Prom ${s.promedio.toFixed(1)}</div>
+                </div>`).join('');
+        };
+        render('ev-meta-lider-celula', 'celula');
+        render('ev-meta-lider-red', 'red');
+    }
+
+    function estRender() {
+        if (!document.getElementById('est-year').options.length) estFillYearSelect();
+        if (!document.getElementById('est-week').options.length) estFillWeekSelect();
+        estFillMonthSelect();
+        document.getElementById('est-unit-label').textContent = `Unidad: ${unitLabel(currentUnit())} (se cambia en Consolidador)`;
+        ['week', 'month', 'quarter', 'semester'].forEach(k => {
+            const show = { week: 'semanal', month: 'mensual', quarter: 'cuatrimestral', semester: 'semestral' }[k] === estPeriod;
+            document.getElementById(`est-${k}`).style.display = show ? '' : 'none';
+        });
+        document.getElementById('est-copy-month-bar').style.display = estPeriod === 'mensual' ? '' : 'none';
+
+        const d = estBuildData();
+        estRenderSavedChips(d);
+        if (estView === 'celula') estRenderMetricView(d, 'celula');
+        else if (estView === 'red') estRenderMetricView(d, 'red');
+        else if (estView === 'metaGeneral') estRenderMetaGeneral(d);
+        else estRenderMetaLider(d);
+    }
+
+    // ── Copiar Mes: MISMO formato de texto de siempre (lo lee "Procesar
+    // Cuatrimestre" de la página anterior y cualquier otra app que lo use).
+    // Toma el mes elegido en la pestaña Mensual; los totales son la SUMA de
+    // las semanas del mes, igual que antes. ──
+    function copyMonthReport() {
+        const d = estBuildData();
+        if (!d.leaders.length) {
+            showAppAlert('No hay semanas guardadas en ese mes.', 'Sin datos que copiar');
+            return;
+        }
+        const month = Number(document.getElementById('est-month').value) || 1;
+        let report = `*MES: ${MONTH_NAMES_ES[month - 1].toUpperCase()} ${d.year}*\n\n`;
+        report    += `==============================\n\n`;
+        d.leaders.forEach(name => {
+            const totalCel = d.weeks.reduce((s, w) => s + ((d.recs[w] && d.recs[w][name]) ? (d.recs[w][name].celula || 0) : 0), 0);
+            const totalRed = d.weeks.reduce((s, w) => s + ((d.recs[w] && d.recs[w][name]) ? (d.recs[w][name].red || 0) : 0), 0);
+            report += `🔥🚨🔥🚨🔥🚨🔥\n\n`;
+            report += `🔥 *LÍDER: ${name.toUpperCase()}* 🔥\n\n`;
+            report += `Total Mensual Célula: ${totalCel}\n`;
+            report += `Total Mensual Red: ${totalRed}\n\n`;
+        });
+        copyToClipboard(report);
+        showAppAlert('¡Reporte del mes copiado!');
+    }
+
     // ── Init ────────────────────────────────────────────────────────────────
     window.onload = () => {
         initWeekBar();
         loadData();
-        buildScopeInputs(DASH_SCOPES.semanal);
         buildScopeInputs(DASH_SCOPES.cuatrimestral);
+        migrateOldWeeksOnce();
         initSelectWheel('week');
         initSelectWheel('unit');
     };
