@@ -484,11 +484,12 @@
     <div class="action-bar" id="est-copy-month-bar" style="margin-top:8px;">
         <button class="btn-main btn-blue" onclick="copyMonthReport()"><i class="fa-solid fa-copy"></i> Copiar Mes</button>
     </div>
-    <p class="est-note">Cada semana cuenta en el mes donde cae su jueves. Célula y Red/Culto se muestran como promedio semanal (solo semanas con reporte).</p>
+    <p class="est-note">Cada semana cuenta en el mes donde cae su jueves. Célula y Red/Culto se muestran como promedio semanal (solo semanas con reporte). Nuevos se muestra como total del período.</p>
 
     <div class="dashboard-nav">
         <button class="dash-tab active" data-est-view="celula"      onclick="estShowView('celula')"><i class="fa-solid fa-virus"></i> Célula por Líder</button>
         <button class="dash-tab"        data-est-view="red"         onclick="estShowView('red')"><i class="fa-solid fa-church"></i> Red/Culto por Líder</button>
+        <button class="dash-tab"        data-est-view="nuevos"      onclick="estShowView('nuevos')"><i class="fa-solid fa-user-plus"></i> Nuevos</button>
         <button class="dash-tab"        data-est-view="metaGeneral" onclick="estShowView('metaGeneral')"><i class="fa-solid fa-bullseye"></i> Meta General</button>
         <button class="dash-tab"        data-est-view="metaLider"   onclick="estShowView('metaLider')"><i class="fa-solid fa-people-roof"></i> Meta por Líder</button>
     </div>
@@ -514,6 +515,17 @@
             <div class="dash-chart-block">
                 <h4>Tendencia por Líder (Red/Culto)</h4>
                 <canvas id="ev-chart-red-trend" height="220"></canvas>
+            </div>
+        </div>
+        <div id="ev-nuevos" class="dashboard-view">
+            <div id="ev-nuevos-table" class="dash-table-wrap"></div>
+            <div class="dash-chart-block">
+                <h4 id="ev-nuevos-bar-title">Nuevos de la Unidad</h4>
+                <canvas id="ev-chart-nuevos-bar" height="170"></canvas>
+            </div>
+            <div class="dash-chart-block">
+                <h4>Nuevos por Líder</h4>
+                <canvas id="ev-chart-nuevos-trend" height="220"></canvas>
             </div>
         </div>
         <div id="ev-metaGeneral" class="dashboard-view">
@@ -1640,6 +1652,20 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         localStorage.setItem(scope.rawKey, JSON.stringify(raw));
     }
 
+    // Nuevos de un reporte:
+    //  - Formato del App 1: cada visita nueva viene marcada en su línea,
+    //    ej. "1. Camila Jiménez | Célula: ❌ | Red: ✅ | 🌟 Nuevo" → se cuentan esas líneas.
+    //  - Si el reporte trae en cambio una línea resumen "NUEVOS ...: N", se usa
+    //    ese número (sin sumar además las marcas, para no contar doble).
+    function parseNuevos(text) {
+        const lines = (text || '').split('\n');
+        const summary = lines.filter(l => /nuevos/i.test(l) && /(\d+)\D*$/.test(l));
+        if (summary.length) {
+            return summary.reduce((s, l) => s + parseInt(l.match(/(\d+)\D*$/)[1], 10), 0);
+        }
+        return lines.filter(l => /\bnuevo\b/i.test(l)).length;
+    }
+
     // Parsea el texto generado por "Copiar Reporte" (semanal) o "Copiar Mes" (cuatrimestral)
     // y devuelve { NOMBRE: { celula, red } }. Ambos formatos comparten el mismo patrón
     // (🔥🚨🔥🚨🔥🚨🔥 ... LÍDER: ... Total <algo> Célula/Red: N), por lo que se reutiliza.
@@ -1647,7 +1673,12 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         const result = {};
         if (!text || !text.trim()) return result;
         const chunks = text.split('🔥🚨🔥🚨🔥🚨🔥');
-        chunks.forEach(chunk => {
+        chunks.forEach(rawChunk => {
+            // El bloque de un líder termina donde empieza el encabezado del
+            // siguiente grupo (*══════ RJ ══════*) o la línea "=====" que abre
+            // los RESUMEN ACUMULADO del final. Sin este corte, el ÚLTIMO líder
+            // del reporte se llevaba el "Total Nuevos" de toda la unidad.
+            const chunk = rawChunk.split(/\n\s*(?:\*?═{3,}|={5,})/)[0];
             const nameMatch = chunk.match(/L[IÍ]DER:\s*([^*\n]+)\*/i);
             if (!nameMatch) return;
             const name = toTitleCase(nameMatch[1].trim());
@@ -1655,7 +1686,8 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             const redMatch = chunk.match(/Total\s+\S+\s+(?:Red|Culto):\s*(\d+)/i);
             result[name] = {
                 celula: celMatch ? parseInt(celMatch[1], 10) : 0,
-                red:    redMatch ? parseInt(redMatch[1], 10) : 0
+                red:    redMatch ? parseInt(redMatch[1], 10) : 0,
+                nuevos: parseNuevos(chunk)
             };
         });
         return result;
@@ -2251,21 +2283,41 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
     // Un registro "con datos" = algún valor > 0 (un líder en 0/0 no cuenta como semana reportada).
     const hasData = (l) => !!l && ((Number(l.celula) || 0) > 0 || (Number(l.red) || 0) > 0);
 
-    function putWeek(unit, year, week, leaders) {
+    // raw = texto original: { report: "texto Copiar Reporte" } o { blocks: { Nombre: "texto del líder" } }.
+    // Se guarda para poder recalcular la semana si cambia la forma de leer los reportes.
+    function putWeek(unit, year, week, leaders, raw) {
         const h = loadHist();
         h[unit] = h[unit] || {};
-        h[unit][`${year}-${week}`] = { leaders, savedAt: new Date().toISOString() };
+        h[unit][`${year}-${week}`] = { leaders, raw: raw || null, savedAt: new Date().toISOString() };
         saveHist(h);
+    }
+
+    // Recalcula todas las semanas que tienen su texto original guardado.
+    function reparseHistory() {
+        const h = loadHist();
+        let changed = false;
+        Object.values(h).forEach(unitHist => Object.values(unitHist || {}).forEach(rec => {
+            if (!rec || !rec.raw) return;
+            if (rec.raw.report) {
+                const leaders = parseWeekReport(rec.raw.report);
+                if (Object.keys(leaders).length) { rec.leaders = leaders; changed = true; }
+            } else if (rec.raw.blocks) {
+                const leaders = {};
+                Object.entries(rec.raw.blocks).forEach(([name, text]) => { leaders[name] = parseLeaderTotals(text); });
+                rec.leaders = leaders; changed = true;
+            }
+        }));
+        if (changed) saveHist(h);
     }
     function weekExists(unit, year, week) {
         return !!(loadHist()[unit] || {})[`${year}-${week}`];
     }
 
-    // Lee Célula / Red(Culto) de un bloque de reporte de UN líder (texto del App 1).
+    // Lee Célula / Red(Culto) / Nuevos de un bloque de reporte de UN líder (texto del App 1).
     function parseLeaderTotals(text) {
         const celMatch = text.match(/Total\s+\S+\s+C[eé]lula:\s*(\d+)/i);
         const redMatch = text.match(/Total\s+\S+\s+(?:Red|Culto):\s*(\d+)/i);
-        return { celula: celMatch ? parseInt(celMatch[1], 10) : 0, red: redMatch ? parseInt(redMatch[1], 10) : 0 };
+        return { celula: celMatch ? parseInt(celMatch[1], 10) : 0, red: redMatch ? parseInt(redMatch[1], 10) : 0, nuevos: parseNuevos(text) };
     }
 
     // Migración única: las semanas que ya estaban pegadas en la "Estadística
@@ -2280,7 +2332,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
                 const leaders = parseWeekReport(text);
                 if (!key || !key.year || !Object.keys(leaders).length) return;
                 const unit = detectUnitFromReport(text) || currentUnit();
-                if (!weekExists(unit, key.year, key.week)) putWeek(unit, key.year, key.week, leaders);
+                if (!weekExists(unit, key.year, key.week)) putWeek(unit, key.year, key.week, leaders, { report: text });
             });
         } catch {}
         localStorage.setItem(HIST_MIGRATED_KEY, '1');
@@ -2291,12 +2343,14 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         const unit = currentUnit();
         const { year, week } = getActiveWeekKey();
         const leaders = {};
+        const rawBlocks = {};
         const missing = [];
         getAllBlocks().forEach(({ title, text }) => {
             const name = toTitleCase((title || '').trim());
             if (!name || name === 'Líder') return;
             if (!text.trim()) { missing.push(name); return; }
             leaders[name] = parseLeaderTotals(text);
+            rawBlocks[name] = text;
         });
         if (!Object.keys(leaders).length) {
             showAppAlert('No hay reportes pegados para guardar.', 'Sin datos');
@@ -2310,7 +2364,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             const ok = await showAppConfirm(`La Semana ${week} de ${year} ya está guardada para ${unitLabel(unit)}. ¿Reemplazarla?`, 'Semana ya guardada');
             if (!ok) return;
         }
-        putWeek(unit, year, week, leaders);
+        putWeek(unit, year, week, leaders, { blocks: rawBlocks });
         estSelectWeek(year, week);
         showAppAlert(`Semana ${week} de ${year} guardada en Estadística (${Object.keys(leaders).length} líderes).`, 'Guardado');
     }
@@ -2332,7 +2386,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             const ok = await showAppConfirm(`La Semana ${key.week} de ${year} ya está guardada para ${unitLabel(unit)}. ¿Reemplazarla?`, 'Semana ya guardada');
             if (!ok) return;
         }
-        putWeek(unit, year, key.week, leaders);
+        putWeek(unit, year, key.week, leaders, { report: text });
         ta.value = '';
         if (unit !== currentUnit()) {
             setStatus(`✅ Semana ${key.week} de ${year} guardada en ${unitLabel(unit)} (es otra unidad: cambiala en Consolidador para verla).`, true);
@@ -2435,7 +2489,8 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         const unitHist = loadHist()[currentUnit()] || {};
         const weeks = estPeriodWeeks();
         const recs = {}; // week -> leaders
-        weeks.forEach(w => { const r = unitHist[`${year}-${w}`]; if (r) recs[w] = r.leaders || {}; });
+        const raws = {}; // week -> texto original (null = guardada sin texto, versión anterior)
+        weeks.forEach(w => { const r = unitHist[`${year}-${w}`]; if (r) { recs[w] = r.leaders || {}; raws[w] = r.raw || null; } });
 
         const leaderSet = new Set();
         Object.values(recs).forEach(ls => Object.keys(ls).forEach(n => leaderSet.add(n)));
@@ -2449,7 +2504,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         } else {
             buckets = weeks.map(w => ({ label: `S${String(w).padStart(2, '0')}`, weeks: [w] }));
         }
-        return { year, weeks, recs, leaders, buckets };
+        return { year, weeks, recs, raws, leaders, buckets };
     }
 
     // Promedio semanal de un líder (metric = 'celula' | 'red') en una lista de semanas.
@@ -2570,6 +2625,74 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         });
     }
 
+    // Nuevos = TOTAL del período (se acumulan, no se promedian).
+    // null = el líder no tiene ninguna semana guardada en ese bloque.
+    function leaderSumNuevos(recs, name, weekList) {
+        const ls = weekList.map(w => recs[w] && recs[w][name]).filter(Boolean);
+        return ls.length ? ls.reduce((s, l) => s + (Number(l.nuevos) || 0), 0) : null;
+    }
+    function unitSumNuevos(recs, weekList) {
+        const ls = weekList.flatMap(w => Object.values(recs[w] || {}));
+        return ls.length ? ls.reduce((s, l) => s + (Number(l.nuevos) || 0), 0) : null;
+    }
+
+    function estRenderNuevosView(d) {
+        const wrap = document.getElementById('ev-nuevos-table');
+        document.getElementById('ev-nuevos-bar-title').textContent = estIsMonthly() ? 'Nuevos de la Unidad por Mes' : 'Nuevos de la Unidad por Semana';
+        if (!d.leaders.length) {
+            wrap.innerHTML = '<p class="empty-page-msg">No hay semanas guardadas en este período. Guardalas desde Consolidador o pegando el reporte arriba.</p>';
+            destroyChart('ev-chart-nuevos-bar'); destroyChart('ev-chart-nuevos-trend');
+            return;
+        }
+        const multi = d.buckets.length > 1;
+        let html = '<table class="dash-table"><thead><tr><th>Líder</th>';
+        d.buckets.forEach(b => html += `<th>${b.label}</th>`);
+        if (multi) html += '<th>Total</th>';
+        html += '</tr></thead><tbody>';
+        d.leaders.forEach(name => {
+            html += `<tr><td>${name}</td>`;
+            d.buckets.forEach(b => html += `<td>${fmt(leaderSumNuevos(d.recs, name, b.weeks))}</td>`);
+            if (multi) html += `<td><b>${fmt(leaderSumNuevos(d.recs, name, d.weeks))}</b></td>`;
+            html += '</tr>';
+        });
+        html += '<tr class="est-total"><td>TOTAL UNIDAD</td>';
+        d.buckets.forEach(b => html += `<td>${fmt(unitSumNuevos(d.recs, b.weeks))}</td>`);
+        if (multi) html += `<td>${fmt(unitSumNuevos(d.recs, d.weeks))}</td>`;
+        html += '</tr></tbody></table>';
+        const sinTexto = d.weeks.filter(w => d.raws[w] === null);
+        if (sinTexto.length) {
+            html += `<p class="est-note">⚠️ ${sinTexto.length} semana(s) se guardaron con una versión anterior y no tienen el reporte original (${sinTexto.map(w => 'S' + String(w).padStart(2, '0')).join(', ')}); sus Nuevos pueden salir en 0. Volvé a pegarlas o guardarlas para corregirlas.</p>`;
+        }
+        wrap.innerHTML = html;
+
+        if (typeof Chart === 'undefined') return;
+        const accent = getUnitAccentColor();
+        const labels = d.buckets.map(b => b.label);
+        destroyChart('ev-chart-nuevos-bar');
+        const barCtx = document.getElementById('ev-chart-nuevos-bar')?.getContext('2d');
+        if (barCtx) {
+            _dashCharts['ev-chart-nuevos-bar'] = new Chart(barCtx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Nuevos', data: d.buckets.map(b => unitSumNuevos(d.recs, b.weeks)), backgroundColor: accent, borderRadius: 4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+            });
+        }
+        destroyChart('ev-chart-nuevos-trend');
+        const trendCtx = document.getElementById('ev-chart-nuevos-trend')?.getContext('2d');
+        if (trendCtx) {
+            _dashCharts['ev-chart-nuevos-trend'] = new Chart(trendCtx, {
+                type: 'line',
+                data: { labels, datasets: d.leaders.map((name, idx) => {
+                    const color = LEADER_LINE_COLORS[idx % LEADER_LINE_COLORS.length];
+                    return { label: name, data: d.buckets.map(b => leaderSumNuevos(d.recs, name, b.weeks)), borderColor: color,
+                             backgroundColor: color + '33', borderWidth: 2, tension: 0.35, spanGaps: true, fill: false };
+                }) },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } },
+                           scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+            });
+        }
+    }
+
     function estGetMetaGeneral() {
         const v = localStorage.getItem(META_GENERAL_KEY);
         const n = v !== null ? parseFloat(v) : NaN;
@@ -2597,6 +2720,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
             { value: meta, label: 'Meta Semanal General' },
             { value: celAvg.toFixed(1), label: 'Promedio Semanal Célula' },
             { value: redAvg.toFixed(1), label: 'Promedio Semanal Red/Culto' },
+            { value: unitSumNuevos(d.recs, d.weeks) || 0, label: 'Nuevos (total)' },
             { value: weeksWithData(d.recs, d.weeks), label: 'Semanas con reporte' },
         ];
         document.getElementById('ev-meta-cards').innerHTML = cards.map(c =>
@@ -2656,6 +2780,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         estRenderSavedChips(d);
         if (estView === 'celula') estRenderMetricView(d, 'celula');
         else if (estView === 'red') estRenderMetricView(d, 'red');
+        else if (estView === 'nuevos') estRenderNuevosView(d);
         else if (estView === 'metaGeneral') estRenderMetaGeneral(d);
         else estRenderMetaLider(d);
     }
@@ -2691,6 +2816,7 @@ if (totalNew   > 0) report += `Total Nuevos: ${totalNew}\n`;
         loadData();
         buildScopeInputs(DASH_SCOPES.cuatrimestral);
         migrateOldWeeksOnce();
+        reparseHistory();
         initSelectWheel('week');
         initSelectWheel('unit');
     };
